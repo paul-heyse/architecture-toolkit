@@ -26,12 +26,16 @@ __all__ = [
     "QUALIFIED_KIND_PATTERN",
     "VERSION_PATTERN",
     "ArtifactId",
+    "BindingId",
     "ChangeSetId",
+    "ContextId",
     "Digest",
     "ElementId",
     "InteractionId",
     "LayoutDigest",
+    "LinkId",
     "ModelId",
+    "NotationObjectId",
     "ProfileVersion",
     "QualifiedKind",
     "ReferenceId",
@@ -68,10 +72,13 @@ _Version = StringConstraints(pattern=VERSION_PATTERN, strict=True)
 # even though they are interchangeable to a regex, which is the whole point of CORE-03.
 
 ModelId = Annotated[str, _Identifier]
+BindingId = Annotated[str, _Identifier]
+LinkId = Annotated[str, _Identifier]
 ElementId = Annotated[str, _Identifier]
 RelationshipId = Annotated[str, _Identifier]
 RelationshipTypeId = Annotated[str, _Identifier]
 InteractionId = Annotated[str, _Identifier]
+ContextId = Annotated[str, _Identifier]
 ReferenceId = Annotated[str, _Identifier]
 ReleaseId = Annotated[str, _Identifier]
 ChangeSetId = Annotated[str, _Identifier]
@@ -80,6 +87,14 @@ ArtifactId = Annotated[str, _Identifier]
 RuleId = Annotated[str, _Identifier]
 
 QualifiedKind = Annotated[str, StringConstraints(pattern=QUALIFIED_KIND_PATTERN, strict=True)]
+
+# An identifier inside a foreign notation — a BPMN `Task_1`, an ArchiMate element id. Deliberately
+# looser than `IDENTIFIER_PATTERN`: the notation owns that namespace and the toolkit does not get
+# to impose its casing on it. `ARCH-TOOL-CORE-001` §3C reserves exactly this as the thirteenth
+# alias, "notation-specific stable identifiers where useful".
+NotationObjectId = Annotated[
+    str, StringConstraints(min_length=1, max_length=255, strip_whitespace=False, strict=True)
+]
 
 # -- digests ----------------------------------------------------------------------------------
 # DATA-31 requires semantic and layout identity to be separable. One `Digest` alias would let a

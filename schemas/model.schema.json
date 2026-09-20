@@ -1,123 +1,1507 @@
 {
   "$defs": {
+    "Applicability": {
+      "enum": [
+        "applicable",
+        "not_applicable",
+        "unknown"
+      ],
+      "title": "Applicability",
+      "type": "string"
+    },
+    "BehaviorDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "detail_family": {
+          "const": "behavior",
+          "default": "behavior",
+          "title": "Detail Family",
+          "type": "string"
+        },
+        "element_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Element Id",
+          "type": "string"
+        },
+        "nodes": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/BehaviorNode"
+          },
+          "title": "Nodes",
+          "type": "array"
+        },
+        "transitions": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/BehaviorTransition"
+          },
+          "title": "Transitions",
+          "type": "array"
+        },
+        "content_hash": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Hash"
+        }
+      },
+      "required": [
+        "element_id"
+      ],
+      "title": "BehaviorDetail",
+      "type": "object"
+    },
+    "BehaviorNode": {
+      "additionalProperties": false,
+      "properties": {
+        "node_id": {
+          "title": "Node Id",
+          "type": "string"
+        },
+        "node_type": {
+          "$ref": "#/$defs/BehaviorNodeType"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "ordinal": {
+          "minimum": 0,
+          "title": "Ordinal",
+          "type": "integer"
+        },
+        "participant_element_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Participant Element Id"
+        }
+      },
+      "required": [
+        "node_id",
+        "node_type",
+        "name",
+        "ordinal"
+      ],
+      "title": "BehaviorNode",
+      "type": "object"
+    },
+    "BehaviorNodeType": {
+      "description": "The BPMN subset `projections.md` names, stated in the domain rather than the generator.\n\nThe three gateways are distinct members for the reason DATA-30 exists: an exclusive gateway\nand a parallel gateway mean different things, and no edge label recovers the difference.",
+      "enum": [
+        "task",
+        "manual_task",
+        "start_event",
+        "end_event",
+        "intermediate_event",
+        "exclusive_gateway",
+        "parallel_gateway",
+        "inclusive_gateway",
+        "subprocess"
+      ],
+      "title": "BehaviorNodeType",
+      "type": "string"
+    },
+    "BehaviorTransition": {
+      "additionalProperties": false,
+      "properties": {
+        "transition_id": {
+          "title": "Transition Id",
+          "type": "string"
+        },
+        "source_node_id": {
+          "title": "Source Node Id",
+          "type": "string"
+        },
+        "target_node_id": {
+          "title": "Target Node Id",
+          "type": "string"
+        },
+        "guard": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Guard"
+        },
+        "ordinal": {
+          "minimum": 0,
+          "title": "Ordinal",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "transition_id",
+        "source_node_id",
+        "target_node_id",
+        "ordinal"
+      ],
+      "title": "BehaviorTransition",
+      "type": "object"
+    },
+    "ClientAcceptance": {
+      "description": "Whether the consumer has agreed. Orthogonal to whether it works.",
+      "enum": [
+        "not_requested",
+        "submitted",
+        "accepted",
+        "rejected"
+      ],
+      "title": "ClientAcceptance",
+      "type": "string"
+    },
+    "DataSchemaDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "detail_family": {
+          "const": "data_schema",
+          "default": "data_schema",
+          "title": "Detail Family",
+          "type": "string"
+        },
+        "element_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Element Id",
+          "type": "string"
+        },
+        "fields": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/SchemaField"
+          },
+          "title": "Fields",
+          "type": "array"
+        },
+        "content_hash": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Hash"
+        }
+      },
+      "required": [
+        "element_id"
+      ],
+      "title": "DataSchemaDetail",
+      "type": "object"
+    },
+    "DeliverySemantics": {
+      "enum": [
+        "at_most_once",
+        "at_least_once",
+        "exactly_once",
+        "unspecified"
+      ],
+      "title": "DeliverySemantics",
+      "type": "string"
+    },
+    "DeploymentDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "detail_family": {
+          "const": "deployment",
+          "default": "deployment",
+          "title": "Detail Family",
+          "type": "string"
+        },
+        "element_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Element Id",
+          "type": "string"
+        },
+        "environment": {
+          "title": "Environment",
+          "type": "string"
+        },
+        "deployment_node_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Deployment Node Id"
+        },
+        "software_instance_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Software Instance Id"
+        },
+        "configuration_artifact_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Configuration Artifact Id"
+        },
+        "content_hash": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Hash"
+        }
+      },
+      "required": [
+        "element_id",
+        "environment"
+      ],
+      "title": "DeploymentDetail",
+      "type": "object"
+    },
+    "DesignDisposition": {
+      "description": "Where the architectural decision stands. Not a claim about reality.",
+      "enum": [
+        "proposed",
+        "analytically_feasible",
+        "accepted",
+        "superseded",
+        "rejected"
+      ],
+      "title": "DesignDisposition",
+      "type": "string"
+    },
     "Element": {
       "additionalProperties": false,
       "properties": {
         "element_id": {
-          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
           "title": "Element Id",
           "type": "string"
         },
-        "kind": {
-          "$ref": "#/$defs/Kind"
+        "model_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Model Id",
+          "type": "string"
+        },
+        "kind_id": {
+          "pattern": "^[a-z][a-z0-9]*\\.[a-z][a-z0-9_]*$",
+          "title": "Kind Id",
+          "type": "string"
         },
         "name": {
           "minLength": 1,
           "title": "Name",
           "type": "string"
         },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "lifecycle_state": {
+          "$ref": "#/$defs/LifecycleState",
+          "default": "active"
+        },
+        "aliases": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Aliases",
+          "type": "array"
+        },
         "status": {
-          "$ref": "#/$defs/StatusDimensions"
+          "$ref": "#/$defs/StatusDimensions",
+          "default": {
+            "design_disposition": "unknown",
+            "implementation_state": "unknown",
+            "technical_qualification": "not_qualified",
+            "client_acceptance": "not_requested",
+            "evidence_review": "unreviewed"
+          }
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "behavior": "#/$defs/BehaviorDetail",
+                  "data_schema": "#/$defs/DataSchemaDetail",
+                  "deployment": "#/$defs/DeploymentDetail",
+                  "interface": "#/$defs/InterfaceDetail",
+                  "requirement": "#/$defs/RequirementDetail"
+                },
+                "propertyName": "detail_family"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/InterfaceDetail"
+                },
+                {
+                  "$ref": "#/$defs/DeploymentDetail"
+                },
+                {
+                  "$ref": "#/$defs/DataSchemaDetail"
+                },
+                {
+                  "$ref": "#/$defs/BehaviorDetail"
+                },
+                {
+                  "$ref": "#/$defs/RequirementDetail"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        },
+        "content_hash": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Hash"
         }
       },
       "required": [
         "element_id",
-        "kind",
+        "model_id",
+        "kind_id",
         "name"
       ],
       "title": "Element",
       "type": "object"
     },
-    "Kind": {
-      "enum": [
-        "motivation.requirement",
-        "business.process",
-        "software.system",
-        "software.component",
-        "software.interface",
-        "information.schema",
-        "organization.role"
-      ],
-      "title": "Kind",
-      "type": "string"
-    },
-    "Relationship": {
+    "ElementReference": {
       "additionalProperties": false,
       "properties": {
-        "relationship_id": {
-          "minLength": 1,
-          "title": "Relationship Id",
+        "subject_kind": {
+          "const": "element",
+          "default": "element",
+          "title": "Subject Kind",
           "type": "string"
         },
-        "source_element_id": {
-          "title": "Source Element Id",
-          "type": "string"
-        },
-        "target_element_id": {
-          "title": "Target Element Id",
-          "type": "string"
-        },
-        "relationship_type_id": {
-          "minLength": 1,
-          "title": "Relationship Type Id",
+        "element_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Element Id",
           "type": "string"
         }
       },
       "required": [
+        "element_id"
+      ],
+      "title": "ElementReference",
+      "type": "object"
+    },
+    "EvidenceReview": {
+      "description": "How the assertion is known \u2014 the one vocabulary with a source.\n\nOrdered from strongest to weakest grounding, though the enum imposes no ordering: an inferred\nfact and an observed one are both usable, and the difference is exactly what a reviewer needs\nto see.",
+      "enum": [
+        "unreviewed",
+        "observed",
+        "client_stated",
+        "public_research",
+        "inferred",
+        "assumption"
+      ],
+      "title": "EvidenceReview",
+      "type": "string"
+    },
+    "FieldCardinality": {
+      "enum": [
+        "one",
+        "many"
+      ],
+      "title": "FieldCardinality",
+      "type": "string"
+    },
+    "FieldReference": {
+      "additionalProperties": false,
+      "description": "The variant that earns the union. A field path is meaningless on the other three.",
+      "properties": {
+        "subject_kind": {
+          "const": "field",
+          "default": "field",
+          "title": "Subject Kind",
+          "type": "string"
+        },
+        "element_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Element Id",
+          "type": "string"
+        },
+        "field_path": {
+          "minLength": 1,
+          "title": "Field Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "element_id",
+        "field_path"
+      ],
+      "title": "FieldReference",
+      "type": "object"
+    },
+    "GapState": {
+      "description": "Why a dimension has no ordinary value (DATA-41).\n\nShared across all five dimensions, and asserted disjoint from each of them by\n`tests/unit/test_status.py` \u2014 a future vocabulary that added its own `unknown` would shadow\nthis one and silently change what the union resolves to.",
+      "enum": [
+        "unknown",
+        "not_applicable",
+        "withheld",
+        "evidence_gap"
+      ],
+      "title": "GapState",
+      "type": "string"
+    },
+    "ImplementationState": {
+      "description": "Whether the thing exists. Independent of whether anyone approved it.",
+      "enum": [
+        "not_implemented",
+        "partially_implemented",
+        "implemented",
+        "decommissioned"
+      ],
+      "title": "ImplementationState",
+      "type": "string"
+    },
+    "Interaction": {
+      "additionalProperties": false,
+      "description": "A first-class multi-party handoff (DATA-08).\n\nA binary edge cannot carry a producing activity, a consuming activity, a sender role, a\nreceiver role, an interface and the object being moved. Modelling it as one answers both\nquestions \u00a72D poses: which applications participate in this handoff, and which handoffs move\nthis information object between roles.",
+      "properties": {
+        "interaction_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Interaction Id",
+          "type": "string"
+        },
+        "model_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Model Id",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "interaction_kind": {
+          "$ref": "#/$defs/InteractionKind"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "participants": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/InteractionParticipant"
+          },
+          "title": "Participants",
+          "type": "array"
+        },
+        "moved_object_ids": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+            "type": "string"
+          },
+          "title": "Moved Object Ids",
+          "type": "array"
+        },
+        "content_hash": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Hash"
+        }
+      },
+      "required": [
+        "interaction_id",
+        "model_id",
+        "name",
+        "interaction_kind"
+      ],
+      "title": "Interaction",
+      "type": "object"
+    },
+    "InteractionKind": {
+      "enum": [
+        "handoff",
+        "exchange",
+        "collaboration"
+      ],
+      "title": "InteractionKind",
+      "type": "string"
+    },
+    "InteractionMode": {
+      "enum": [
+        "synchronous",
+        "asynchronous",
+        "batch",
+        "streaming"
+      ],
+      "title": "InteractionMode",
+      "type": "string"
+    },
+    "InteractionParticipant": {
+      "additionalProperties": false,
+      "properties": {
+        "element_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Element Id",
+          "type": "string"
+        },
+        "participant_role": {
+          "$ref": "#/$defs/ParticipantRole"
+        },
+        "ordinal": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Ordinal",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "element_id",
+        "participant_role"
+      ],
+      "title": "InteractionParticipant",
+      "type": "object"
+    },
+    "InterfaceDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "detail_family": {
+          "const": "interface",
+          "default": "interface",
+          "title": "Detail Family",
+          "type": "string"
+        },
+        "element_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Element Id",
+          "type": "string"
+        },
+        "transport": {
+          "$ref": "#/$defs/InterfaceTransport"
+        },
+        "authentication_description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Authentication Description"
+        },
+        "request_schema_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Request Schema Id"
+        },
+        "response_schema_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Response Schema Id"
+        },
+        "delivery_semantics": {
+          "$ref": "#/$defs/DeliverySemantics",
+          "default": "unspecified"
+        },
+        "timeout_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timeout Ms"
+        },
+        "idempotency_description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Idempotency Description"
+        },
+        "content_hash": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Hash"
+        }
+      },
+      "required": [
+        "element_id",
+        "transport"
+      ],
+      "title": "InterfaceDetail",
+      "type": "object"
+    },
+    "InterfaceTransport": {
+      "additionalProperties": false,
+      "description": "Nested struct, shaped to the Arrow `interface_schema` pinned in `ARCH-TOOL-DATA-001` \u00a73A.\n\nKept nested rather than flattened so W3 maps it to the struct the specification already\nfixes, instead of three loose columns it would then have to reconcile.",
+      "properties": {
+        "protocol": {
+          "title": "Protocol",
+          "type": "string"
+        },
+        "interaction_mode": {
+          "$ref": "#/$defs/InteractionMode"
+        },
+        "serialization": {
+          "title": "Serialization",
+          "type": "string"
+        }
+      },
+      "required": [
+        "protocol",
+        "interaction_mode",
+        "serialization"
+      ],
+      "title": "InterfaceTransport",
+      "type": "object"
+    },
+    "KeyMembership": {
+      "description": "ERD semantics DATA-30 requires stated, not inferred from a generic edge.",
+      "enum": [
+        "primary_key",
+        "unique_key",
+        "foreign_key"
+      ],
+      "title": "KeyMembership",
+      "type": "string"
+    },
+    "LifecycleState": {
+      "description": "Whether the record itself is live. Distinct from every dimension above.\n\nNotion's elements table carries `lifecycle_state` and \u00a76C carries the five dimensions, and\nneither says how they relate. The call taken in W1: this is the record's *existence* and is\nwhat `RetireElement` drives, while the five dimensions are *assessments of a live record*. A\nretired element keeps its last assessment rather than having it erased, because \"this was\naccepted and then retired\" is a different history from \"this was never accepted\".",
+      "enum": [
+        "active",
+        "retired",
+        "replaced"
+      ],
+      "title": "LifecycleState",
+      "type": "string"
+    },
+    "LinkRole": {
+      "description": "How the reference bears on the subject. DATA-09 names exactly these four.\n\n`CONTRADICTS` is not an error state. Recording that a source disagrees with the model is\nevidence, and DATA-41 requires it be preserved rather than resolved away.",
+      "enum": [
+        "supports",
+        "contradicts",
+        "justifies",
+        "qualifies"
+      ],
+      "title": "LinkRole",
+      "type": "string"
+    },
+    "Notation": {
+      "description": "The notations `projections.md` schedules. Declared now; generators arrive at W7b.",
+      "enum": [
+        "archimate",
+        "c4",
+        "bpmn",
+        "uml",
+        "erd"
+      ],
+      "title": "Notation",
+      "type": "string"
+    },
+    "NotationBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "binding_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Binding Id",
+          "type": "string"
+        },
+        "model_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Model Id",
+          "type": "string"
+        },
+        "subject": {
+          "discriminator": {
+            "mapping": {
+              "element": "#/$defs/ElementReference",
+              "field": "#/$defs/FieldReference",
+              "relationship": "#/$defs/RelationshipReference",
+              "release": "#/$defs/ReleaseReference"
+            },
+            "propertyName": "subject_kind"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/ElementReference"
+            },
+            {
+              "$ref": "#/$defs/RelationshipReference"
+            },
+            {
+              "$ref": "#/$defs/FieldReference"
+            },
+            {
+              "$ref": "#/$defs/ReleaseReference"
+            }
+          ],
+          "title": "Subject"
+        },
+        "notation": {
+          "$ref": "#/$defs/Notation"
+        },
+        "notation_type": {
+          "title": "Notation Type",
+          "type": "string"
+        },
+        "notation_object_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Notation Object Id",
+          "type": "string"
+        },
+        "view_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "View Id"
+        },
+        "mapping_profile_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Mapping Profile Version",
+          "type": "string"
+        },
+        "projection_artifact_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Projection Artifact Id"
+        },
+        "link_target": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Link Target"
+        },
+        "content_hash": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Hash"
+        }
+      },
+      "required": [
+        "binding_id",
+        "model_id",
+        "subject",
+        "notation",
+        "notation_type",
+        "notation_object_id",
+        "mapping_profile_version"
+      ],
+      "title": "NotationBinding",
+      "type": "object"
+    },
+    "Nullability": {
+      "enum": [
+        "required",
+        "optional"
+      ],
+      "title": "Nullability",
+      "type": "string"
+    },
+    "ParticipantRole": {
+      "description": "Why an element is in an interaction. DATA-08's worked example names these.",
+      "enum": [
+        "producer",
+        "consumer",
+        "sender",
+        "receiver",
+        "interface",
+        "exception_handler",
+        "observer"
+      ],
+      "title": "ParticipantRole",
+      "type": "string"
+    },
+    "Reference": {
+      "additionalProperties": false,
+      "description": "An approved modelling input. A pointer and its provenance, never the content.",
+      "properties": {
+        "reference_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Reference Id",
+          "type": "string"
+        },
+        "model_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Model Id",
+          "type": "string"
+        },
+        "reference_kind": {
+          "$ref": "#/$defs/ReferenceKind"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "locator": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Locator"
+        },
+        "authority": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Authority"
+        },
+        "content_hash": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Hash"
+        }
+      },
+      "required": [
+        "reference_id",
+        "model_id",
+        "reference_kind",
+        "title"
+      ],
+      "title": "Reference",
+      "type": "object"
+    },
+    "ReferenceKind": {
+      "enum": [
+        "document",
+        "decision",
+        "measurement",
+        "interview",
+        "source_code",
+        "external_system"
+      ],
+      "title": "ReferenceKind",
+      "type": "string"
+    },
+    "ReferenceLink": {
+      "additionalProperties": false,
+      "description": "Binds one reference to one precisely addressed subject.",
+      "properties": {
+        "link_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Link Id",
+          "type": "string"
+        },
+        "model_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Model Id",
+          "type": "string"
+        },
+        "reference_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Reference Id",
+          "type": "string"
+        },
+        "subject": {
+          "discriminator": {
+            "mapping": {
+              "element": "#/$defs/ElementReference",
+              "field": "#/$defs/FieldReference",
+              "relationship": "#/$defs/RelationshipReference",
+              "release": "#/$defs/ReleaseReference"
+            },
+            "propertyName": "subject_kind"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/ElementReference"
+            },
+            {
+              "$ref": "#/$defs/RelationshipReference"
+            },
+            {
+              "$ref": "#/$defs/FieldReference"
+            },
+            {
+              "$ref": "#/$defs/ReleaseReference"
+            }
+          ],
+          "title": "Subject"
+        },
+        "link_role": {
+          "$ref": "#/$defs/LinkRole"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "content_hash": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Hash"
+        }
+      },
+      "required": [
+        "link_id",
+        "model_id",
+        "reference_id",
+        "subject",
+        "link_role"
+      ],
+      "title": "ReferenceLink",
+      "type": "object"
+    },
+    "Relationship": {
+      "additionalProperties": false,
+      "description": "Independently identified, because evidence and decisions attach to the relationship itself.\n\nOnly one direction is stored. `registry.py` holds the canonical direction and the inverse\nlabel, and inverse views are derived \u2014 DATA-06 forbids persisting the duplicate.",
+      "properties": {
+        "relationship_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Relationship Id",
+          "type": "string"
+        },
+        "model_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Model Id",
+          "type": "string"
+        },
+        "relationship_type_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Relationship Type Id",
+          "type": "string"
+        },
+        "source_element_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Source Element Id",
+          "type": "string"
+        },
+        "target_element_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Target Element Id",
+          "type": "string"
+        },
+        "context_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Context Id"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "content_hash": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Hash"
+        }
+      },
+      "required": [
         "relationship_id",
+        "model_id",
+        "relationship_type_id",
         "source_element_id",
-        "target_element_id",
-        "relationship_type_id"
+        "target_element_id"
       ],
       "title": "Relationship",
       "type": "object"
     },
-    "StatusDimensions": {
+    "RelationshipReference": {
       "additionalProperties": false,
       "properties": {
-        "design_disposition": {
-          "default": "proposed",
-          "title": "Design Disposition",
+        "subject_kind": {
+          "const": "relationship",
+          "default": "relationship",
+          "title": "Subject Kind",
           "type": "string"
+        },
+        "relationship_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Relationship Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "relationship_id"
+      ],
+      "title": "RelationshipReference",
+      "type": "object"
+    },
+    "ReleaseReference": {
+      "additionalProperties": false,
+      "properties": {
+        "subject_kind": {
+          "const": "release",
+          "default": "release",
+          "title": "Subject Kind",
+          "type": "string"
+        },
+        "release_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Release Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "release_id"
+      ],
+      "title": "ReleaseReference",
+      "type": "object"
+    },
+    "RequirementCategory": {
+      "enum": [
+        "functional",
+        "quality",
+        "constraint",
+        "regulatory"
+      ],
+      "title": "RequirementCategory",
+      "type": "string"
+    },
+    "RequirementDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "detail_family": {
+          "const": "requirement",
+          "default": "requirement",
+          "title": "Detail Family",
+          "type": "string"
+        },
+        "element_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Element Id",
+          "type": "string"
+        },
+        "category": {
+          "$ref": "#/$defs/RequirementCategory"
+        },
+        "applicability": {
+          "$ref": "#/$defs/Applicability",
+          "default": "unknown"
+        },
+        "applicability_note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Applicability Note"
+        },
+        "verification_method": {
+          "$ref": "#/$defs/VerificationMethod",
+          "default": "not_established"
+        },
+        "acceptance_criterion_ids": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+            "type": "string"
+          },
+          "title": "Acceptance Criterion Ids",
+          "type": "array"
+        },
+        "content_hash": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Hash"
+        }
+      },
+      "required": [
+        "element_id",
+        "category"
+      ],
+      "title": "RequirementDetail",
+      "type": "object"
+    },
+    "SchemaField": {
+      "additionalProperties": false,
+      "description": "One field of a concrete schema. `ordinal` is authored order and is semantic.",
+      "properties": {
+        "field_id": {
+          "title": "Field Id",
+          "type": "string"
+        },
+        "field_name": {
+          "title": "Field Name",
+          "type": "string"
+        },
+        "data_type": {
+          "title": "Data Type",
+          "type": "string"
+        },
+        "nullability": {
+          "$ref": "#/$defs/Nullability",
+          "default": "optional"
+        },
+        "cardinality": {
+          "$ref": "#/$defs/FieldCardinality",
+          "default": "one"
+        },
+        "key_membership": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/KeyMembership"
+          },
+          "title": "Key Membership",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "references_element_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "References Element Id"
+        },
+        "references_field_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "References Field Id"
+        },
+        "ordinal": {
+          "minimum": 0,
+          "title": "Ordinal",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "field_id",
+        "field_name",
+        "data_type",
+        "ordinal"
+      ],
+      "title": "SchemaField",
+      "type": "object"
+    },
+    "StatusDimensions": {
+      "additionalProperties": false,
+      "description": "Five independent assessments, each either a vocabulary value or an explicit gap.\n\nThe defaults split on a principle worth stating, because getting it wrong is how a model\nstarts asserting things nobody said. A dimension whose zero state is a genuine *fact* about a\nnew record keeps that zero state: nothing has been qualified, nothing has been requested of a\nclient, nothing has been reviewed. A dimension whose zero state would be a *claim* defaults to\n`UNKNOWN` instead:\n\n* `design_disposition` \u2014 authoring an element is not the same as proposing it. A model\n  frequently documents what already exists, and defaulting to `PROPOSED` would invent an\n  intent.\n* `implementation_state` \u2014 defaulting to `NOT_IMPLEMENTED` asserts the thing does not exist,\n  which is false for every system documented from observation.\n\nDATA-41 is explicit that a value must never be invented to satisfy a structural rule, and a\ndefault is the easiest place for exactly that to happen unnoticed.",
+      "properties": {
+        "design_disposition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DesignDisposition"
+            },
+            {
+              "$ref": "#/$defs/GapState"
+            }
+          ],
+          "default": "unknown",
+          "title": "Design Disposition"
         },
         "implementation_state": {
-          "default": "not_implemented",
-          "title": "Implementation State",
-          "type": "string"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ImplementationState"
+            },
+            {
+              "$ref": "#/$defs/GapState"
+            }
+          ],
+          "default": "unknown",
+          "title": "Implementation State"
         },
         "technical_qualification": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TechnicalQualification"
+            },
+            {
+              "$ref": "#/$defs/GapState"
+            }
+          ],
           "default": "not_qualified",
-          "title": "Technical Qualification",
-          "type": "string"
+          "title": "Technical Qualification"
         },
         "client_acceptance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ClientAcceptance"
+            },
+            {
+              "$ref": "#/$defs/GapState"
+            }
+          ],
           "default": "not_requested",
-          "title": "Client Acceptance",
-          "type": "string"
+          "title": "Client Acceptance"
         },
         "evidence_review": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EvidenceReview"
+            },
+            {
+              "$ref": "#/$defs/GapState"
+            }
+          ],
           "default": "unreviewed",
-          "title": "Evidence Review",
-          "type": "string"
+          "title": "Evidence Review"
         }
       },
       "title": "StatusDimensions",
       "type": "object"
+    },
+    "TechnicalQualification": {
+      "description": "Whether it was tested. `NOT_QUALIFIED` is not a failure.\n\nThe same distinction `domain/engineering.py` draws for tool evidence: a capability nobody has\nqualified yet and a capability that failed qualification are different facts, and merging them\nturns an unexplored option into a rejected one.",
+      "enum": [
+        "not_qualified",
+        "qualified",
+        "qualification_failed"
+      ],
+      "title": "TechnicalQualification",
+      "type": "string"
+    },
+    "VerificationMethod": {
+      "enum": [
+        "test",
+        "analysis",
+        "inspection",
+        "demonstration",
+        "not_established"
+      ],
+      "title": "VerificationMethod",
+      "type": "string"
     }
   },
   "additionalProperties": false,
+  "description": "One canonical model. Frozen, hashable, and addressed by `model_id`.",
   "properties": {
     "schema_version": {
-      "default": "0.1.0",
+      "default": "1.0.0",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
       "title": "Schema Version",
       "type": "string"
     },
+    "profile_version": {
+      "default": "1.0.0",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+      "title": "Profile Version",
+      "type": "string"
+    },
     "model_id": {
-      "minLength": 1,
+      "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
       "title": "Model Id",
       "type": "string"
     },
     "elements": {
+      "default": [],
       "items": {
         "$ref": "#/$defs/Element"
       },
@@ -125,17 +1509,48 @@
       "type": "array"
     },
     "relationships": {
+      "default": [],
       "items": {
         "$ref": "#/$defs/Relationship"
       },
       "title": "Relationships",
       "type": "array"
+    },
+    "interactions": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Interaction"
+      },
+      "title": "Interactions",
+      "type": "array"
+    },
+    "references": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Reference"
+      },
+      "title": "References",
+      "type": "array"
+    },
+    "reference_links": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ReferenceLink"
+      },
+      "title": "Reference Links",
+      "type": "array"
+    },
+    "notation_bindings": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/NotationBinding"
+      },
+      "title": "Notation Bindings",
+      "type": "array"
     }
   },
   "required": [
-    "model_id",
-    "elements",
-    "relationships"
+    "model_id"
   ],
   "title": "Model",
   "type": "object"

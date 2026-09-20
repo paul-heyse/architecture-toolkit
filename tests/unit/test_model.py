@@ -1,24 +1,22 @@
+"""The canonical model records (CORE-01, DATA-03, DATA-04, DATA-05, DATA-08, DATA-29, DATA-41)."""
+
 import json
-from pathlib import Path
 from typing import Any
 
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 from pydantic import ValidationError
-from ruamel.yaml import YAML
 
+from architecture_toolkit.domain.details import BehaviorDetail, DataSchemaDetail
 from architecture_toolkit.domain.model import Model
-
-
-def sample() -> dict[str, Any]:
-    return YAML(typ="safe").load(Path("examples/minimal/model.yaml").read_text())
+from architecture_toolkit.domain.status import GapState
 
 
 @pytest.mark.unit
 @pytest.mark.requirement("CORE-07", "DATA-03")
-def test_rejects_dangling_endpoint() -> None:
-    raw = sample()
+def test_rejects_dangling_endpoint(minimal_model_source: dict[str, Any]) -> None:
+    raw = minimal_model_source
     raw["relationships"][0]["target_element_id"] = "missing"
     with pytest.raises(ValidationError, match="unresolved endpoint"):
         Model.model_validate_json(json.dumps(raw))
@@ -26,18 +24,118 @@ def test_rejects_dangling_endpoint() -> None:
 
 @pytest.mark.property
 @pytest.mark.requirement("CORE-10", "DATA-04")
-@given(st.text(min_size=1).filter(lambda x: bool(x.strip())))
+@given(st.text(min_size=1).filter(lambda value: bool(value.strip())))
 def test_rename_preserves_identity(name: str) -> None:
-    model = Model.model_validate_json(json.dumps(sample()))
+    """Interim shape. The next change replaces `model_copy(update=...)` with `RenameElement`.
+
+    The bypass is what CORE-09 forbids, and testing rename *through* it proves the weaker claim:
+    that copying preserves a field. The command-driven version proves the real one, and only
+    then can `no-validation-bypass` widen to cover `tests/`.
+    """
+    raw = json.loads(json.dumps(_source()))
+    model = Model.model_validate_json(json.dumps(raw))
     changed = model.elements[0].model_copy(update={"name": name})
     assert changed.element_id == model.elements[0].element_id
 
 
 @pytest.mark.unit
 @pytest.mark.requirement("DATA-05", "DATA-29", "DATA-41")
-def test_parallel_relations_and_manual_process_are_preserved() -> None:
-    raw = sample()
+def test_parallel_relations_and_manual_process_are_preserved(
+    minimal_model_source: dict[str, Any],
+) -> None:
+    """Two distinct claims that happen to share a fixture.
+
+    Parallel relationships keep their own identities — DATA-05 gives relationships their own IDs
+    precisely so a second `contains` between the same pair is a second fact, not a duplicate to
+    be collapsed. And nothing substitutes a value for the unknowns the fixture states.
+    """
+    raw = minimal_model_source
+    baseline = len(raw["relationships"])
     raw["relationships"].append({**raw["relationships"][0], "relationship_id": "parallel"})
     model = Model.model_validate_json(json.dumps(raw))
-    assert len(model.relationships) == 7
-    assert model.elements[1].status.technical_qualification == "not_qualified"
+
+    assert len(model.relationships) == baseline + 1
+    assert model.relationships[0].source_element_id == model.relationships[-1].source_element_id
+    assert model.relationships[0].relationship_id != model.relationships[-1].relationship_id
+
+    by_id = {element.element_id: element for element in model.elements}
+    assert by_id["process-1"].status.technical_qualification == "not_qualified"
+    assert by_id["role-1"].status.client_acceptance is GapState.WITHHELD
+    assert by_id["capability-1"].status.implementation_state is GapState.UNKNOWN
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("DATA-08")
+def test_a_handoff_answers_both_questions(minimal_model_source: dict[str, Any]) -> None:
+    """DATA-08's two named queries, which a binary edge cannot serve."""
+    model = Model.model_validate_json(json.dumps(minimal_model_source))
+    handoff = model.interactions[0]
+
+    participants = {p.element_id: p.participant_role for p in handoff.participants}
+    assert set(participants) == {"process-1", "role-1", "interface-1"}
+
+    moving_object_1 = [i for i in model.interactions if "object-1" in i.moved_object_ids]
+    assert [i.interaction_id for i in moving_object_1] == ["handoff-1"]
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("DATA-09")
+def test_evidence_links_to_one_field_not_a_whole_application(
+    minimal_model_source: dict[str, Any],
+) -> None:
+    """§2E: evidence supports a specific assertion, not everything about an element."""
+    model = Model.model_validate_json(json.dumps(minimal_model_source))
+    link = model.reference_links[0]
+    assert link.subject.subject_kind == "field"
+    assert link.subject.field_path == "detail.authentication_description"
+    assert link.link_role == "supports"
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("DATA-30")
+def test_behaviour_is_modelled_explicitly_not_inferred(
+    minimal_model_source: dict[str, Any],
+) -> None:
+    """DATA-30. No `supports` edge yields an exclusive gateway, so it is stated."""
+    model = Model.model_validate_json(json.dumps(minimal_model_source))
+    process = next(e for e in model.elements if e.element_id == "process-1")
+    # Narrowing, not decoration: this asserts the discriminated union resolved to the variant the
+    # tag named, which is the CORE-04 claim. Pyrefly rejects the attribute access without it.
+    assert isinstance(process.detail, BehaviorDetail)
+    node_types = {node.node_type for node in process.detail.nodes}
+    assert "exclusive_gateway" in node_types
+    assert "manual_task" in node_types
+    guards = {t.guard for t in process.detail.transitions if t.guard}
+    assert guards == {"amount > threshold", "otherwise"}
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("DATA-30")
+def test_erd_keys_are_stated_not_derived(minimal_model_source: dict[str, Any]) -> None:
+    model = Model.model_validate_json(json.dumps(minimal_model_source))
+    schema = next(e for e in model.elements if e.element_id == "schema-1")
+    assert isinstance(schema.detail, DataSchemaDetail)
+    by_name = {field.field_id: field for field in schema.detail.fields}
+    assert "primary_key" in by_name["request_id"].key_membership
+    assert "foreign_key" in by_name["submitted_by"].key_membership
+    assert by_name["submitted_by"].references_element_id == "role-1"
+    assert [field.ordinal for field in schema.detail.fields] == [0, 1, 2]
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("DATA-04")
+def test_identity_is_independent_of_display_name(minimal_model_source: dict[str, Any]) -> None:
+    model = Model.model_validate_json(json.dumps(minimal_model_source))
+    process = next(e for e in model.elements if e.element_id == "process-1")
+    assert process.name == "Review request"
+    assert process.aliases == ("Request review",)
+
+
+def _source() -> dict[str, Any]:
+    from pathlib import Path
+
+    from ruamel.yaml import YAML
+
+    root = Path(__file__).resolve().parents[2]
+    raw = YAML(typ="safe").load((root / "examples/minimal/model.yaml").read_text())
+    return json.loads(json.dumps(raw))
