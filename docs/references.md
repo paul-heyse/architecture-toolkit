@@ -1,24 +1,38 @@
 # Public references
 
-The JSON catalog in `reference/sources.json` is the machine-readable index. Use upstream
-documentation and the pinned binaries as implementation inputs. Standards text is linked,
-not redistributed. Synthetic fixtures in the repository are intentionally small and original.
+`reference/sources.json` is the machine-readable catalog. Use official upstream documentation and
+the repository's locked dependencies/vendor artifacts as implementation inputs. Standards text is
+linked, not copied. Research/rationale remains in Notion and is not duplicated here.
 
-- [uv projects](https://docs.astral.sh/uv/concepts/projects/)
-- [Pydantic strict mode](https://docs.pydantic.dev/latest/concepts/strict_mode/)
-- [PyArrow data types](https://arrow.apache.org/docs/python/api/datatypes.html)
-- [DataFusion data sources](https://datafusion.apache.org/python/user-guide/data-sources.html)
-- [DataFusion scalar SQL parameters](https://datafusion.apache.org/python/user-guide/sql.html)
-- [Delta/DataFusion integration](https://delta-io.github.io/delta-rs/integrations/delta-lake-datafusion/)
-- [NetworkX MultiDiGraph](https://networkx.org/documentation/stable/reference/classes/multidigraph.html)
-- [Structurizr binaries](https://docs.structurizr.com/binaries)
-- [Structurizr export](https://docs.structurizr.com/export)
-- [PlantUML downloads and licenses](https://plantuml.com/download)
-- [ArchiMate specification](https://www.opengroup.org/archimate-forum/archimate-overview)
-- [OMG BPMN 2.0.2](https://www.omg.org/spec/BPMN/2.0.2/)
-- [OMG UML 2.5.1](https://www.omg.org/spec/UML/2.5.1/)
-- [bpmn-js](https://bpmn.io/toolkit/bpmn-js/)
-- [Local Kroki setup](https://docs.kroki.io/kroki/setup/install/)
-- [MkDocs](https://www.mkdocs.org/)
-- [Temurin 21 binaries](https://github.com/adoptium/temurin21-binaries/releases)
-- [Cursor MCP](https://docs.cursor.com/context/model-context-protocol)
+## Core
+
+- Pydantic models, strict mode, unions, TypeAdapter, validators and JSON Schema
+- ruamel.yaml authoring/round-trip documentation
+- NetworkX MultiDiGraph, graph views, path/DAG/SCC algorithms
+- Jinja StrictUndefined, loaders and meta API
+- lxml parsing security, XML Schema, builders and C14N
+- Hypothesis strategies and stateful testing
+- pytest fixtures, markers/plugins and JUnit output
+- Pyrefly configuration, Pydantic/pytest support, coverage and suppressions
+- Ruff configuration, linter and formatter
+
+## Data
+
+- PyArrow types, tables/batches, Dataset/Scanner and C Stream
+- DataFusion data sources, SQL parameters, plans and Python API
+- delta-rs / deltalake Python usage and DataFusion integration
+- NetworkX analysis references above
+
+## Projection/publishing
+
+- Structurizr DSL/archetypes/perspectives/export
+- Open Group ArchiMate overview and Model Exchange format
+- PlantUML standard library/security/rendering
+- OMG BPMN 2.0.2
+- bpmn-js, bpmn-moddle, bpmnlint and bpmn-auto-layout
+- OMG UML 2.5.1
+- MkDocs and Material for MkDocs
+- local Kroki setup (optional)
+- Temurin 21 binaries
+
+See the JSON catalog for URLs.

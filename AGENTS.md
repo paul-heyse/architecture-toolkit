@@ -1,24 +1,36 @@
 # Agent operating contract
 
-Read README.md, docs/agent-handoff.md, docs/implementation-contract.md and the acceptance
-index before changes. If `.context/workspace.json` is present and access is authorized,
-read the linked Notion specifications and plan. Narrative rationale belongs in Notion;
-keep public API contracts, tests and concise runbooks here. Do not copy private pages
-or their URLs, transcripts, business data, credentials or proprietary books into Git.
+Read, in order:
 
-Use one Python 3.14 uv project and the existing lock. No subprojects, independent environments,
-client ontology imports or overlapping database/dataframe stacks. Source models are canonical;
-diagrams and graphs are disposable derived views. Keep identity distinct from display names.
+1. `README.md`
+2. `docs/implementation-contract.md`
+3. `docs/contracts/core.md`
+4. `docs/contracts/data.md`
+5. `docs/contracts/projections.md`
+6. `docs/agent-handoff.md`
+7. `reference/requirements.json`
 
-Follow the five milestones in the handoff. A fixture passing a renderer is not a generated
-projection. Distinguish schema validity, cross-model consistency, notation validity and
-real-world correctness. Keep unknowns and manual activities explicit. No fabricated evidence.
+If `.context/workspace.json` is present and access is authorized, read the linked private
+Notion specifications and current plan. Narrative rationale, research and decisions belong in
+Notion. Git contains executable contracts, schemas, tests, concise runbooks and public references.
+Do not commit private Notion URLs, transcripts, client data, credentials or proprietary sources.
 
-Do not enable Delta/DataFusion native FFI under the present lock. Use the explicit-version
-PyArrow adapter. Do not read latest table versions when resolving a published release.
-Do not vacuum files referenced by retained release manifests. Never sync live stores.
+Use one Python 3.14 uv project, one `pyproject.toml`, one `uv.lock` and one `.venv`.
+Source/domain models are canonical. Arrow/Delta, NetworkX, generated notation, rendered artifacts
+and the portal are derived representations. Stable identities are distinct from display names.
 
-Validate each changed contract with appropriate tests, then run the CI checks. Preserve
-unrelated edits. Use focused branches/PRs after the initial scaffold. Record requirements,
-checks, limitations and next handoff. Ask the owner only for material scope/architecture
-changes, credentials or decisions not established in the accepted specifications.
+D-032 selects Pyrefly as the target type checker. The checked-in `pyproject.toml` currently uses
+ty; treat repository state as executable truth until the migration lands. Do not silently change
+architecture, dependency boundaries or qualification semantics while implementing a requirement.
+
+Do not resolve published releases from implicit latest Delta versions. Do not enable native
+Delta/DataFusion FFI under an incompatible lock. Do not vacuum versions referenced by retained
+release manifests. Do not send confidential models to public render services or sync live stores.
+
+A vendor smoke test is not a generated projection. Distinguish canonical validation, cross-model
+semantics, notation/schema validity, renderer validity and real-world correctness. Preserve
+unknowns, evidence gaps and manual activities. Do not fabricate facts to satisfy structural rules.
+
+Each PR must identify requirement IDs, executable checks, remaining gaps and material design
+questions. Preserve unrelated edits. Ask the owner only for material architecture/scope changes,
+credentials or decisions not already established by the accepted specifications.

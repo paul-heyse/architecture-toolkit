@@ -1,78 +1,246 @@
 {
-  "schema_version": 1,
-  "purpose": "Public vendor references, not copied private design or standards books",
+  "schema_version": 2,
+  "purpose": "Public vendor/standards references for executable contracts; private design and standards books are not copied",
   "sources": [
     {
       "title": "uv projects",
-      "url": "https://docs.astral.sh/uv/concepts/projects/"
+      "url": "https://docs.astral.sh/uv/concepts/projects/",
+      "family": "core"
     },
     {
-      "title": "Pydantic strict mode",
-      "url": "https://docs.pydantic.dev/latest/concepts/strict_mode/"
+      "title": "Pydantic models",
+      "url": "https://docs.pydantic.dev/latest/concepts/models/",
+      "family": "core"
     },
     {
-      "title": "PyArrow data types",
-      "url": "https://arrow.apache.org/docs/python/api/datatypes.html"
+      "title": "Pydantic unions",
+      "url": "https://docs.pydantic.dev/latest/concepts/unions/",
+      "family": "core"
     },
     {
-      "title": "DataFusion data sources",
-      "url": "https://datafusion.apache.org/python/user-guide/data-sources.html"
+      "title": "Pydantic TypeAdapter",
+      "url": "https://docs.pydantic.dev/latest/concepts/type_adapter/",
+      "family": "core"
     },
     {
-      "title": "DataFusion scalar SQL parameters",
-      "url": "https://datafusion.apache.org/python/user-guide/sql.html"
+      "title": "Pydantic JSON Schema",
+      "url": "https://docs.pydantic.dev/latest/concepts/json_schema/",
+      "family": "core"
     },
     {
-      "title": "Delta/DataFusion integration",
-      "url": "https://delta-io.github.io/delta-rs/integrations/delta-lake-datafusion/"
+      "title": "ruamel.yaml documentation",
+      "url": "https://yaml.dev/doc/ruamel.yaml/",
+      "family": "core"
     },
     {
       "title": "NetworkX MultiDiGraph",
-      "url": "https://networkx.org/documentation/stable/reference/classes/multidigraph.html"
+      "url": "https://networkx.org/documentation/stable/reference/classes/multidigraph.html",
+      "family": "core"
     },
     {
-      "title": "Structurizr binaries",
-      "url": "https://docs.structurizr.com/binaries"
+      "title": "NetworkX subgraph_view",
+      "url": "https://networkx.org/documentation/stable/reference/classes/generated/networkx.classes.graphviews.subgraph_view.html",
+      "family": "core"
     },
     {
-      "title": "Structurizr export",
-      "url": "https://docs.structurizr.com/export"
+      "title": "NetworkX DAG algorithms",
+      "url": "https://networkx.org/documentation/stable/reference/algorithms/dag.html",
+      "family": "core"
     },
     {
-      "title": "PlantUML downloads and licenses",
-      "url": "https://plantuml.com/download"
+      "title": "Jinja API",
+      "url": "https://jinja.palletsprojects.com/en/stable/api/",
+      "family": "core"
     },
     {
-      "title": "ArchiMate specification",
-      "url": "https://www.opengroup.org/archimate-forum/archimate-overview"
+      "title": "Jinja sandbox",
+      "url": "https://jinja.palletsprojects.com/en/stable/sandbox/",
+      "family": "core"
+    },
+    {
+      "title": "lxml validation",
+      "url": "https://lxml.de/validation.html",
+      "family": "core"
+    },
+    {
+      "title": "lxml parsing",
+      "url": "https://lxml.de/parsing.html",
+      "family": "core"
+    },
+    {
+      "title": "Hypothesis strategies",
+      "url": "https://hypothesis.readthedocs.io/en/latest/reference/strategies.html",
+      "family": "core"
+    },
+    {
+      "title": "Hypothesis stateful testing",
+      "url": "https://hypothesis.readthedocs.io/en/latest/stateful.html",
+      "family": "core"
+    },
+    {
+      "title": "pytest fixtures",
+      "url": "https://docs.pytest.org/en/stable/how-to/fixtures.html",
+      "family": "core"
+    },
+    {
+      "title": "pytest plugins",
+      "url": "https://docs.pytest.org/en/stable/how-to/writing_plugins.html",
+      "family": "core"
+    },
+    {
+      "title": "Pyrefly documentation",
+      "url": "https://pyrefly.org/",
+      "family": "core"
+    },
+    {
+      "title": "Pyrefly Pydantic support",
+      "url": "https://pyrefly.org/en/docs/pydantic/",
+      "family": "core"
+    },
+    {
+      "title": "Pyrefly pytest support",
+      "url": "https://pyrefly.org/en/docs/pytest/",
+      "family": "core"
+    },
+    {
+      "title": "Pyrefly coverage",
+      "url": "https://pyrefly.org/en/docs/coverage/",
+      "family": "core"
+    },
+    {
+      "title": "Ruff configuration",
+      "url": "https://docs.astral.sh/ruff/configuration/",
+      "family": "core"
+    },
+    {
+      "title": "Ruff formatter",
+      "url": "https://docs.astral.sh/ruff/formatter/",
+      "family": "core"
+    },
+    {
+      "title": "PyArrow data types",
+      "url": "https://arrow.apache.org/docs/python/api/datatypes.html",
+      "family": "data"
+    },
+    {
+      "title": "PyArrow Dataset",
+      "url": "https://arrow.apache.org/docs/python/dataset.html",
+      "family": "data"
+    },
+    {
+      "title": "DataFusion data sources",
+      "url": "https://datafusion.apache.org/python/user-guide/data-sources.html",
+      "family": "data"
+    },
+    {
+      "title": "DataFusion SQL",
+      "url": "https://datafusion.apache.org/python/user-guide/sql.html",
+      "family": "data"
+    },
+    {
+      "title": "DataFusion query plans",
+      "url": "https://datafusion.apache.org/python/user-guide/query-plans.html",
+      "family": "data"
+    },
+    {
+      "title": "delta-rs Python usage",
+      "url": "https://delta-io.github.io/delta-rs/python/usage.html",
+      "family": "data"
+    },
+    {
+      "title": "Delta/DataFusion integration",
+      "url": "https://delta-io.github.io/delta-rs/integrations/delta-lake-datafusion/",
+      "family": "data"
+    },
+    {
+      "title": "Structurizr DSL",
+      "url": "https://docs.structurizr.com/dsl",
+      "family": "projection"
+    },
+    {
+      "title": "Structurizr archetypes",
+      "url": "https://docs.structurizr.com/dsl/archetypes",
+      "family": "projection"
+    },
+    {
+      "title": "Structurizr perspectives",
+      "url": "https://docs.structurizr.com/server/diagrams/perspectives",
+      "family": "projection"
+    },
+    {
+      "title": "Structurizr static export",
+      "url": "https://docs.structurizr.com/export/static-site",
+      "family": "projection"
+    },
+    {
+      "title": "Open Group ArchiMate overview",
+      "url": "https://www.opengroup.org/archimate-forum/archimate-overview",
+      "family": "projection"
+    },
+    {
+      "title": "ArchiMate Model Exchange",
+      "url": "https://www.opengroup.org/open-group-archimate-model-exchange-file-format",
+      "family": "projection"
+    },
+    {
+      "title": "PlantUML standard library",
+      "url": "https://plantuml.com/stdlib",
+      "family": "projection"
+    },
+    {
+      "title": "PlantUML security",
+      "url": "https://plantuml.com/security",
+      "family": "projection"
     },
     {
       "title": "OMG BPMN 2.0.2",
-      "url": "https://www.omg.org/spec/BPMN/2.0.2/"
-    },
-    {
-      "title": "OMG UML 2.5.1",
-      "url": "https://www.omg.org/spec/UML/2.5.1/"
+      "url": "https://www.omg.org/spec/BPMN/2.0.2/",
+      "family": "projection"
     },
     {
       "title": "bpmn-js",
-      "url": "https://bpmn.io/toolkit/bpmn-js/"
+      "url": "https://bpmn.io/toolkit/bpmn-js/",
+      "family": "projection"
     },
     {
-      "title": "Local Kroki setup",
-      "url": "https://docs.kroki.io/kroki/setup/install/"
+      "title": "bpmn-moddle",
+      "url": "https://github.com/bpmn-io/bpmn-moddle",
+      "family": "projection"
+    },
+    {
+      "title": "bpmnlint",
+      "url": "https://github.com/bpmn-io/bpmnlint",
+      "family": "projection"
+    },
+    {
+      "title": "bpmn-auto-layout",
+      "url": "https://github.com/bpmn-io/bpmn-auto-layout",
+      "family": "projection"
+    },
+    {
+      "title": "OMG UML 2.5.1",
+      "url": "https://www.omg.org/spec/UML/2.5.1/",
+      "family": "projection"
     },
     {
       "title": "MkDocs",
-      "url": "https://www.mkdocs.org/"
+      "url": "https://www.mkdocs.org/",
+      "family": "projection"
+    },
+    {
+      "title": "Material for MkDocs",
+      "url": "https://squidfunk.github.io/mkdocs-material/",
+      "family": "projection"
+    },
+    {
+      "title": "Local Kroki setup",
+      "url": "https://docs.kroki.io/kroki/setup/install/",
+      "family": "projection"
     },
     {
       "title": "Temurin 21 binaries",
-      "url": "https://github.com/adoptium/temurin21-binaries/releases"
-    },
-    {
-      "title": "Cursor MCP",
-      "url": "https://docs.cursor.com/context/model-context-protocol"
+      "url": "https://github.com/adoptium/temurin21-binaries/releases",
+      "family": "tooling"
     }
   ]
 }
