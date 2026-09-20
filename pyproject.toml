@@ -66,6 +66,12 @@ addopts = "-ra --strict-markers -p tests.plugins.requirement_evidence"
 # xfail_strict (CORE-52): a known limitation must state its upstream reason and must fail loudly
 # once it is fixed.
 xfail_strict = true
+# CORE-45: Hypothesis cannot read a Pydantic constraint. `st.from_type` on a constrained alias
+# warns and then yields values that fail validation, so the warning has to be fatal — otherwise a
+# strategy silently generates invalid data and the property it guards proves nothing. This only
+# fires for `StringConstraints`; `Field(pattern=...)` warns not at all, which is why
+# `tests/unit/test_identifiers.py` separately pins the alias style.
+filterwarnings = ["error::hypothesis.errors.HypothesisWarning"]
 markers = [
     "unit: isolated behaviour of one module",
     "property: Hypothesis-generated invariant",
