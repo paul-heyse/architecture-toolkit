@@ -19,9 +19,10 @@ Use one Python 3.14 uv project, one `pyproject.toml`, one `uv.lock` and one `.ve
 Source/domain models are canonical. Arrow/Delta, NetworkX, generated notation, rendered artifacts
 and the portal are derived representations. Stable identities are distinct from display names.
 
-D-032 selects Pyrefly as the target type checker. The checked-in `pyproject.toml` currently uses
-ty; treat repository state as executable truth until the migration lands. Do not silently change
-architecture, dependency boundaries or qualification semantics while implementing a requirement.
+D-032 selects Pyrefly as the type checker; the migration from ty has landed and
+`pyproject.toml` configures it explicitly. Treat repository state as executable truth. Do not
+silently change architecture, dependency boundaries or qualification semantics while
+implementing a requirement.
 
 Do not resolve published releases from implicit latest Delta versions. Do not enable native
 Delta/DataFusion FFI under an incompatible lock. Do not vacuum versions referenced by retained

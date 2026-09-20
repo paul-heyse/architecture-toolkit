@@ -21,21 +21,37 @@ Python 3.14.7; uv 0.12.7; one project, lock and environment.
 | Hypothesis | installed | property and state-machine qualification |
 | pytest | installed | test orchestration and future requirement evidence |
 | Ruff | installed | lint/format; target selective RUF/PT/PTH/S expansion |
-| ty | **currently installed** | current checker only; D-032 selects replacement |
-| Pyrefly | **target, not installed** | Pydantic/pytest-aware type checks, Protocols, strict type coverage |
+| Pyrefly | installed | Pydantic/pytest-aware type checks, Protocols, strict type coverage |
+| types-networkx / types-jsonschema / types-lxml | installed (dev) | stubs for runtime packages shipping no `py.typed` |
 | MkDocs | installed docs group | offline portal engine |
 | Material for MkDocs | target, unpinned | portal theme after exact-version qualification |
 
 Use `uv sync --locked --all-groups`.
 
-### Pyrefly migration boundary
+### Pyrefly configuration
 
-Do not edit documentation to imply Pyrefly is executable until the implementation PR:
-- removes ty dependency/config/checks;
-- adds reviewed Pyrefly dependency/config;
-- regenerates `uv.lock`;
-- checks source/tests/scripts under Python 3.14;
-- qualifies advanced Pydantic + pytest behavior and both target platforms.
+D-032 is implemented. `ty` and `[tool.ty.environment]` are removed; `[tool.pyrefly]` checks
+`src`, `tests` and `scripts` under Python 3.14.
+
+`required-version = ">=1.3.1,<1.4.0"` makes a mismatched checker a fatal configuration error, not
+a silent behaviour change — Pyrefly does not follow semantic versioning and any release may
+introduce new diagnostics. Upgrading is a deliberate engineering change: bump the pin, rerun both
+platforms, and record the new coverage floor.
+
+`[tool.pyrefly.coverage]` narrows *measurement* to `src` while the *check* surface stays wide.
+Without it the strict figure is diluted by unannotated test bodies (63.83% against 85.71%).
+CI enforces `--strict --fail-under 85`, the measured `src` floor.
+
+No baseline file is used (CORE-60). Suppressions are narrow `# pyrefly: ignore[error-code]`
+comments with a local rationale. `pyrefly infer` never runs in CI (CORE-62).
+
+### Third-party typing gaps
+
+`pyarrow`, `ruamel.yaml` and `networkx` ship no `py.typed`; `datafusion`, `deltalake`, `pydantic`
+and `jinja2` do. Stubs cover networkx, jsonschema and lxml. **pyarrow remains uncovered**: the
+published `pyarrow-stubs` targets major 20 against the pinned 25, so it is not adopted. The single
+consequence today is that `storage.datafusion_adapter.register_snapshot` is `[coverage-partial]`,
+which is why the floor is 85 rather than 100. Revisit when W3 builds the Arrow layer.
 
 ## DataFusion / Delta compatibility
 

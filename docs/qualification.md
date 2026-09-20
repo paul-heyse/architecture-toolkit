@@ -8,7 +8,7 @@ This file describes evidence for the **current repository**, not target architec
 | --- | --- | --- | --- |
 | CORE domain | minimal strict Pydantic model, unique IDs, endpoint checks | CORE-01..67 | partial |
 | YAML | safe load in minimal CLI/tests; no SourceMap | controlled round-trip authoring/source diagnostics | pending |
-| Static typing | ty check in current CI | D-032 / Pyrefly CORE-53..62 | pending migration |
+| Static typing | Pyrefly over src/tests/scripts, 0 errors; strict `src` coverage 85.71% | D-032 / Pyrefly CORE-53..62 | migrated; coverage floor 85 |
 | DATA Arrow/Delta | nested interface, nullable scalar, empty table, explicit Arrow schema, Delta history | DATA-01..60 | partial |
 | Snapshot provider | explicit-version materialized PyArrow registration | materialized fallback + qualified Dataset/stream candidates | partial |
 | DataFusion | scalar SQL binding over pinned snapshot | release-scoped catalogs/query recipes/plan evidence | partial |
@@ -55,7 +55,7 @@ Do not hand-edit a requirement to “passed” because one partial test exists.
 
 ## Still to prove
 
-- CORE-01..67 implementation, including source-aware diagnostics and Pyrefly migration;
+- CORE-01..67 implementation, including source-aware diagnostics;
 - DATA-01..60 coherent release/query/history architecture;
 - PROJ-01..42 generated standards projections and portal;
 - full synthetic vertical slice;

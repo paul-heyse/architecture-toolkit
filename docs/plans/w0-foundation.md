@@ -31,13 +31,13 @@ every package.
 
 ## Work items
 
-1. **Pyrefly replaces ty** (CORE-53, CORE-54, CORE-55). Remove the `ty` dev dependency and
-   `[tool.ty.environment]`; add a reviewed pinned Pyrefly to the `dev` group; add `[tool.pyrefly]`
-   with `project-includes = ["src", "tests", "scripts"]`, `search-path = ["src"]`,
-   `python-version = "3.14"`, `check-unannotated-defs = true` and excludes for `.tools/`,
-   `.runtime/`, `site/`. Regenerate `uv.lock`. Never unconfigured or basic mode.
-2. **Widen the checked surface** (CORE-57). CI currently runs `ty check src`. Replace with a
-   Pyrefly check over source, tests and scripts — `scripts/*.py` and `tests/` are unchecked today.
+1. **Pyrefly replaces ty** (CORE-53, CORE-54, CORE-55). *Landed.* `ty` and
+   `[tool.ty.environment]` removed; `[tool.pyrefly]` configures `src`, `tests`, `scripts` under
+   Python 3.14 with `required-version = ">=1.3.1,<1.4.0"`, which makes a mismatched checker a
+   fatal configuration error rather than a silent behaviour change.
+2. **Widen the checked surface** (CORE-57). *Landed.* CI ran `ty check src`; it now runs
+   `pyrefly check` over source, tests and scripts. The migration needed no code change —
+   Pyrefly reported 0 errors on the wider surface from the first run.
 3. **Protocol registry** (CORE-58). Add `src/architecture_toolkit/domain/protocols.py` declaring all
    eight boundaries named in core.md: `SourceLoader`, `SnapshotProvider`, `ProjectionGenerator`,
    `Renderer`, `ValidatorAdapter`, `Publisher`, `QueryExecutor`, `ArtifactStore`. Only
@@ -48,10 +48,13 @@ every package.
 5. **Pydantic and pytest static qualification** (CORE-56). Add `tests/static/` fixtures for the
    advanced Pydantic patterns core.md relies on — discriminated unions, `Annotated` constrained
    aliases, frozen models, `TypeAdapter`. Seeded here; W1 and W2 extend it as new patterns appear.
-6. **Type coverage ratchet** (CORE-61, CORE-62). Wire `pyrefly coverage check` / `report`, record
-   the baseline, and fail on a decrease. `pyrefly infer` never mutates source in CI.
-7. **No baseline file** (CORE-60). Do not commit a Pyrefly baseline. If one is needed transiently
-   for the migration, add a CI check for stale entries and a removal plan.
+6. **Type coverage ratchet** (CORE-61, CORE-62). *Landed.* `[tool.pyrefly.coverage] includes`
+   narrows measurement to `src` while the check surface stays wide; CI enforces
+   `--strict --fail-under 85`, the measured floor. `--public-only` is deliberately unused: it keys
+   off underscore-prefixed *module* names rather than `__all__`, so it means nothing until W1
+   adopts that convention. `pyrefly infer` never runs in CI.
+7. **No baseline file** (CORE-60). *Landed.* No `baseline` key is set. Suppressions are narrow
+   `# pyrefly: ignore[error-code]` comments; none is needed today.
 8. **Marker taxonomy** (CORE-48). Register `unit`, `property`, `integration`, `interop`, `vendor`,
    `qualification`, `platform`, `slow` and `requirement` in `[tool.pytest.ini_options]`, and add
    `--strict-markers`. None are registered today.
@@ -65,10 +68,11 @@ every package.
     narrowest practical scope; set `xfail_strict = true`.
 12. **Hypothesis profiles** (CORE-47). Register `dev`, `ci` and `deep` with deliberate
     `max_examples`, stateful step counts and deadlines. No network in any profile.
-13. **Ruff expansion** (CORE-63, CORE-64, CORE-65). Keep `E,F,I,UP,B` at py314/100 columns; qualify
-    `RUF`, `PT`, `PTH`, `S` against the current tree and adopt with narrow per-file ignores
-    (`S101` in tests; reviewed exceptions for the `subprocess` calls in `scripts/`). Preview off,
-    no unsafe fixes in CI.
+13. **Ruff expansion** (CORE-63, CORE-64, CORE-65). *Landed.* `RUF`, `PT`, `PTH`, `S` added to
+    `E,F,I,UP,B`. Qualification against this tree found 14 findings in three clusters and nothing
+    from `RUF`, `PT` or `PTH`, so the expansion costs exactly two per-file ignores: `S101` in
+    `tests/**`, and `S603`/`S607` in `scripts/*.py` for the reviewed argv invocations that
+    `rules/no-shell-invocation.yml` already blesses structurally.
 14. **EngineeringQualificationArtifact** (CORE-66). Model it in `domain/` with the fields core.md
     names. A guard test asserts it shares no type with the architecture `Diagnostic` and that
     neither module imports the other — engineering evidence never becomes model validation.
@@ -123,8 +127,8 @@ ast-grep scan
 ast-grep test
 ```
 
-`uv run ty check src` is removed from CI in the same change. Until that change is committed, ty
-remains the repository's executable truth.
+`uv run ty check src` is removed. The coverage floor is the measured `src` baseline; raise it as
+annotated code lands and never lower it without a recorded reason.
 
 ## Evidence
 
@@ -136,11 +140,14 @@ and format, and the lock digest, on both macOS ARM64 and Linux x86-64.
 
 - **Pyrefly does not follow semantic versioning** and any release may introduce new diagnostics
   (D-032). The version is lock-controlled and upgrades are explicit engineering changes.
-- **Pyrefly 1.3.1 was the version reviewed** at decision time. Confirm the current release still
-  supports Python 3.14 and the pinned Pydantic before committing the lock.
-- **Ruff `S` on `scripts/`** will flag the `subprocess` calls in `bootstrap_tools.py` and
-  `qualify_tools.py`. Those are reviewed argument-array invocations; prefer a narrow per-file ignore
-  with rationale over dropping the rule family.
-- **Adding `jsonschema`** to validate the evidence report is a deliberate dependency decision under
-  DATA-32, not a free change. Decide whether the plugin validates in-process or CI validates the
-  emitted artifact.
+- **Pyrefly 1.3.1 remains current** and ships wheels for both target platforms. `required-version`
+  pins it in config as well as in the lock.
+- **pyarrow ships no `py.typed`**, so `pa.Schema` resolves to `Any` and
+  `storage.datafusion_adapter.register_snapshot` is `[coverage-partial]`. That single symbol is the
+  whole gap between 85.71% and 100% strict on `src`. `pyarrow-stubs` targets major 20 against the
+  pinned 25 and is not adopted; revisit at W3.
+- **`pyrefly init --migrate-from` supports only mypy and pyright**, so there is no automated ty
+  migration path. The config is hand-written and reviewed.
+- **Stub packages are dev-only typing aids** with no runtime surface, so they do not create an
+  overlapping data stack under DATA-32/33 — but `types-lxml` pulls `soupsieve`, `types-html5lib`
+  and `types-webencodings` transitively, which the DATA-33 deny-list review should acknowledge.
