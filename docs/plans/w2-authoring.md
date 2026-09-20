@@ -94,6 +94,16 @@ adapter writes rather than an artifact of the test strategy. Authored source can
 matching single-quoted case: ruamel's reader rejects a raw C1 control outright and folds a raw
 U+0085 identically on the way in and the way out.
 
+**The shipped example stays hand-wrapped, and that is the answer to the reformat question.**
+Replacing `examples/minimal/model.yaml` with the profile's own output would let the fixed-point
+test assert byte identity outright, and it was measured before being rejected: the emitter leaves
+trailing whitespace on fifteen lines, breaks after a key so `guard:` and its value land on
+different lines, and still emits one line of 101 columns. A shipped example is the first thing a
+reader sees, so readability wins over an assertion `tests/fixtures/authoring/round_trip/
+canonical.yaml` already makes on a document in the profile's style. Byte identity for an
+arbitrary document would need every flow mapping to fit inside the width, which is a constraint
+on authors rather than a guarantee from the adapter.
+
 **`record_paths` holds top-level records only.** A participant, a schema field and a behaviour
 node each carry an identity key, but a diagnostic addressed at one of those identities means the
 record that owns it, so the identity index registers only the six top-level collections and the
