@@ -147,12 +147,18 @@ why `check_schema.py` also asserts the generated schema and Pydantic agree about
 
 ## Risks and open questions
 
-- **Status vocabulary values are provisional.** `EvidenceReview` is the only one with a source.
-  They are cheap to change until W4 pins them into immutable manifests and expensive afterwards,
-  so they want owner review inside this milestone.
-- **The four gap states are a repo invention**, consistent with `ARCH-TOOL-DATA-001` §3B's
-  "explicit nullable fields, with a separate status where the reason for missingness matters" but
-  not specified there.
+- **Status vocabularies are traced to the accepted design and owner-confirmed.** `GapState`
+  reproduces global invariant 11 of the implementation contract exactly; `EvidenceReview`
+  reproduces the overview record's `evidence_state` list plus a zero state; and the other four
+  dimensions decompose that record's single `design_state` axis, with every term landing in
+  exactly one dimension. All three relationships are asserted by tests rather than described,
+  and the invariant is read from the contract file so editing one without the other fails.
+  They still become durable only at W4, so a change is cheap until then and a migration after.
+- **Two dimensions share the word `accepted`** — a design can be accepted internally and a
+  client can accept it, which are the two facts DATA-29 most insists are separate. They are
+  unambiguous because each is reached through its own field. Pairwise disjointness across
+  dimensions is therefore *not* required; disjointness from `GapState` is, because those share
+  a field through a union, and that is what the guard checks.
 - **Six detail families means six typed detail tables at W3.** data.md warns against a table per
   concept; confirm the cut before W3 freezes Arrow schemas, not after.
 - **Strict mode treats JSON and Python input differently, and it matters.** A Python `list` handed

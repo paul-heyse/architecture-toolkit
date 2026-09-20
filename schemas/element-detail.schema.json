@@ -314,8 +314,9 @@
       "type": "object"
     },
     "DesignDisposition": {
-      "description": "Where the architectural decision stands. Not a claim about reality.",
+      "description": "Where the architectural decision stands. Not a claim about reality.\n\n`CANDIDATE` and `PROPOSED` are distinct because the source list distinguishes them and the\ndifference is load-bearing for option analysis: a candidate is one of several options under\nconsideration, a proposal is the one put forward. Collapsing them would make a toolkit that\ncompares alternatives unable to say which alternative it is recommending.",
       "enum": [
+        "candidate",
         "proposed",
         "analytically_feasible",
         "accepted",

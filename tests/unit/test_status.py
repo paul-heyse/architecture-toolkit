@@ -2,16 +2,20 @@
 
 import json
 from enum import StrEnum
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
 from architecture_toolkit.domain.status import (
     STATUS_DIMENSIONS,
+    EvidenceReview,
     GapState,
     LifecycleState,
     StatusDimensions,
 )
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.mark.unit
@@ -109,3 +113,93 @@ def test_dimensions_are_not_a_progression() -> None:
     )
     assert implemented_unqualified.implementation_state.value == "implemented"
     assert accepted_unbuilt.client_acceptance.value == "accepted"
+
+
+# The single `design_state` axis from the overview record, which the detailed proposal supersedes
+# by splitting it into five independent dimensions. Reproduced verbatim so the decomposition is
+# checkable: if a dimension drops a term, or two dimensions both claim one, this fails.
+SUPERSEDED_DESIGN_STATE = (
+    "candidate",
+    "proposed",
+    "analytically_feasible",
+    "runtime_qualified",
+    "client_accepted",
+    "implemented",
+)
+
+# The `evidence_state` axis from the same record, which maps to one dimension rather than being
+# split.
+SUPERSEDED_EVIDENCE_STATE = (
+    "observed",
+    "client_stated",
+    "public_research",
+    "inferred",
+    "assumption",
+)
+
+
+# Where each superseded term lands. Written out rather than inferred, because two dimensions can
+# legitimately share a word: `accepted` means "the design was accepted" under `DesignDisposition`
+# and "the client accepted it" under `ClientAcceptance`, which are precisely the two facts DATA-29
+# insists are separate. They are unambiguous because each is reached through its own field — the
+# ambiguity that *does* matter is with `GapState`, since those share a field through a union, and
+# that is checked separately above.
+DECOMPOSITION: dict[str, tuple[str, str]] = {
+    "candidate": ("DesignDisposition", "candidate"),
+    "proposed": ("DesignDisposition", "proposed"),
+    "analytically_feasible": ("DesignDisposition", "analytically_feasible"),
+    "implemented": ("ImplementationState", "implemented"),
+    "runtime_qualified": ("TechnicalQualification", "qualified"),
+    "client_accepted": ("ClientAcceptance", "accepted"),
+}
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("DATA-29")
+def test_the_decomposition_covers_the_whole_superseded_axis() -> None:
+    assert set(DECOMPOSITION) == set(SUPERSEDED_DESIGN_STATE)
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("DATA-29")
+@pytest.mark.parametrize("term", SUPERSEDED_DESIGN_STATE)
+def test_every_superseded_design_state_term_has_a_home(term: str) -> None:
+    """DATA-29 is a decomposition, so nothing in the thing decomposed may be lost.
+
+    Two terms read differently once split: `runtime_qualified` becomes `qualified` under
+    `TechnicalQualification` and `client_accepted` becomes `accepted` under `ClientAcceptance`.
+    Both are better for it — the dimension already carries the qualifier the old name had to
+    spell out, which is what made the single axis unwieldy in the first place.
+    """
+    dimension_name, value = DECOMPOSITION[term]
+    dimension = next(d for d in STATUS_DIMENSIONS if d.__name__ == dimension_name)
+    assert value in {member.value for member in dimension}
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("DATA-29")
+def test_the_evidence_vocabulary_matches_its_source() -> None:
+    """The one dimension with a directly sourced list. `unreviewed` is the added zero state."""
+    values = {member.value for member in EvidenceReview}
+    assert set(SUPERSEDED_EVIDENCE_STATE) <= values
+    assert values - set(SUPERSEDED_EVIDENCE_STATE) == {"unreviewed"}
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("DATA-41")
+def test_the_gap_states_reproduce_global_invariant_eleven() -> None:
+    """`docs/implementation-contract.md`: "Unknown/not-applicable/withheld/evidence-gap states
+    remain explicit." Four named states, and these are those four.
+
+    Read from the contract rather than hardcoded, so editing the invariant without editing the
+    enum fails here.
+    """
+    invariant = next(
+        line
+        for line in (ROOT / "docs" / "implementation-contract.md").read_text().splitlines()
+        if "states remain explicit" in line
+    )
+    lowered = invariant.lower()
+    for member in GapState:
+        assert member.value.replace("_", "-") in lowered, member.value
+    assert len(GapState) == invariant.count("/") + 1

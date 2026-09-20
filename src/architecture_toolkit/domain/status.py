@@ -16,13 +16,31 @@ wants recorded. So every dimension is `Dimension | GapState` and required, not `
 invalid foreign key, and a manual process does not need an application simply to complete a
 coverage matrix.
 
-**The vocabularies below are provisional.** `EvidenceReview` is the only one with a source — it is
-the `evidence_state` list from the overview record's superseded design sketch, retained there as
-design history. The other four are derived from the DATA-29 rationale above, which requires both
-"implemented but not qualified" and "client-approved before implementation" to be expressible.
-They are cheap to change until W4 pins them into immutable Delta manifests and expensive
-afterwards, so they want owner review inside this wave. A profile may extend or replace any of
-them; see `registry.py`.
+**The vocabularies are traceable to the accepted design, not invented here.** Two sources:
+
+* `GapState` reproduces global invariant 11 of `docs/implementation-contract.md` exactly —
+  "Unknown/not-applicable/withheld/evidence-gap states remain explicit." Four states, same four.
+* `EvidenceReview` reproduces the `evidence_state` list from the overview record, plus
+  `UNREVIEWED` as the zero state that list has no term for.
+
+The other four dimensions decompose the overview record's single `design_state` axis, which the
+detailed proposal supersedes precisely because one axis cannot hold five independent facts.
+Every term in that superseded list lands in exactly one dimension here, and
+`tests/unit/test_status.py` asserts that rather than leaving it to a reader to check:
+
+| superseded `design_state` term | dimension it belongs to |
+| --- | --- |
+| `candidate`, `proposed`, `analytically_feasible` | `DesignDisposition` |
+| `implemented` | `ImplementationState` |
+| `runtime_qualified` | `TechnicalQualification` |
+| `client_accepted` | `ClientAcceptance` |
+
+That decomposition is the whole content of DATA-29. The remaining members — rejection,
+supersession, partial implementation, failed qualification — exist because a dimension that can
+only move forwards cannot express the states §6C says are not contradictory.
+
+A profile may extend or replace any of these; see `registry.py`. They become durable when W4
+pins them into immutable Delta manifests, so a change is cheap until then and a migration after.
 """
 
 from enum import StrEnum
@@ -57,8 +75,15 @@ class GapState(StrEnum):
 
 
 class DesignDisposition(StrEnum):
-    """Where the architectural decision stands. Not a claim about reality."""
+    """Where the architectural decision stands. Not a claim about reality.
 
+    `CANDIDATE` and `PROPOSED` are distinct because the source list distinguishes them and the
+    difference is load-bearing for option analysis: a candidate is one of several options under
+    consideration, a proposal is the one put forward. Collapsing them would make a toolkit that
+    compares alternatives unable to say which alternative it is recommending.
+    """
+
+    CANDIDATE = "candidate"
     PROPOSED = "proposed"
     ANALYTICALLY_FEASIBLE = "analytically_feasible"
     ACCEPTED = "accepted"
