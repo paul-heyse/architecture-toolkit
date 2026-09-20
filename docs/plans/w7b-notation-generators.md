@@ -153,8 +153,10 @@ qualification, and its `canonical_model_projections: "not_implemented"` key beco
 - **bpmn-auto-layout is alpha.** If it fails the determinism or subset gates, BPMN DI stays
   unimplemented and PROJ-31 records a strict xfail with the version reason. Do not ship
   nondeterministic layout.
-- **Introducing Node is a real scope increase** — a second runtime, lock and bootstrap path. It is
-  the gate on PROJ-29, PROJ-31 and PROJ-32. Worth an explicit owner decision before starting.
+- **Node is approved** as of this plan; see [toolchain](../toolchain.md). A host Node install does
+  not satisfy PROJ-34: this wave must pin a vendor runtime per platform in `tools.lock.json` and
+  bootstrap it into `.tools/` exactly like the Temurin JRE. Choose the pinned major after the
+  PROJ-31 and PROJ-33 decisions, since only `bpmn-to-image` imposes the Node 24 floor.
 - **Archi import is a manual qualification step** unless scripted. Decide whether PROJ-17 acceptance
   is a recorded manual procedure or an automated check.
 - **ArchiMate Exchange XSD licensing** must be confirmed before vendoring schema text; W7a pins it.

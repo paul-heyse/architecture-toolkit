@@ -69,12 +69,29 @@ Qualification-gated, not currently installed/pinned by this document:
 - bpmn-auto-layout;
 - bpmn-js local viewer;
 - optional bpmn-to-image;
-- one pinned Node runtime/tool bundle if the BPMN stack requires it;
 - Material for MkDocs 9.x;
 - optional local Kroki adapter only if it simplifies operations.
 
-Node tooling, if adopted, remains vendor tooling under the same project bootstrap model, not another
-application/project or persistent service by default.
+### Node runtime
+
+Introducing Node for the BPMN stack is **approved**. It remains qualification-gated in the sense
+that nothing is pinned yet, but it is no longer an open scope question: PROJ-29, PROJ-31 and
+PROJ-32 may depend on it.
+
+A host Node installation does not satisfy PROJ-34. The setup host has Node 24.20.0 via a
+per-shell `fnm` path, which is neither reproducible, checksummed, nor present on a CI runner at a
+known version. PROJ-34 requires **one pinned vendor runtime**, bootstrapped exactly like the
+Temurin JRE:
+
+- a `node` entry per supported platform in `tools.lock.json` with version, URL and SHA256;
+- download, digest check and safe extraction into ignored `.tools/` by `scripts/bootstrap_tools.py`;
+- a single committed dependency lock for the bpmn.io packages;
+- no second application or workspace, and no persistent service by default.
+
+Pinning lands in W7b, which is the first wave that executes the BPMN toolchain. Node 24 or later
+is required only if `bpmn-to-image` is adopted; the lighter bpmn-js SVG export path has no such
+floor, so pick the pinned major after the PROJ-31 and PROJ-33 qualification decisions rather than
+before them.
 
 ## Security
 
