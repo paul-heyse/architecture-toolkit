@@ -1,0 +1,6 @@
+@startuml
+!include <archimate/Archimate>
+Business_Process(process, "Review request")
+Application_Component(app, "Request service")
+Rel_Serving(app, process, "Supports")
+@enduml

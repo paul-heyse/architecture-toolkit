@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "purpose": "Public vendor references, not copied private design or standards books",
+  "sources": [
+    {
+      "title": "uv projects",
+      "url": "https://docs.astral.sh/uv/concepts/projects/"
+    },
+    {
+      "title": "Pydantic strict mode",
+      "url": "https://docs.pydantic.dev/latest/concepts/strict_mode/"
+    },
+    {
+      "title": "PyArrow data types",
+      "url": "https://arrow.apache.org/docs/python/api/datatypes.html"
+    },
+    {
+      "title": "DataFusion data sources",
+      "url": "https://datafusion.apache.org/python/user-guide/data-sources.html"
+    },
+    {
+      "title": "DataFusion scalar SQL parameters",
+      "url": "https://datafusion.apache.org/python/user-guide/sql.html"
+    },
+    {
+      "title": "Delta/DataFusion integration",
+      "url": "https://delta-io.github.io/delta-rs/integrations/delta-lake-datafusion/"
+    },
+    {
+      "title": "NetworkX MultiDiGraph",
+      "url": "https://networkx.org/documentation/stable/reference/classes/multidigraph.html"
+    },
+    {
+      "title": "Structurizr binaries",
+      "url": "https://docs.structurizr.com/binaries"
+    },
+    {
+      "title": "Structurizr export",
+      "url": "https://docs.structurizr.com/export"
+    },
+    {
+      "title": "PlantUML downloads and licenses",
+      "url": "https://plantuml.com/download"
+    },
+    {
+      "title": "ArchiMate specification",
+      "url": "https://www.opengroup.org/archimate-forum/archimate-overview"
+    },
+    {
+      "title": "OMG BPMN 2.0.2",
+      "url": "https://www.omg.org/spec/BPMN/2.0.2/"
+    },
+    {
+      "title": "OMG UML 2.5.1",
+      "url": "https://www.omg.org/spec/UML/2.5.1/"
+    },
+    {
+      "title": "bpmn-js",
+      "url": "https://bpmn.io/toolkit/bpmn-js/"
+    },
+    {
+      "title": "Local Kroki setup",
+      "url": "https://docs.kroki.io/kroki/setup/install/"
+    },
+    {
+      "title": "MkDocs",
+      "url": "https://www.mkdocs.org/"
+    },
+    {
+      "title": "Temurin 21 binaries",
+      "url": "https://github.com/adoptium/temurin21-binaries/releases"
+    },
+    {
+      "title": "Cursor MCP",
+      "url": "https://docs.cursor.com/context/model-context-protocol"
+    }
+  ]
+}

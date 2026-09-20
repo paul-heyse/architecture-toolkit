@@ -1,0 +1,19 @@
+# Synthetic fixture only; not a real organization's architecture.
+schema_version: "0.1.0"
+model_id: sample-service
+
+elements:
+  - {element_id: req-1, kind: motivation.requirement, name: Track requests}
+  - {element_id: process-1, kind: business.process, name: Review request}
+  - {element_id: system-1, kind: software.system, name: Request service}
+  - {element_id: component-1, kind: software.component, name: Request handler}
+  - {element_id: interface-1, kind: software.interface, name: Request API}
+  - {element_id: schema-1, kind: information.schema, name: Request schema}
+  - {element_id: role-1, kind: organization.role, name: Reviewer}
+relationships:
+  - {relationship_id: rel-1, source_element_id: system-1, target_element_id: process-1, relationship_type_id: supports}
+  - {relationship_id: rel-2, source_element_id: system-1, target_element_id: component-1, relationship_type_id: contains}
+  - {relationship_id: rel-3, source_element_id: component-1, target_element_id: interface-1, relationship_type_id: exposes}
+  - {relationship_id: rel-4, source_element_id: interface-1, target_element_id: schema-1, relationship_type_id: uses_schema}
+  - {relationship_id: rel-5, source_element_id: process-1, target_element_id: req-1, relationship_type_id: realizes}
+  - {relationship_id: rel-6, source_element_id: role-1, target_element_id: process-1, relationship_type_id: responsible_for}

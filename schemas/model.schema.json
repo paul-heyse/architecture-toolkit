@@ -1,0 +1,142 @@
+{
+  "$defs": {
+    "Element": {
+      "additionalProperties": false,
+      "properties": {
+        "element_id": {
+          "minLength": 1,
+          "title": "Element Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/Kind"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/StatusDimensions"
+        }
+      },
+      "required": [
+        "element_id",
+        "kind",
+        "name"
+      ],
+      "title": "Element",
+      "type": "object"
+    },
+    "Kind": {
+      "enum": [
+        "motivation.requirement",
+        "business.process",
+        "software.system",
+        "software.component",
+        "software.interface",
+        "information.schema",
+        "organization.role"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "Relationship": {
+      "additionalProperties": false,
+      "properties": {
+        "relationship_id": {
+          "minLength": 1,
+          "title": "Relationship Id",
+          "type": "string"
+        },
+        "source_element_id": {
+          "title": "Source Element Id",
+          "type": "string"
+        },
+        "target_element_id": {
+          "title": "Target Element Id",
+          "type": "string"
+        },
+        "relationship_type_id": {
+          "minLength": 1,
+          "title": "Relationship Type Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "relationship_id",
+        "source_element_id",
+        "target_element_id",
+        "relationship_type_id"
+      ],
+      "title": "Relationship",
+      "type": "object"
+    },
+    "StatusDimensions": {
+      "additionalProperties": false,
+      "properties": {
+        "design_disposition": {
+          "default": "proposed",
+          "title": "Design Disposition",
+          "type": "string"
+        },
+        "implementation_state": {
+          "default": "not_implemented",
+          "title": "Implementation State",
+          "type": "string"
+        },
+        "technical_qualification": {
+          "default": "not_qualified",
+          "title": "Technical Qualification",
+          "type": "string"
+        },
+        "client_acceptance": {
+          "default": "not_requested",
+          "title": "Client Acceptance",
+          "type": "string"
+        },
+        "evidence_review": {
+          "default": "unreviewed",
+          "title": "Evidence Review",
+          "type": "string"
+        }
+      },
+      "title": "StatusDimensions",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "default": "0.1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "model_id": {
+      "minLength": 1,
+      "title": "Model Id",
+      "type": "string"
+    },
+    "elements": {
+      "items": {
+        "$ref": "#/$defs/Element"
+      },
+      "title": "Elements",
+      "type": "array"
+    },
+    "relationships": {
+      "items": {
+        "$ref": "#/$defs/Relationship"
+      },
+      "title": "Relationships",
+      "type": "array"
+    }
+  },
+  "required": [
+    "model_id",
+    "elements",
+    "relationships"
+  ],
+  "title": "Model",
+  "type": "object"
+}

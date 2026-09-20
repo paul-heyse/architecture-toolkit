@@ -1,0 +1,10 @@
+site_name: Architecture Toolkit
+site_description: Implementation runbooks and qualification status
+strict: true
+nav:
+  - Start: index.md
+  - Implementation contract: implementation-contract.md
+  - Agent handoff: agent-handoff.md
+  - Toolchain: toolchain.md
+  - Qualification: qualification.md
+  - References: references.md

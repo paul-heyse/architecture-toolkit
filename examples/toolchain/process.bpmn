@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+ xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+ xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+ xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+ id="Definitions_1" targetNamespace="urn:architecture-toolkit:synthetic">
+ <process id="Process_1" isExecutable="false">
+  <startEvent id="start"><outgoing>flow1</outgoing></startEvent>
+  <userTask id="review" name="Review request"><incoming>flow1</incoming><outgoing>flow2</outgoing></userTask>
+  <endEvent id="end"><incoming>flow2</incoming></endEvent>
+  <sequenceFlow id="flow1" sourceRef="start" targetRef="review"/>
+  <sequenceFlow id="flow2" sourceRef="review" targetRef="end"/>
+ </process>
+ <bpmndi:BPMNDiagram id="diagram">
+  <bpmndi:BPMNPlane id="plane" bpmnElement="Process_1">
+   <bpmndi:BPMNShape id="start_shape" bpmnElement="start"><dc:Bounds x="80" y="100" width="36" height="36"/></bpmndi:BPMNShape>
+   <bpmndi:BPMNShape id="review_shape" bpmnElement="review"><dc:Bounds x="166" y="78" width="100" height="80"/></bpmndi:BPMNShape>
+   <bpmndi:BPMNShape id="end_shape" bpmnElement="end"><dc:Bounds x="316" y="100" width="36" height="36"/></bpmndi:BPMNShape>
+   <bpmndi:BPMNEdge id="flow1_edge" bpmnElement="flow1"><di:waypoint x="116" y="118"/><di:waypoint x="166" y="118"/></bpmndi:BPMNEdge>
+   <bpmndi:BPMNEdge id="flow2_edge" bpmnElement="flow2"><di:waypoint x="266" y="118"/><di:waypoint x="316" y="118"/></bpmndi:BPMNEdge>
+  </bpmndi:BPMNPlane>
+ </bpmndi:BPMNDiagram>
+</definitions>

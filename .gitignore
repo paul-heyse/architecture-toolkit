@@ -1,0 +1,17 @@
+.venv/
+.context/
+.tools/
+.runtime/
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.hypothesis/
+.ruff_cache/
+.ty_cache/
+site/
+dist/
+*.egg-info/
+.DS_Store

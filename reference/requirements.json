@@ -1,0 +1,300 @@
+{
+  "schema_version": 1,
+  "scope": "Generic implementation acceptance index; design narrative is maintained separately",
+  "requirements": [
+    {
+      "id": "DATA-01",
+      "requirement": "Use Pydantic, PyArrow, DataFusion, NetworkX and deltalake with distinct responsibilities and one logical model.",
+      "section": "Recommendation; Sections 1 and 8A",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-02",
+      "requirement": "Retain SQLite as a credible transactional alternative; justify the selected stack by types, revisions and interoperability rather than size.",
+      "section": "Recommendation",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-03",
+      "requirement": "Persist a typed relational core, not only JSON node/edge bags.",
+      "section": "Section 2",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-04",
+      "requirement": "Preserve element/model/type identities, independent names and readable aliases.",
+      "section": "Section 2A",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-05",
+      "requirement": "Give relationships their own identities and explicit type registry with direction, endpoints, cardinality and traversal rules.",
+      "section": "Section 2B",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-06",
+      "requirement": "Store canonical relationship directions and derive inverse views instead of maintaining duplicate inverses.",
+      "section": "Section 2B",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-07",
+      "requirement": "Add typed interface, deployment, data-schema, behavior, requirement and notation details only when fields or constraints justify them.",
+      "section": "Section 2C",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-08",
+      "requirement": "Represent multi-party handoffs/interactions as first-class objects with typed participants.",
+      "section": "Section 2D",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-09",
+      "requirement": "Link evidence and decisions to elements, relationships, fields or releases without building a second evidence platform.",
+      "section": "Section 2E",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-10",
+      "requirement": "Nest owned values; normalize independently identified and shared objects.",
+      "section": "Section 3",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-11",
+      "requirement": "Keep the explicit interface Arrow schema and its foreign references as an implementation example.",
+      "section": "Section 3A",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-12",
+      "requirement": "Use the tested Arrow/Delta/DataFusion type intersection, explicit nullability and UTC microsecond instants; avoid baseline unions and extension types.",
+      "section": "Section 3B",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-13",
+      "requirement": "Use small namespaced extensions only as an escape hatch; promote frequently queried meaning into typed fields.",
+      "section": "Section 3B",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-14",
+      "requirement": "Use strict Pydantic domain validation and explicit Arrow mappings; validate cross-record architecture independently.",
+      "section": "Section 3C",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-15",
+      "requirement": "Use DataFusion for relational queries, comparisons and tabular validation; qualify recursive SQL where needed.",
+      "section": "Section 4A",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-16",
+      "requirement": "Construct disposable NetworkX projections from release-selected records; return typed/Arrow results.",
+      "section": "Section 4B",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-17",
+      "requirement": "Implement named traversal policies and retain paths, versions and evidence; do not equate reachability with certain failure.",
+      "section": "Section 4C",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-18",
+      "requirement": "Keep domain mutation separate from queries; use bound scalar SQL parameters or expressions.",
+      "section": "Section 4D",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-19",
+      "requirement": "Distinguish source history, storage history and architectural history.",
+      "section": "Section 5A",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-20",
+      "requirement": "Do not equate a Delta table version with an architecture release or claim native multi-table atomicity.",
+      "section": "Sections 5B and 5E",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-21",
+      "requirement": "Publish an immutable manifest pinning every required table version, schema/profile version, source digest and artifact.",
+      "section": "Section 5C",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-22",
+      "requirement": "Start with full snapshots of changed tables, reuse unchanged versions and avoid replay-based micro-edit event sourcing.",
+      "section": "Section 5D",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-23",
+      "requirement": "Use one writer, a publication lock and an expected-parent check; stage and read back before exposing a release.",
+      "section": "Section 5E",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-24",
+      "requirement": "Permit orphan staged versions after failure, but never publish partial architecture state.",
+      "section": "Section 5E",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-25",
+      "requirement": "Retain referenced Delta history and create self-contained milestone Parquet/manifest/schema/source/output archives.",
+      "section": "Section 5F",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-26",
+      "requirement": "Record semantic change sets with rationale, authorship, decisions, field-level changes, validation and impact.",
+      "section": "Section 6",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-27",
+      "requirement": "Hash canonical semantic content, preserving ordered sequences; distinguish layout changes; keep CDF supplementary.",
+      "section": "Section 6A",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-28",
+      "requirement": "Give design alternatives separate scenario/model identities and baseline references.",
+      "section": "Section 6B",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-29",
+      "requirement": "Separate design disposition, implementation, qualification, client acceptance and evidence/review status.",
+      "section": "Section 6C",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-30",
+      "requirement": "Model BPMN behavior, UML ordering, ERD keys/cardinality and notation bindings explicitly; do not infer them from generic edges.",
+      "section": "Section 7",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-31",
+      "requirement": "Separate semantic and layout versions and the four meanings of validation success.",
+      "section": "Section 7",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-32",
+      "requirement": "Use ruamel.yaml, Jinja2, lxml, pytest, Hypothesis and ty for their bounded roles; use the standard library for ordinary utilities.",
+      "section": "Section 8B",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-33",
+      "requirement": "Exclude overlapping dataframe, database, orchestration and ORM layers initially; do not import the whole pilot ontology stack.",
+      "section": "Section 8C",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-34",
+      "requirement": "Isolate Delta/DataFusion registration, retain a pinned-snapshot PyArrow fallback and normalize arro3 boundaries.",
+      "section": "Section 8D",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-35",
+      "requirement": "Keep application code Python-only, with one package/locked environment and no change to the separate book-library environment.",
+      "section": "Sections 8D and 9C",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-36",
+      "requirement": "Keep narrative/decisions in Notion, executable permitted inputs in GitHub, compiled Delta local and dated exports in Dropbox.",
+      "section": "Section 9A",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-37",
+      "requirement": "Pin source revisions and digests, or authorized snapshots when immutable source versions are unavailable.",
+      "section": "Section 9B",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-38",
+      "requirement": "Expose baseline/change/validate/diff/review/persist/publish/output operations through a small API and CLI.",
+      "section": "Section 9C",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-39",
+      "requirement": "Start without partitioning, Z-ordering, elaborate compaction or custom indexes; rebuild the query catalog from the manifest.",
+      "section": "Section 9D",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-40",
+      "requirement": "Qualify round trips, same-release queries, semantic changes, interrupted publication, stale parents and historical schema migration.",
+      "section": "Sections 10A–10E",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-41",
+      "requirement": "Preserve unknowns, manual processes and evidence gaps; do not invent facts to satisfy structural checks.",
+      "section": "Section 10F",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "DATA-42",
+      "requirement": "Do not claim tested interoperability; retain immutable Parquet plus manifests as the simpler alternative.",
+      "section": "Section 10G; final assessment",
+      "status": "pending",
+      "evidence": []
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "artifacts": [
+    {
+      "id": "jre",
+      "platform": "darwin-arm64",
+      "version": "21.0.12.1+1",
+      "path": "downloads/jre-darwin-arm64.tar.gz",
+      "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jre_aarch64_mac_hotspot_21.0.12.1_1.tar.gz",
+      "sha256": "dec50fc6f9fcd4fe3ae8cabf5a5fa68f6afc48841f7698e468e9aa5d54beed84",
+      "checksum_source": "GitHub release asset digest"
+    },
+    {
+      "id": "jre",
+      "platform": "linux-x86_64",
+      "version": "21.0.12.1+1",
+      "path": "downloads/jre-linux-x86_64.tar.gz",
+      "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jre_x64_linux_hotspot_21.0.12.1_1.tar.gz",
+      "sha256": "2413149700df0f7d440500a84a8f764c535f21e5a5e87d38328b64eec2c5b500",
+      "checksum_source": "GitHub release asset digest"
+    },
+    {
+      "id": "plantuml",
+      "platform": "all",
+      "version": "1.2026.8-mit",
+      "path": "plantuml.jar",
+      "url": "https://github.com/plantuml/plantuml/releases/download/v1.2026.8/plantuml-mit-1.2026.8.jar",
+      "sha256": "3629c9cd017c7f73e6450396eea0040216c7e1eef8473ce33cc1aad469dab2f9",
+      "checksum_source": "GitHub release asset digest"
+    },
+    {
+      "id": "structurizr",
+      "platform": "all",
+      "version": "2026.06.28",
+      "path": "structurizr.war",
+      "url": "https://download.structurizr.com/structurizr-2026.06.28.war",
+      "checksum_source": "Locally observed SHA256 from official HTTPS distribution on 2026-09-20; not an upstream signature",
+      "sha256": "7bcee3932b1a6e62c07113008ec4959ced6700f666a3d02f708a1a2ebfdefed0"
+    },
+    {
+      "id": "bpmn-BPMN20",
+      "platform": "all",
+      "version": "BPMN-2.0.2-20100501",
+      "path": "bpmn/BPMN20.xsd",
+      "url": "https://www.omg.org/spec/BPMN/20100501/BPMN20.xsd",
+      "checksum_source": "Locally observed SHA256 from OMG HTTPS on 2026-09-20; not an upstream signature",
+      "sha256": "a07c159cb0594573dd7c97b1370dd116112378f377e43c89a8bf512ac5030705"
+    },
+    {
+      "id": "bpmn-BPMNDI",
+      "platform": "all",
+      "version": "BPMN-2.0.2-20100501",
+      "path": "bpmn/BPMNDI.xsd",
+      "url": "https://www.omg.org/spec/BPMN/20100501/BPMNDI.xsd",
+      "checksum_source": "Locally observed SHA256 from OMG HTTPS on 2026-09-20; not an upstream signature",
+      "sha256": "f0dff1cd559d1514d8ebfc8c646f58402bcaced27ec22e2aa6456c2dcc80b038"
+    },
+    {
+      "id": "bpmn-DC",
+      "platform": "all",
+      "version": "BPMN-2.0.2-20100501",
+      "path": "bpmn/DC.xsd",
+      "url": "https://www.omg.org/spec/BPMN/20100501/DC.xsd",
+      "checksum_source": "Locally observed SHA256 from OMG HTTPS on 2026-09-20; not an upstream signature",
+      "sha256": "a2f90e5ad9bb48c6915e4e034b4e27ac838264a1d4f27bfc70dbdfc69351312d"
+    },
+    {
+      "id": "bpmn-DI",
+      "platform": "all",
+      "version": "BPMN-2.0.2-20100501",
+      "path": "bpmn/DI.xsd",
+      "url": "https://www.omg.org/spec/BPMN/20100501/DI.xsd",
+      "checksum_source": "Locally observed SHA256 from OMG HTTPS on 2026-09-20; not an upstream signature",
+      "sha256": "8220b179c175572df74e08a51bffabe957867962035cee7b5fee0b6acb4c4498"
+    },
+    {
+      "id": "bpmn-Semantic",
+      "platform": "all",
+      "version": "BPMN-2.0.2-20100501",
+      "path": "bpmn/Semantic.xsd",
+      "url": "https://www.omg.org/spec/BPMN/20100501/Semantic.xsd",
+      "checksum_source": "Locally observed SHA256 from OMG HTTPS on 2026-09-20; not an upstream signature",
+      "sha256": "c4318842f7d2bbc262d7954c9452c501db16f0868eac0b8732ec5d7fb384d9a7"
+    }
+  ]
+}
