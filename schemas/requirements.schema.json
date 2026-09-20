@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.invalid/architecture-toolkit/requirements.schema.json",
+  "$id": "urn:architecture-toolkit:requirements:v2",
   "title": "Architecture toolkit acceptance index",
   "type": "object",
   "additionalProperties": false,
