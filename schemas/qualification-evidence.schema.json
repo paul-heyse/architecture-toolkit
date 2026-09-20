@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.invalid/architecture-toolkit/qualification-evidence.schema.json",
+  "$id": "urn:architecture-toolkit:qualification-evidence:v1",
   "title": "Architecture toolkit qualification evidence",
   "type": "object",
   "additionalProperties": false,
