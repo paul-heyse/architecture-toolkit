@@ -33,7 +33,11 @@ ignored `.runtime/`. Supported qualification targets are macOS ARM64 and Linux x
 - [Projection contract](docs/contracts/projections.md): ArchiMate, C4, BPMN, UML/ERD, rendering
   and offline publishing.
 - [Agent handoff](docs/agent-handoff.md): dependency-ordered implementation sequence.
+- [Implementation plans](docs/plans/index.md): M1..M6 decomposed into executable waves W0..W9,
+  with a machine-checked requirement partition in `reference/plan-waves.json`.
 - [Qualification](docs/qualification.md): what this commit actually proves.
+- [Contract enforcement](docs/contract-enforcement.md): how contract rules are made
+  executable, and the parser/syntax-tree/text tiers.
 - [Toolchain](docs/toolchain.md): current and target library/vendor execution state.
 - [Acceptance index](reference/requirements.json): DATA-01..60, PROJ-01..42, CORE-01..67.
 

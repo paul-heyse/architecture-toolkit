@@ -1,0 +1,24 @@
+id: secure-xml-parser
+language: python
+severity: error
+message: XML parsing must keep entity resolution, DTD loading and network access disabled.
+note: |
+  CORE-40 requires an explicit no-network, no-DTD, no-external-entity, no-recovery parser
+  baseline, and CORE-41 resolves schemas only through a reviewed checksummed local resolver.
+files:
+  - "src/**/*.py"
+  - "scripts/**/*.py"
+rule:
+  any:
+    - pattern:
+        context: f(resolve_entities=True)
+        selector: keyword_argument
+    - pattern:
+        context: f(no_network=False)
+        selector: keyword_argument
+    - pattern:
+        context: f(load_dtd=True)
+        selector: keyword_argument
+    - pattern:
+        context: f(huge_tree=True)
+        selector: keyword_argument

@@ -1,0 +1,20 @@
+id: no-implicit-latest-delta-version
+language: python
+severity: error
+message: DeltaTable must be opened at an explicit version named by a release manifest.
+note: |
+  implementation-contract.md invariant 5: "Published releases never resolve an implicit latest
+  table version." DATA-21 pins an exact Delta version per table; DATA-51 requires every
+  SnapshotProvider to require that version.
+files:
+  - "src/**/*.py"
+  - "tests/**/*.py"
+  - "scripts/**/*.py"
+rule:
+  pattern: DeltaTable($$$ARGS)
+  not:
+    has:
+      stopBy: end
+      pattern:
+        context: f(version=$V)
+        selector: keyword_argument

@@ -1,0 +1,26 @@
+id: secure-xml-parser
+snapshots:
+  etree.XMLParser(huge_tree=True):
+    labels:
+    - source: huge_tree=True
+      style: primary
+      start: 16
+      end: 30
+  etree.XMLParser(load_dtd=True):
+    labels:
+    - source: load_dtd=True
+      style: primary
+      start: 16
+      end: 29
+  etree.XMLParser(no_network=False):
+    labels:
+    - source: no_network=False
+      style: primary
+      start: 16
+      end: 32
+  etree.XMLParser(resolve_entities=True):
+    labels:
+    - source: resolve_entities=True
+      style: primary
+      start: 16
+      end: 37

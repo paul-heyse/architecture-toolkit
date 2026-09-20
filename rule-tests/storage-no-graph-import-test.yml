@@ -1,0 +1,7 @@
+id: storage-no-graph-import
+valid:
+  - "import pyarrow as pa"
+  - "from deltalake import DeltaTable"
+invalid:
+  - "import networkx as nx"
+  - "from networkx import MultiDiGraph"

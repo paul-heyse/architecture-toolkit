@@ -1,0 +1,72 @@
+id: domain-layer-imports
+snapshots:
+  from datafusion import SessionContext:
+    labels:
+    - source: datafusion
+      style: primary
+      start: 5
+      end: 15
+    - source: from datafusion import SessionContext
+      style: secondary
+      start: 0
+      end: 37
+  from deltalake import DeltaTable:
+    labels:
+    - source: deltalake
+      style: primary
+      start: 5
+      end: 14
+    - source: from deltalake import DeltaTable
+      style: secondary
+      start: 0
+      end: 32
+  from networkx.algorithms import dag:
+    labels:
+    - source: networkx.algorithms
+      style: primary
+      start: 5
+      end: 24
+    - source: from networkx.algorithms import dag
+      style: secondary
+      start: 0
+      end: 35
+  import networkx as nx:
+    labels:
+    - source: networkx
+      style: primary
+      start: 7
+      end: 15
+    - source: import networkx as nx
+      style: secondary
+      start: 0
+      end: 21
+  import pyarrow:
+    labels:
+    - source: pyarrow
+      style: primary
+      start: 7
+      end: 14
+    - source: import pyarrow
+      style: secondary
+      start: 0
+      end: 14
+  import pyarrow as pa:
+    labels:
+    - source: pyarrow
+      style: primary
+      start: 7
+      end: 14
+    - source: import pyarrow as pa
+      style: secondary
+      start: 0
+      end: 20
+  import pyarrow.parquet as pq:
+    labels:
+    - source: pyarrow.parquet
+      style: primary
+      start: 7
+      end: 22
+    - source: import pyarrow.parquet as pq
+      style: secondary
+      start: 0
+      end: 28

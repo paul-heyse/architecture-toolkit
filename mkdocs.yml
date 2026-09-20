@@ -9,6 +9,20 @@ nav:
       - Data/releases: contracts/data.md
       - Projections/publishing: contracts/projections.md
   - Agent handoff: agent-handoff.md
+  - Plans:
+      - Overview: plans/index.md
+      - W0 Foundation: plans/w0-foundation.md
+      - W1 Core schemas: plans/w1-core-schemas.md
+      - W2 Authoring: plans/w2-authoring.md
+      - W3 Arrow fabric: plans/w3-arrow-fabric.md
+      - W4 Delta and releases: plans/w4-delta-releases.md
+      - W5 Query and graph: plans/w5-query-graph.md
+      - W6 Semantic change: plans/w6-semantic-change.md
+      - W7a Generator foundations: plans/w7a-generator-foundations.md
+      - W7b Notation generators: plans/w7b-notation-generators.md
+      - W8 Portal and export: plans/w8-portal-export.md
+      - W9 Qualification: plans/w9-qualification.md
+  - Contract enforcement: contract-enforcement.md
   - Toolchain: toolchain.md
   - Qualification: qualification.md
   - References: references.md

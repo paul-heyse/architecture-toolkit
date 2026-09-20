@@ -1,0 +1,9 @@
+id: secure-xml-parser
+valid:
+  - "etree.XMLParser(resolve_entities=False, no_network=True)"
+  - "etree.XMLParser(resolve_entities=False, no_network=True, load_dtd=False, huge_tree=False)"
+invalid:
+  - "etree.XMLParser(resolve_entities=True)"
+  - "etree.XMLParser(no_network=False)"
+  - "etree.XMLParser(load_dtd=True)"
+  - "etree.XMLParser(huge_tree=True)"

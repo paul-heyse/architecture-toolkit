@@ -1,0 +1,11 @@
+# Structural contract enforcement. See docs/contracts/ for the normative rules these guard.
+#
+# Rules match the parsed syntax tree, not lines of text, so a construct inside a comment or
+# string literal does not false-positive and one split across lines does not false-negative.
+# Where a regex is still needed it is scoped to a named metavariable rather than a whole line.
+#
+# Every rule carries tests under rule-tests/. A guard nothing exercises is not a guard.
+ruleDirs:
+  - rules
+testConfigs:
+  - testDir: rule-tests

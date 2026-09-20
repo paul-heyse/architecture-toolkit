@@ -1,0 +1,17 @@
+id: domain-layer-imports
+valid:
+  - "from pydantic import BaseModel"
+  - "import json"
+  # Substring of a banned name, but a different package.
+  - "import networkx_stub"
+  - "import pyarrowfs"
+  - "from deltalake_extras import helper"
+  - "example = \"import pyarrow\""
+invalid:
+  - "import pyarrow"
+  - "import pyarrow as pa"
+  - "from deltalake import DeltaTable"
+  - "from datafusion import SessionContext"
+  - "import networkx as nx"
+  - "import pyarrow.parquet as pq"
+  - "from networkx.algorithms import dag"

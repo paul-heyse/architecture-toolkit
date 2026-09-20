@@ -1,0 +1,11 @@
+id: no-validation-bypass
+valid:
+  - "candidate = Model.model_validate(payload)"
+  - "candidate = Model.model_validate_json(raw)"
+  # Copy without update= is a plain clone, not a mutation channel.
+  - "clone = record.model_copy()"
+  - "note = \"model_construct is forbidden here\""
+invalid:
+  - "record.model_construct(element_id=\"a\")"
+  - "changed = element.model_copy(update={\"name\": name})"
+  - "name: SkipValidation[str]"

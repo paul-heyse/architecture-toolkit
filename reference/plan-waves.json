@@ -1,0 +1,656 @@
+{
+  "schema_version": 1,
+  "requirements_index": "reference/requirements.json",
+  "notes": "Waves are a finer decomposition of the M1-M6 milestones in docs/agent-handoff.md. Those milestones remain authoritative. Milestone Inputs are read scope: an identifier may appear in several. Wave assignment is delivery scope: each identifier is owned by exactly one wave.",
+  "waves": [
+    {
+      "wave_id": "W0",
+      "milestone": "M1",
+      "families": [
+        "CORE",
+        "DATA"
+      ],
+      "title": "Foundation: toolchain, evidence substrate and boundary policy",
+      "plan_doc": "docs/plans/w0-foundation.md",
+      "depends_on": [],
+      "packages": [
+        "pyproject.toml",
+        ".github/workflows",
+        "scripts",
+        "tests",
+        "src/architecture_toolkit/domain"
+      ],
+      "requirements": [
+        "CORE-47",
+        "CORE-48",
+        "CORE-49",
+        "CORE-50",
+        "CORE-51",
+        "CORE-52",
+        "CORE-53",
+        "CORE-54",
+        "CORE-55",
+        "CORE-56",
+        "CORE-57",
+        "CORE-58",
+        "CORE-59",
+        "CORE-60",
+        "CORE-61",
+        "CORE-62",
+        "CORE-63",
+        "CORE-64",
+        "CORE-65",
+        "CORE-66",
+        "DATA-01",
+        "DATA-02",
+        "DATA-32",
+        "DATA-33",
+        "DATA-35",
+        "DATA-36"
+      ],
+      "hard_gate": {
+        "source": "docs/agent-handoff.md",
+        "statement": "public API typing direction is explicit and clean under the pinned checker"
+      },
+      "policy_only": [
+        "CORE-50",
+        "CORE-60",
+        "CORE-62",
+        "CORE-65",
+        "DATA-01",
+        "DATA-02",
+        "DATA-32",
+        "DATA-33",
+        "DATA-35",
+        "DATA-36"
+      ]
+    },
+    {
+      "wave_id": "W1",
+      "milestone": "M1",
+      "families": [
+        "CORE",
+        "DATA"
+      ],
+      "title": "Core domain records, diagnostics and generated schemas",
+      "plan_doc": "docs/plans/w1-core-schemas.md",
+      "depends_on": [
+        "W0"
+      ],
+      "packages": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/validation",
+        "schemas",
+        "tests"
+      ],
+      "requirements": [
+        "CORE-01",
+        "CORE-02",
+        "CORE-03",
+        "CORE-04",
+        "CORE-05",
+        "CORE-06",
+        "CORE-07",
+        "CORE-08",
+        "CORE-09",
+        "CORE-10",
+        "CORE-11",
+        "CORE-12",
+        "CORE-13",
+        "CORE-45",
+        "DATA-03",
+        "DATA-04",
+        "DATA-05",
+        "DATA-06",
+        "DATA-07",
+        "DATA-08",
+        "DATA-09",
+        "DATA-29",
+        "DATA-30",
+        "DATA-31",
+        "DATA-41"
+      ],
+      "hard_gate": {
+        "source": "docs/agent-handoff.md",
+        "statement": "rename preserves identity"
+      },
+      "policy_only": [
+        "CORE-09"
+      ]
+    },
+    {
+      "wave_id": "W2",
+      "milestone": "M1",
+      "families": [
+        "CORE",
+        "DATA"
+      ],
+      "title": "YAML authoring, source mapping and semantic identity",
+      "plan_doc": "docs/plans/w2-authoring.md",
+      "depends_on": [
+        "W1"
+      ],
+      "packages": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/validation",
+        "tests"
+      ],
+      "requirements": [
+        "CORE-14",
+        "CORE-15",
+        "CORE-16",
+        "CORE-17",
+        "CORE-18",
+        "CORE-19",
+        "CORE-20",
+        "CORE-21",
+        "DATA-27"
+      ],
+      "hard_gate": {
+        "source": "docs/agent-handoff.md",
+        "statement": "nested validation resolves to source location"
+      },
+      "policy_only": [
+        "CORE-17"
+      ]
+    },
+    {
+      "wave_id": "W3",
+      "milestone": "M2",
+      "families": [
+        "DATA"
+      ],
+      "title": "Arrow fabric: explicit physical schemas and interchange",
+      "plan_doc": "docs/plans/w3-arrow-fabric.md",
+      "depends_on": [
+        "W2"
+      ],
+      "packages": [
+        "src/architecture_toolkit/storage",
+        "src/architecture_toolkit/domain",
+        "tests"
+      ],
+      "requirements": [
+        "DATA-10",
+        "DATA-11",
+        "DATA-12",
+        "DATA-13",
+        "DATA-14",
+        "DATA-34",
+        "DATA-43",
+        "DATA-44",
+        "DATA-45"
+      ],
+      "hard_gate": {
+        "source": "docs/contracts/data.md",
+        "statement": "Semantic equality/hashes ignore incidental Arrow chunk layout."
+      },
+      "policy_only": [
+        "DATA-13"
+      ]
+    },
+    {
+      "wave_id": "W4",
+      "milestone": "M2",
+      "families": [
+        "DATA"
+      ],
+      "title": "Delta persistence, SnapshotProviders and coherent releases",
+      "plan_doc": "docs/plans/w4-delta-releases.md",
+      "depends_on": [
+        "W3"
+      ],
+      "packages": [
+        "src/architecture_toolkit/releases",
+        "src/architecture_toolkit/storage",
+        "src/architecture_toolkit/validation",
+        "tests"
+      ],
+      "requirements": [
+        "DATA-19",
+        "DATA-20",
+        "DATA-21",
+        "DATA-22",
+        "DATA-23",
+        "DATA-24",
+        "DATA-25",
+        "DATA-37",
+        "DATA-39",
+        "DATA-51",
+        "DATA-52",
+        "DATA-53",
+        "DATA-54",
+        "DATA-55",
+        "DATA-56",
+        "DATA-57",
+        "DATA-58",
+        "DATA-59",
+        "DATA-60"
+      ],
+      "hard_gate": {
+        "source": "docs/agent-handoff.md",
+        "statement": "Fault injection after every publication stage never exposes partial state."
+      },
+      "policy_only": [
+        "DATA-20",
+        "DATA-55",
+        "DATA-59"
+      ]
+    },
+    {
+      "wave_id": "W5",
+      "milestone": "M3",
+      "families": [
+        "CORE",
+        "DATA"
+      ],
+      "title": "Release-scoped queries and policy-driven graph analysis",
+      "plan_doc": "docs/plans/w5-query-graph.md",
+      "depends_on": [
+        "W4"
+      ],
+      "packages": [
+        "src/architecture_toolkit/queries",
+        "src/architecture_toolkit/storage",
+        "tests"
+      ],
+      "requirements": [
+        "CORE-22",
+        "CORE-23",
+        "CORE-24",
+        "CORE-25",
+        "CORE-26",
+        "CORE-27",
+        "CORE-28",
+        "CORE-29",
+        "CORE-30",
+        "CORE-31",
+        "DATA-15",
+        "DATA-16",
+        "DATA-17",
+        "DATA-18",
+        "DATA-46",
+        "DATA-47",
+        "DATA-48",
+        "DATA-49",
+        "DATA-50"
+      ],
+      "hard_gate": {
+        "source": "docs/agent-handoff.md",
+        "statement": "DataFusion and NetworkX read the same release."
+      },
+      "policy_only": [
+        "CORE-25",
+        "DATA-50"
+      ]
+    },
+    {
+      "wave_id": "W6",
+      "milestone": "M3",
+      "families": [
+        "DATA"
+      ],
+      "title": "Semantic change records and the operations surface",
+      "plan_doc": "docs/plans/w6-semantic-change.md",
+      "depends_on": [
+        "W5"
+      ],
+      "packages": [
+        "src/architecture_toolkit/releases",
+        "src/architecture_toolkit/validation",
+        "tests"
+      ],
+      "requirements": [
+        "DATA-26",
+        "DATA-28",
+        "DATA-38"
+      ],
+      "hard_gate": {
+        "source": "docs/contracts/data.md",
+        "statement": "Layout/presentation-only changes do not masquerade as semantic model changes."
+      },
+      "policy_only": []
+    },
+    {
+      "wave_id": "W7a",
+      "milestone": "M4",
+      "families": [
+        "CORE",
+        "PROJ"
+      ],
+      "title": "Generator foundations: Jinja, lxml and the projection artifact model",
+      "plan_doc": "docs/plans/w7a-generator-foundations.md",
+      "depends_on": [
+        "W5"
+      ],
+      "packages": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/validation",
+        "src/architecture_toolkit/rendering",
+        "tests"
+      ],
+      "requirements": [
+        "CORE-32",
+        "CORE-33",
+        "CORE-34",
+        "CORE-35",
+        "CORE-36",
+        "CORE-37",
+        "CORE-38",
+        "CORE-39",
+        "CORE-40",
+        "CORE-41",
+        "CORE-42",
+        "CORE-43",
+        "CORE-44",
+        "PROJ-01",
+        "PROJ-02",
+        "PROJ-03",
+        "PROJ-04",
+        "PROJ-05",
+        "PROJ-06",
+        "PROJ-07"
+      ],
+      "hard_gate": {
+        "source": "docs/contracts/core.md",
+        "statement": "Templates do not traverse NetworkX/DataFusion, infer relationships, select semantic view membership or fetch evidence."
+      },
+      "policy_only": [
+        "CORE-37",
+        "CORE-38",
+        "CORE-44"
+      ]
+    },
+    {
+      "wave_id": "W7b",
+      "milestone": "M4",
+      "families": [
+        "PROJ"
+      ],
+      "title": "Notation generators: ArchiMate, C4, BPMN, UML and ERD",
+      "plan_doc": "docs/plans/w7b-notation-generators.md",
+      "depends_on": [
+        "W7a"
+      ],
+      "packages": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering",
+        "tests"
+      ],
+      "requirements": [
+        "PROJ-08",
+        "PROJ-09",
+        "PROJ-10",
+        "PROJ-11",
+        "PROJ-12",
+        "PROJ-13",
+        "PROJ-14",
+        "PROJ-15",
+        "PROJ-16",
+        "PROJ-17",
+        "PROJ-18",
+        "PROJ-19",
+        "PROJ-20",
+        "PROJ-21",
+        "PROJ-22",
+        "PROJ-23",
+        "PROJ-24",
+        "PROJ-25",
+        "PROJ-26",
+        "PROJ-27",
+        "PROJ-28",
+        "PROJ-29",
+        "PROJ-30",
+        "PROJ-31",
+        "PROJ-32",
+        "PROJ-33",
+        "PROJ-34"
+      ],
+      "hard_gate": {
+        "source": "docs/agent-handoff.md",
+        "statement": "All notation IDs trace to canonical IDs."
+      },
+      "policy_only": [
+        "PROJ-13",
+        "PROJ-16",
+        "PROJ-33",
+        "PROJ-34"
+      ]
+    },
+    {
+      "wave_id": "W8",
+      "milestone": "M5",
+      "families": [
+        "PROJ"
+      ],
+      "title": "Offline portal and self-contained milestone export",
+      "plan_doc": "docs/plans/w8-portal-export.md",
+      "depends_on": [
+        "W7b"
+      ],
+      "packages": [
+        "src/architecture_toolkit/publishing",
+        "src/architecture_toolkit/rendering",
+        "tests"
+      ],
+      "requirements": [
+        "PROJ-35",
+        "PROJ-36",
+        "PROJ-37",
+        "PROJ-38",
+        "PROJ-39",
+        "PROJ-40",
+        "PROJ-41"
+      ],
+      "hard_gate": {
+        "source": "docs/agent-handoff.md",
+        "statement": "No external runtime assets/network calls are required for the canonical offline bundle."
+      },
+      "policy_only": [
+        "PROJ-39"
+      ]
+    },
+    {
+      "wave_id": "W9",
+      "milestone": "M6",
+      "families": [
+        "CORE",
+        "DATA",
+        "PROJ"
+      ],
+      "title": "Cross-family qualification and the vertical slice",
+      "plan_doc": "docs/plans/w9-qualification.md",
+      "depends_on": [
+        "W8"
+      ],
+      "packages": [
+        "tests",
+        ".github/workflows"
+      ],
+      "requirements": [
+        "CORE-46",
+        "CORE-67",
+        "DATA-40",
+        "DATA-42",
+        "PROJ-42"
+      ],
+      "hard_gate": {
+        "source": "docs/agent-handoff.md",
+        "statement": "A synthetic vertical slice runs source -> validated model -> storage -> coherent release -> relational/graph queries -> semantic change -> standards projections -> local renders -> offline portal/export, with fault-injection and historical-replay evidence."
+      },
+      "policy_only": [
+        "CORE-67",
+        "DATA-42"
+      ]
+    }
+  ],
+  "cross_family_placements": [
+    {
+      "id": "DATA-03",
+      "wave": "W1",
+      "rationale": "The typed relational core is domain modelling; CORE-04 and CORE-12 cannot be delivered without it. Listed in M1 Inputs."
+    },
+    {
+      "id": "DATA-29",
+      "wave": "W1",
+      "rationale": "Five independent status dimensions are record fields; adding them after W4 publishes immutable manifests forces a DATA-56 migration. Listed in M1 Inputs."
+    },
+    {
+      "id": "DATA-30",
+      "wave": "W1",
+      "rationale": "PROJ-23/24/27..31 in W7b cannot generate behavior, ordering or ERD keys from inferred edges. Listed in M1 Inputs."
+    },
+    {
+      "id": "DATA-31",
+      "wave": "W1",
+      "rationale": "Semantic-versus-layout digests and the four meanings of validation success are the Diagnostic category enum plus CORE-03 aliases; single-sourcing here lets PROJ-04/PROJ-07 consume rather than redefine."
+    },
+    {
+      "id": "DATA-41",
+      "wave": "W1",
+      "rationale": "Unknown, not-applicable, withheld and evidence-gap states are field presence. Listed in M1 Inputs."
+    },
+    {
+      "id": "DATA-27",
+      "wave": "W2",
+      "rationale": "CORE-20 and CORE-21 reference the semantic hash, and DATA-21 pins a semantic digest per table at W4. Landing it later guarantees two competing hash implementations. See amendment A2."
+    },
+    {
+      "id": "CORE-45",
+      "wave": "W1",
+      "rationale": "The Hypothesis strategy library is co-designed with the domain models; CORE-14..31 all carry property verification. See amendment A1."
+    },
+    {
+      "id": "CORE-47",
+      "wave": "W0",
+      "rationale": "Hypothesis dev/ci/deep profiles are pure configuration and must exist before the first property test. See amendment A1."
+    },
+    {
+      "id": "CORE-66",
+      "wave": "W0",
+      "rationale": "EngineeringQualificationArtifact carries W0's own Ruff/Pyrefly/lock evidence; left in M6 every earlier wave emits unstructured static-check evidence. See amendment A1."
+    },
+    {
+      "id": "DATA-35",
+      "wave": "W0",
+      "rationale": "One Python project, lock and environment is a boundary enforced from the first commit, not retrofitted. See amendment A3."
+    },
+    {
+      "id": "DATA-36",
+      "wave": "W0",
+      "rationale": "Notion/Git/Delta/Dropbox ownership is a workspace boundary guarded from the start. See amendment A3."
+    }
+  ],
+  "evidence_extensions": [
+    {
+      "id": "DATA-21",
+      "owned_by": "W4",
+      "extended_by": [
+        "W8"
+      ],
+      "note": "Manifest declares projection, render and validation digest fields as optional and empty at W4; PROJ-41 populates them at W8. Declaring them late would force a DATA-56 migration."
+    },
+    {
+      "id": "DATA-25",
+      "owned_by": "W4",
+      "extended_by": [
+        "W8"
+      ],
+      "note": "Milestone archive writer ships at W4 with an empty outputs section; W8 fills it without a format change."
+    },
+    {
+      "id": "DATA-60",
+      "owned_by": "W4",
+      "extended_by": [
+        "W3",
+        "W9"
+      ],
+      "note": "W3 seeds Arrow-only compatibility cases; W4 owns the matrix; W9 proves both platforms."
+    },
+    {
+      "id": "CORE-49",
+      "owned_by": "W0",
+      "extended_by": [
+        "W9"
+      ],
+      "note": "Requirement-evidence report emitted from W0 onward; both-platform provenance proven by PROJ-42 and CORE-67 at W9."
+    },
+    {
+      "id": "PROJ-40",
+      "owned_by": "W8",
+      "extended_by": [],
+      "note": "W7b must write a provenance row at first vendor invocation; W8's PROJ-40 is a completeness check over rows W7b already produced."
+    }
+  ],
+  "deferred_acceptance": [
+    {
+      "id": "CORE-61",
+      "wave": "W0",
+      "enforced_from": "W7a",
+      "reason": "docs/contracts/core.md defers 100% strict public-API coverage to 'after interface stabilization'. W0 delivers the coverage measurement and a non-decreasing ratchet."
+    },
+    {
+      "id": "CORE-58",
+      "wave": "W0",
+      "enforced_from": "W9",
+      "reason": "Protocols exchange typed DTOs that do not exist until W1-W4. W0 delivers an exhaustive Protocol registry; each later wave fills its own signature."
+    },
+    {
+      "id": "CORE-56",
+      "wave": "W0",
+      "enforced_from": "W2",
+      "reason": "Advanced Pydantic patterns appear in W1 and W2. W0 seeds the Pyrefly/Pydantic qualification harness; W1 and W2 extend it."
+    }
+  ],
+  "milestone_amendments": [
+    {
+      "id": "A1",
+      "target": "docs/agent-handoff.md#m1-domain-and-authoring",
+      "change": "Required outputs gain CORE-45 and CORE-47..CORE-52 and CORE-66; M6 retains CORE-46 and CORE-67.",
+      "covers": [
+        "CORE-45",
+        "CORE-47",
+        "CORE-48",
+        "CORE-49",
+        "CORE-50",
+        "CORE-51",
+        "CORE-52",
+        "CORE-66"
+      ]
+    },
+    {
+      "id": "A2",
+      "target": "docs/agent-handoff.md#m1-domain-and-authoring",
+      "change": "Required outputs gain DATA-27, the versioned canonical semantic hash.",
+      "covers": [
+        "DATA-27"
+      ]
+    },
+    {
+      "id": "A3",
+      "target": "docs/agent-handoff.md#m1-domain-and-authoring",
+      "change": "Inputs gain DATA-01, DATA-02, DATA-31, DATA-32, DATA-33, DATA-35 and DATA-36.",
+      "covers": [
+        "DATA-01",
+        "DATA-02",
+        "DATA-31",
+        "DATA-32",
+        "DATA-33",
+        "DATA-35",
+        "DATA-36"
+      ]
+    },
+    {
+      "id": "A4",
+      "target": "docs/agent-handoff.md#m3-queries-graph-and-semantic-change",
+      "change": "Inputs gain DATA-46..DATA-50; release-scoped DataFusion contexts and query recipes are M3 work currently swallowed only by the broad M2 DATA-39..60 range.",
+      "covers": [
+        "DATA-46",
+        "DATA-47",
+        "DATA-48",
+        "DATA-49",
+        "DATA-50"
+      ]
+    }
+  ]
+}

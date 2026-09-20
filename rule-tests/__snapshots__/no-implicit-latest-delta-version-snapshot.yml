@@ -1,0 +1,20 @@
+id: no-implicit-latest-delta-version
+snapshots:
+  DeltaTable("tables/elements"):
+    labels:
+    - source: DeltaTable("tables/elements")
+      style: primary
+      start: 0
+      end: 29
+  DeltaTable(location):
+    labels:
+    - source: DeltaTable(location)
+      style: primary
+      start: 0
+      end: 20
+  DeltaTable(location, storage_options=options):
+    labels:
+    - source: DeltaTable(location, storage_options=options)
+      style: primary
+      start: 0
+      end: 45
