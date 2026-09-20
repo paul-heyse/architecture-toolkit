@@ -13,7 +13,14 @@ from typing import Literal
 
 from pydantic import ValidationError
 
-from architecture_toolkit.domain.authoring import AuthoringError, parse_model, parse_source
+from architecture_toolkit.domain.authoring import (
+    AuthoringError,
+    SourceEditResult,
+    apply_change_set_to_source,
+    parse_model,
+    parse_source,
+)
+from architecture_toolkit.domain.commands import ChangeSet
 from architecture_toolkit.domain.model import Model
 from architecture_toolkit.domain.registry import BASELINE_PROFILE, Profile
 from architecture_toolkit.domain.source import SourceMap
@@ -23,7 +30,7 @@ from architecture_toolkit.validation.locate import locate_report, locate_validat
 from architecture_toolkit.validation.normalize import normalize_authoring_error
 from architecture_toolkit.validation.pipeline import validate_model
 
-__all__ = ["SourceValidation", "validate_source_text"]
+__all__ = ["SourceEditReport", "SourceValidation", "edit_and_validate", "validate_source_text"]
 
 type Outcome = Literal["unreadable", "invalid_records", "validated"]
 
@@ -61,3 +68,24 @@ def validate_source_text(
     return SourceValidation(
         "validated", report.diagnostics, report=report, model=model, source_map=loaded.source_map
     )
+
+
+@dataclass(frozen=True, slots=True)
+class SourceEditReport:
+    """A round-trip edit, cross-record validated and located against the *new* text."""
+
+    edit: SourceEditResult
+    report: ValidationClaimReport
+
+    @property
+    def text(self) -> str:
+        return self.edit.text
+
+
+def edit_and_validate(
+    text: str, change_set: ChangeSet, *, source_id: str, profile: Profile = BASELINE_PROFILE
+) -> SourceEditReport:
+    """CORE-20 end to end: edit the presentation tree, reparse, revalidate, present the diff."""
+    edit = apply_change_set_to_source(text, change_set, source_id=source_id)
+    report = locate_report(validate_model(edit.model, profile=profile), edit.source_map)
+    return SourceEditReport(edit=edit, report=report)

@@ -10,6 +10,11 @@ the same loader. Neither imports `validation/`; parse failures are `AuthoringErr
 `validation.normalize.normalize_authoring_error` turns into diagnostics.
 """
 
+from architecture_toolkit.domain.authoring.editing import (
+    SourceEditError,
+    SourceEditResult,
+    apply_change_set_to_source,
+)
 from architecture_toolkit.domain.authoring.errors import AUTHORING_CODES, AuthoringError
 from architecture_toolkit.domain.authoring.loader import (
     LoadedSource,
@@ -23,6 +28,7 @@ from architecture_toolkit.domain.authoring.profile import (
     MAX_DEPTH,
     AuthoringProfile,
 )
+from architecture_toolkit.domain.authoring.render import render_model_text, render_record
 
 __all__ = [
     "AUTHORING_CODES",
@@ -31,8 +37,13 @@ __all__ = [
     "AuthoringError",
     "AuthoringProfile",
     "LoadedSource",
+    "SourceEditError",
+    "SourceEditResult",
     "YamlSourceLoader",
+    "apply_change_set_to_source",
     "load_model_text",
     "parse_model",
     "parse_source",
+    "render_model_text",
+    "render_record",
 ]
