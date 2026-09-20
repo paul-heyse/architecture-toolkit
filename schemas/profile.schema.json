@@ -1,0 +1,234 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:architecture-toolkit:profile:v1",
+  "title": "Kind and relationship-type profile",
+  "description": "The controlled vocabulary a model is validated against (DATA-04, DATA-05).",
+  "x-toolkit": {
+    "family": "profile",
+    "version": 1,
+    "requirements": [
+      "CORE-12",
+      "DATA-04",
+      "DATA-05"
+    ]
+  },
+  "$ref": "#/$defs/Profile",
+  "$defs": {
+    "CanonicalDirection": {
+      "description": "DATA-06. `SYMMETRIC` means the pair is unordered, not that both rows are stored.",
+      "enum": [
+        "source_to_target",
+        "symmetric"
+      ],
+      "title": "CanonicalDirection",
+      "type": "string"
+    },
+    "Cardinality": {
+      "enum": [
+        "one_to_one",
+        "one_to_many",
+        "many_to_one",
+        "many_to_many"
+      ],
+      "title": "Cardinality",
+      "type": "string"
+    },
+    "DetailFamily": {
+      "description": "The six typed detail families (DATA-07).\n\nDeclared here rather than in `details.py` because a family is registry vocabulary: what a kind\nis *permitted* to carry is a registry statement, and putting the enum here is what lets\n`KindDefinition` reference it without `registry` and `details` importing each other.",
+      "enum": [
+        "interface",
+        "deployment",
+        "data_schema",
+        "behavior",
+        "requirement",
+        "notation_binding"
+      ],
+      "title": "DetailFamily",
+      "type": "string"
+    },
+    "KindDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "kind_id": {
+          "pattern": "^[a-z][a-z0-9]*\\.[a-z][a-z0-9_]*$",
+          "title": "Kind Id",
+          "type": "string"
+        },
+        "layer": {
+          "$ref": "#/$defs/KindLayer"
+        },
+        "display_label": {
+          "title": "Display Label",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "permitted_detail_families": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/DetailFamily"
+          },
+          "title": "Permitted Detail Families",
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "kind_id",
+        "layer",
+        "display_label",
+        "description"
+      ],
+      "title": "KindDefinition",
+      "type": "object"
+    },
+    "KindLayer": {
+      "description": "The first segment of a qualified kind, as a closed set.\n\nKinds are open \u2014 profiles add them \u2014 but the layers they sit in are not. A profile that needs\na new top-level layer is making an architectural claim, not a vocabulary extension.",
+      "enum": [
+        "business",
+        "organization",
+        "software",
+        "information",
+        "technology",
+        "motivation"
+      ],
+      "title": "KindLayer",
+      "type": "string"
+    },
+    "Profile": {
+      "additionalProperties": false,
+      "description": "A named, versioned vocabulary. Frozen, hashable, and comparable by value.",
+      "properties": {
+        "profile_id": {
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "profile_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Profile Version",
+          "type": "string"
+        },
+        "kinds": {
+          "items": {
+            "$ref": "#/$defs/KindDefinition"
+          },
+          "title": "Kinds",
+          "type": "array"
+        },
+        "relationship_types": {
+          "items": {
+            "$ref": "#/$defs/RelationshipTypeDefinition"
+          },
+          "title": "Relationship Types",
+          "type": "array"
+        }
+      },
+      "required": [
+        "profile_id",
+        "profile_version",
+        "kinds",
+        "relationship_types"
+      ],
+      "title": "Profile",
+      "type": "object"
+    },
+    "RelationshipTypeDefinition": {
+      "additionalProperties": false,
+      "description": "All eight properties `ARCH-TOOL-DATA-001` \u00a72B requires, plus the ordering flag W2 needs.\n\nThe eighth \u2014 `validation_rule_ids` \u2014 is the one most easily dropped, and it is what lets a\nprofile say that *its* `contains` must be acyclic without editing the toolkit. W1 declares the\nids; PR3 registers the rules and adds the guard that none of these dangles.",
+      "properties": {
+        "relationship_type_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Relationship Type Id",
+          "type": "string"
+        },
+        "display_label": {
+          "title": "Display Label",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "permitted_source_kinds": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9]*\\.[a-z][a-z0-9_]*$",
+            "type": "string"
+          },
+          "title": "Permitted Source Kinds",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "permitted_target_kinds": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9]*\\.[a-z][a-z0-9_]*$",
+            "type": "string"
+          },
+          "title": "Permitted Target Kinds",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "canonical_direction": {
+          "$ref": "#/$defs/CanonicalDirection"
+        },
+        "inverse_display_label": {
+          "title": "Inverse Display Label",
+          "type": "string"
+        },
+        "cardinality": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cardinality"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "traversal": {
+          "$ref": "#/$defs/TraversalBehavior",
+          "default": "bidirectional"
+        },
+        "validation_rule_ids": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+            "type": "string"
+          },
+          "title": "Validation Rule Ids",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "ordered_sequence": {
+          "default": false,
+          "title": "Ordered Sequence",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "relationship_type_id",
+        "display_label",
+        "description",
+        "permitted_source_kinds",
+        "permitted_target_kinds",
+        "canonical_direction",
+        "inverse_display_label"
+      ],
+      "title": "RelationshipTypeDefinition",
+      "type": "object"
+    },
+    "TraversalBehavior": {
+      "description": "What a graph policy is allowed to do with this type (DATA-05, consumed at W5).",
+      "enum": [
+        "forward_only",
+        "reverse_only",
+        "bidirectional",
+        "not_traversable"
+      ],
+      "title": "TraversalBehavior",
+      "type": "string"
+    }
+  }
+}

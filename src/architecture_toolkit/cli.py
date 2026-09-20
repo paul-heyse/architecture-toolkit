@@ -8,6 +8,7 @@ from pathlib import Path
 from pydantic import ValidationError
 from ruamel.yaml import YAML
 
+from architecture_toolkit.contracts import SCHEMA_FAMILIES, emit, emittable
 from architecture_toolkit.domain.model import Model
 from architecture_toolkit.validation.normalize import normalize_validation_error
 from architecture_toolkit.validation.pipeline import validate_model
@@ -25,6 +26,8 @@ EXIT_DIAGNOSTICS = 1
 EXIT_USAGE = 2
 EXIT_UNREADABLE = 3
 
+ROOT = Path(__file__).resolve().parents[2]
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Architecture toolkit foundation")
@@ -33,7 +36,11 @@ def main() -> int:
     check = sub.add_parser("validate", help="Validate a source model and report what was checked")
     check.add_argument("source", type=Path)
     check.add_argument("--format", choices=("human", "json"), default="human")
-    sub.add_parser("schema", help="Print the current experimental authoring JSON Schema")
+    schema = sub.add_parser("schema", help="Print or write the generated JSON Schema contracts")
+    schema.add_argument("--family", help="Emit one family to stdout")
+    schema.add_argument(
+        "--write", action="store_true", help="Write every emittable family to its declared path"
+    )
     sub.add_parser("build", help="Reserved: full projection pipeline is not implemented")
     args = parser.parse_args()
 
@@ -50,14 +57,34 @@ def main() -> int:
         return EXIT_OK
 
     if args.command == "schema":
-        print(json.dumps(Model.model_json_schema(), indent=2))
-        return EXIT_OK
+        return _schema(parser, family_id=args.family, write=args.write)
 
     if args.command == "validate":
         return _validate(args.source, output=args.format)
 
     parser.exit(EXIT_USAGE, "Not implemented: follow docs/implementation-contract.md.\n")
     return EXIT_USAGE
+
+
+def _schema(parser: argparse.ArgumentParser, *, family_id: str | None, write: bool) -> int:
+    """List, print or write. Listing is the bare behaviour because it cannot surprise anyone."""
+    if write:
+        for family in emittable():
+            target = ROOT / family.path
+            target.write_text(json.dumps(emit(family), indent=2) + "\n")
+            print(f"wrote {family.path}")
+        return EXIT_OK
+    if family_id is not None:
+        found = next((f for f in SCHEMA_FAMILIES if f.family_id == family_id), None)
+        if found is None or found not in emittable():
+            parser.exit(EXIT_USAGE, f"No emittable schema family named {family_id!r}.\n")
+            return EXIT_USAGE
+        print(json.dumps(emit(found), indent=2))
+        return EXIT_OK
+    for family in SCHEMA_FAMILIES:
+        state = f"deferred to {family.deferred_to}" if family.deferred_to else family.path
+        print(f"{family.family_id:<20} {family.schema_id:<46} {state}")
+    return EXIT_OK
 
 
 def _validate(source: Path, *, output: str) -> int:

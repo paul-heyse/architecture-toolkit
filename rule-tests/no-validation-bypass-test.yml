@@ -5,6 +5,8 @@ valid:
   # Copy without update= is a plain clone, not a mutation channel.
   - "clone = record.model_copy()"
   - "note = \"model_construct is forbidden here\""
+  # The sanctioned replacement, now that the rule covers tests: rebuild through validation.
+  - "candidate = Element.model_validate(dict(record) | changes)"
 invalid:
   - "record.model_construct(element_id=\"a\")"
   - "changed = element.model_copy(update={\"name\": name})"

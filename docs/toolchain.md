@@ -40,9 +40,8 @@ platforms, and record the new coverage floor.
 
 `[tool.pyrefly.coverage]` narrows *measurement* to `src` while the *check* surface stays wide.
 Without it the strict figure is diluted by unannotated test bodies (63.83% against 85.71%).
-CI enforces `--strict --fail-under 97`, the measured `src` floor. W1 raised it from 85 in two
-steps as annotated domain and validation code landed; it never moves down without a recorded
-reason.
+CI enforces `--strict --fail-under 98`, the measured `src` floor. W1 raised it from 85 as
+annotated domain and validation code landed; it never moves down without a recorded reason.
 
 No baseline file is used (CORE-60). Suppressions are narrow `# pyrefly: ignore[error-code]`
 comments with a local rationale. `pyrefly infer` never runs in CI (CORE-62).

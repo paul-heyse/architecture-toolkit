@@ -1,0 +1,392 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:architecture-toolkit:validation-report:v1",
+  "title": "Diagnostics and validation claim report",
+  "description": "What `architecture validate --format json` emits. A machine-facing contract under CORE-12's own wording, so it is schematised rather than left implicit.",
+  "x-toolkit": {
+    "family": "validation-report",
+    "version": 1,
+    "requirements": [
+      "CORE-07",
+      "CORE-11",
+      "CORE-12"
+    ]
+  },
+  "$defs": {
+    "ClaimOutcome": {
+      "additionalProperties": false,
+      "properties": {
+        "claim": {
+          "$ref": "#/$defs/ValidationClaim"
+        },
+        "status": {
+          "$ref": "#/$defs/ClaimStatus"
+        },
+        "scope": {
+          "minLength": 1,
+          "title": "Scope",
+          "type": "string"
+        },
+        "checked_by": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+            "type": "string"
+          },
+          "title": "Checked By",
+          "type": "array"
+        },
+        "diagnostic_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Diagnostic Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "claim",
+        "status",
+        "scope"
+      ],
+      "title": "ClaimOutcome",
+      "type": "object"
+    },
+    "ClaimStatus": {
+      "enum": [
+        "passed",
+        "failed",
+        "not_checked",
+        "not_fully_checked",
+        "not_established",
+        "not_implemented"
+      ],
+      "title": "ClaimStatus",
+      "type": "string"
+    },
+    "Diagnostic": {
+      "additionalProperties": false,
+      "properties": {
+        "diagnostic_id": {
+          "minLength": 1,
+          "title": "Diagnostic Id",
+          "type": "string"
+        },
+        "code": {
+          "title": "Code",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "category": {
+          "$ref": "#/$defs/DiagnosticCategory"
+        },
+        "message": {
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "canonical_object_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Canonical Object Id"
+        },
+        "relationship_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Relationship Id"
+        },
+        "field_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Field Path"
+        },
+        "source_location": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SourceLocation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "notation_object_id": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notation Object Id"
+        },
+        "rule_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rule Id"
+        },
+        "context": {
+          "default": [],
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Context",
+          "type": "array"
+        },
+        "remediation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Remediation"
+        }
+      },
+      "required": [
+        "diagnostic_id",
+        "code",
+        "severity",
+        "category",
+        "message"
+      ],
+      "title": "Diagnostic",
+      "type": "object"
+    },
+    "DiagnosticCategory": {
+      "description": "Who emitted it. `ARCH-TOOL-CORE-001` \u00a76, all nine.",
+      "enum": [
+        "authoring_parse",
+        "record_validation",
+        "cross_record_validation",
+        "graph_analysis",
+        "release_coherence",
+        "notation_mapping",
+        "schema_interoperability",
+        "rendering",
+        "engineering_qualification"
+      ],
+      "title": "DiagnosticCategory",
+      "type": "string"
+    },
+    "Severity": {
+      "enum": [
+        "error",
+        "warning",
+        "info"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "SourceLocation": {
+      "additionalProperties": false,
+      "description": "Where in the authored source a diagnostic came from. Populated at W2 (CORE-18).",
+      "properties": {
+        "source_id": {
+          "minLength": 1,
+          "title": "Source Id",
+          "type": "string"
+        },
+        "document_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Document Id"
+        },
+        "semantic_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Semantic Path"
+        },
+        "line": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Line"
+        },
+        "column": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Column"
+        },
+        "end_line": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End Line"
+        },
+        "end_column": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End Column"
+        }
+      },
+      "required": [
+        "source_id"
+      ],
+      "title": "SourceLocation",
+      "type": "object"
+    },
+    "ValidationClaim": {
+      "description": "What correctness is being claimed. PROJ-07, all six.\n\nPassing an XML schema check does not establish that a workflow is operationally correct.\nKeeping these apart is the whole point: a report that says \"valid\" without saying *which*\nclaim it validated is the failure mode DATA-31 exists to prevent.",
+      "enum": [
+        "canonical_structure",
+        "cross_model_semantics",
+        "notation_semantics",
+        "schema_syntax",
+        "renderer",
+        "real_world_correctness"
+      ],
+      "title": "ValidationClaim",
+      "type": "string"
+    },
+    "ValidationClaimReport": {
+      "additionalProperties": false,
+      "properties": {
+        "model_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Model Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "profile_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Profile Version",
+          "type": "string"
+        },
+        "validation_mode": {
+          "$ref": "#/$defs/ValidationMode"
+        },
+        "claims": {
+          "items": {
+            "$ref": "#/$defs/ClaimOutcome"
+          },
+          "title": "Claims",
+          "type": "array"
+        },
+        "diagnostics": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Diagnostic"
+          },
+          "title": "Diagnostics",
+          "type": "array"
+        }
+      },
+      "required": [
+        "model_id",
+        "schema_version",
+        "profile_version",
+        "validation_mode",
+        "claims"
+      ],
+      "title": "ValidationClaimReport",
+      "type": "object"
+    },
+    "ValidationMode": {
+      "enum": [
+        "authoring",
+        "candidate",
+        "release"
+      ],
+      "title": "ValidationMode",
+      "type": "string"
+    }
+  }
+}
