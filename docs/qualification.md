@@ -19,7 +19,7 @@ This file describes evidence for the **current repository**, not target architec
 | Structurizr | handwritten DSL validates/exports | generated explicit-ID C4 + rich static export | scaffold only |
 | BPMN | handwritten XML validates against local OMG XSD | generated semantic/DI/moddle/lint/layout/bpmn-js pipeline | scaffold only |
 | Portal | strict basic MkDocs build | offline generated portal + rich C4/BPMN | scaffold only |
-| Requirement evidence | static DATA-01..42 index only on base scaffold | 169-requirement v2 index + generated evidence | docs update |
+| Requirement evidence | legacy v1 DATA-only index on the base scaffold | 169-requirement v2 index + generated evidence | docs update |
 
 ## Known DataFusion / deltalake limitation
 
