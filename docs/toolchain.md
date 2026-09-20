@@ -22,7 +22,7 @@ Python 3.14.7; uv 0.12.7; one project, lock and environment.
 | pytest | installed | test orchestration and future requirement evidence |
 | Ruff | installed | lint/format; target selective RUF/PT/PTH/S expansion |
 | Pyrefly | installed | Pydantic/pytest-aware type checks, Protocols, strict type coverage |
-| types-networkx / types-jsonschema / types-lxml | installed (dev) | stubs for runtime packages shipping no `py.typed` |
+| types-networkx / types-jsonschema / types-lxml / pyarrow-stubs | installed (dev) | stubs for runtime packages shipping no `py.typed`; pyarrow's are qualified against the pinned 25.x, see below |
 | MkDocs | installed docs group | offline portal engine |
 | Material for MkDocs | target, unpinned | portal theme after exact-version qualification |
 
@@ -41,7 +41,9 @@ platforms, and record the new coverage floor.
 `[tool.pyrefly.coverage]` narrows *measurement* to `src` while the *check* surface stays wide.
 Without it the strict figure is diluted by unannotated test bodies (63.83% against 85.71%).
 CI enforces `--strict --fail-under 98`, the measured `src` floor. W1 raised it from 85 as
-annotated domain and validation code landed; it never moves down without a recorded reason.
+annotated domain and validation code landed; it never moves down without a recorded reason. The
+measured figure is now 100.00% (264 of 264 typable) — see the pyarrow paragraph below — and the
+floor is raised to match once W3's storage layer has landed against it.
 
 No baseline file is used (CORE-60). Suppressions are narrow `# pyrefly: ignore[error-code]`
 comments with a local rationale. `pyrefly infer` never runs in CI (CORE-62).
@@ -50,10 +52,37 @@ comments with a local rationale. `pyrefly infer` never runs in CI (CORE-62).
 
 `pyarrow` and `networkx` ship no `py.typed`; `ruamel.yaml` (0.19.1), `datafusion`, `deltalake`,
 `pydantic` and `jinja2` do — ruamel's `compose`, `parse`, `load` and `dump` return `Any`, so the
-authoring adapter declares every return type itself. Stubs cover networkx, jsonschema and lxml. **pyarrow remains uncovered**: the
-published `pyarrow-stubs` targets major 20 against the pinned 25, so it is not adopted. The single
-consequence today is that `storage.datafusion_adapter.register_snapshot` is `[coverage-partial]`,
-which is why the floor is 85 rather than 100. Revisit when W3 builds the Arrow layer.
+authoring adapter declares every return type itself. Stubs cover networkx, jsonschema, lxml and,
+from W3, pyarrow.
+
+**`pyarrow-stubs` is adopted, and qualified rather than trusted.** Its declared target is pyarrow
+major 20 while the lock pins 25.0.1, which is why W1 rejected it. A version mismatch makes a stub
+*possibly* wrong, not *certainly* wrong, and the difference is measurable: adopting
+`pyarrow-stubs==20.0.0.20260819` took strict `src` coverage from 99.62% to 100.00% and left
+`pyrefly check` at zero errors, because the one remaining `[coverage-partial]` function was
+`storage.datafusion_adapter.register_snapshot` and its only untyped name was `pa.Schema`.
+
+The qualification is two files, because a stub can fail in two directions and neither test sees
+the other's failure:
+
+- `tests/static/pyarrow_surface.py` writes every pyarrow call `storage/` makes with the type it
+  must have and asserts it with `assert_type`. A stub that *misreports* the 25.x surface fails
+  `pyrefly check` here rather than at run time.
+- `tests/qualification/test_pyarrow_stub.py` asserts the runtime truth, and separately parses the
+  installed `.pyi` files to check that every class and function they declare still exists on the
+  runtime module — staleness in the other direction.
+
+Two divergences were found and both are pinned rather than papered over. `Table.equals` is
+declared as returning a `Table` and returns a `bool`; `pyarrow.compute.dictionary_decode` is
+absent from the stub and present in pyarrow 25.0.1. The first is the dangerous kind — a wrong
+type type-checks — so `storage.interchange.tables_equal` gives callers the true one; the second
+is a single narrow `# pyrefly: ignore[missing-attribute]`. Both are asserted *as declared* in the
+static harness, so a stub release that corrects either one fails the build and the workaround is
+removed on purpose instead of being left behind.
+
+The fallback, if a future stub release misreports more of the surface than this, is project-owned
+partial stubs under `typings/pyarrow/` on the Pyrefly `search-path`, which outranks site
+packages. It is not needed today and is not carried speculatively.
 
 ## DataFusion / Delta compatibility
 

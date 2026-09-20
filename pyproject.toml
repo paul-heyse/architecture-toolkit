@@ -26,6 +26,7 @@ build-backend = "uv_build"
 dev = [
     "hypothesis>=6.168.0",
     "jsonschema>=4.26.0",
+    "pyarrow-stubs>=20.0.0.20260819",
     "pyrefly>=1.3.1",
     "pytest>=9.1.1",
     "ruff>=0.16.8",
