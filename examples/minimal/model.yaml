@@ -1,19 +1,191 @@
 # Synthetic fixture only; not a real organization's architecture.
-schema_version: "0.1.0"
+#
+# One slice covering every kind and every relationship type in the baseline profile, so the
+# registry, the detail families, interactions, references and notation bindings all have at
+# least one live instance. `ARCH-TOOL-DATA-001` §10 asks for exactly this shape: a process,
+# requirement, application, component, interface, data schema and supporting references.
+schema_version: "1.0.0"
+profile_version: "1.0.0"
 model_id: sample-service
 
 elements:
-  - {element_id: req-1, kind: motivation.requirement, name: Track requests}
-  - {element_id: process-1, kind: business.process, name: Review request}
-  - {element_id: system-1, kind: software.system, name: Request service}
-  - {element_id: component-1, kind: software.component, name: Request handler}
-  - {element_id: interface-1, kind: software.interface, name: Request API}
-  - {element_id: schema-1, kind: information.schema, name: Request schema}
-  - {element_id: role-1, kind: organization.role, name: Reviewer}
+  - element_id: capability-1
+    model_id: sample-service
+    kind_id: business.capability
+    name: Handle customer requests
+    status:
+      design_disposition: accepted
+      evidence_review: client_stated
+
+  - element_id: process-1
+    model_id: sample-service
+    kind_id: business.process
+    name: Review request
+    aliases: [Request review]
+    # A partly manual process. The approval step has no application behind it, and DATA-41 is
+    # explicit that this is a fact to preserve rather than a gap to fill so a coverage matrix
+    # looks complete.
+    status:
+      design_disposition: accepted
+      implementation_state: partially_implemented
+      evidence_review: observed
+    detail:
+      detail_family: behavior
+      element_id: process-1
+      nodes:
+        - {node_id: start, node_type: start_event, name: Request received, ordinal: 0}
+        - {node_id: triage, node_type: task, name: Triage request, ordinal: 1,
+           participant_element_id: component-1}
+        - {node_id: gate, node_type: exclusive_gateway, name: Needs approval?, ordinal: 2}
+        - {node_id: approve, node_type: manual_task, name: Approve by hand, ordinal: 3}
+        - {node_id: done, node_type: end_event, name: Request closed, ordinal: 4}
+      transitions:
+        - {transition_id: t1, source_node_id: start, target_node_id: triage, ordinal: 0}
+        - {transition_id: t2, source_node_id: triage, target_node_id: gate, ordinal: 1}
+        - {transition_id: t3, source_node_id: gate, target_node_id: approve, ordinal: 2,
+           guard: amount > threshold}
+        - {transition_id: t4, source_node_id: gate, target_node_id: done, ordinal: 3,
+           guard: otherwise}
+        - {transition_id: t5, source_node_id: approve, target_node_id: done, ordinal: 4}
+
+  - element_id: role-1
+    model_id: sample-service
+    kind_id: organization.role
+    name: Reviewer
+    # Nobody has told us who owns this. That is not an invalid foreign key.
+    status:
+      client_acceptance: withheld
+
+  - element_id: system-1
+    model_id: sample-service
+    kind_id: software.system
+    name: Request service
+    status:
+      design_disposition: accepted
+      implementation_state: implemented
+      technical_qualification: not_qualified
+
+  - element_id: component-1
+    model_id: sample-service
+    kind_id: software.component
+    name: Request handler
+    status:
+      design_disposition: accepted
+      implementation_state: implemented
+
+  - element_id: interface-1
+    model_id: sample-service
+    kind_id: software.interface
+    name: Request API
+    detail:
+      detail_family: interface
+      element_id: interface-1
+      transport: {protocol: https, interaction_mode: synchronous, serialization: json}
+      authentication_description: Bearer token issued by the platform identity provider
+      request_schema_id: schema-1
+      delivery_semantics: at_most_once
+      timeout_ms: 30000
+      idempotency_description: Safe to retry; the handler deduplicates on request id.
+
+  - element_id: object-1
+    model_id: sample-service
+    kind_id: information.object
+    name: Customer request
+    description: The business-meaningful unit of information, independent of its storage.
+
+  - element_id: schema-1
+    model_id: sample-service
+    kind_id: information.schema
+    name: Request schema
+    # Related to object-1, not identical to it: a conceptual business object and its physical
+    # representation are two representations of one idea.
+    detail:
+      detail_family: data_schema
+      element_id: schema-1
+      fields:
+        - {field_id: request_id, field_name: request_id, data_type: string,
+           nullability: required, cardinality: one, key_membership: [primary_key], ordinal: 0}
+        - {field_id: submitted_by, field_name: submitted_by, data_type: string,
+           nullability: required, cardinality: one, key_membership: [foreign_key],
+           references_element_id: role-1, references_field_id: role_id, ordinal: 1}
+        - {field_id: note, field_name: note, data_type: string, nullability: optional,
+           cardinality: one, ordinal: 2}
+
+  - element_id: deployment-1
+    model_id: sample-service
+    kind_id: technology.deployment
+    name: Production cluster
+    detail:
+      detail_family: deployment
+      element_id: deployment-1
+      environment: production
+      software_instance_id: system-1
+
+  - element_id: req-1
+    model_id: sample-service
+    kind_id: motivation.requirement
+    name: Track requests
+    detail:
+      detail_family: requirement
+      element_id: req-1
+      category: functional
+      applicability: applicable
+      verification_method: test
+      acceptance_criterion_ids: [ref-1]
+
 relationships:
-  - {relationship_id: rel-1, source_element_id: system-1, target_element_id: process-1, relationship_type_id: supports}
-  - {relationship_id: rel-2, source_element_id: system-1, target_element_id: component-1, relationship_type_id: contains}
-  - {relationship_id: rel-3, source_element_id: component-1, target_element_id: interface-1, relationship_type_id: exposes}
-  - {relationship_id: rel-4, source_element_id: interface-1, target_element_id: schema-1, relationship_type_id: uses_schema}
-  - {relationship_id: rel-5, source_element_id: process-1, target_element_id: req-1, relationship_type_id: realizes}
-  - {relationship_id: rel-6, source_element_id: role-1, target_element_id: process-1, relationship_type_id: responsible_for}
+  - {relationship_id: rel-1, model_id: sample-service, relationship_type_id: contains,
+     source_element_id: system-1, target_element_id: component-1}
+  - {relationship_id: rel-2, model_id: sample-service, relationship_type_id: exposes,
+     source_element_id: component-1, target_element_id: interface-1}
+  - {relationship_id: rel-3, model_id: sample-service, relationship_type_id: depends_on,
+     source_element_id: interface-1, target_element_id: schema-1}
+  - {relationship_id: rel-4, model_id: sample-service, relationship_type_id: realizes,
+     source_element_id: process-1, target_element_id: req-1}
+  - {relationship_id: rel-5, model_id: sample-service, relationship_type_id: responsible_for,
+     source_element_id: role-1, target_element_id: process-1}
+  - {relationship_id: rel-6, model_id: sample-service, relationship_type_id: supports,
+     source_element_id: system-1, target_element_id: capability-1}
+  - {relationship_id: rel-7, model_id: sample-service, relationship_type_id: justifies,
+     source_element_id: req-1, target_element_id: system-1}
+  - {relationship_id: rel-8, model_id: sample-service,
+     relationship_type_id: exchanges_data_with,
+     source_element_id: system-1, target_element_id: role-1}
+
+interactions:
+  - interaction_id: handoff-1
+    model_id: sample-service
+    name: Request handed to the reviewer
+    interaction_kind: handoff
+    description: A binary edge cannot say who produced, who received and what moved.
+    participants:
+      - {element_id: process-1, participant_role: producer, ordinal: 0}
+      - {element_id: role-1, participant_role: receiver, ordinal: 1}
+      - {element_id: interface-1, participant_role: interface, ordinal: 2}
+    moved_object_ids: [object-1]
+
+references:
+  - reference_id: ref-1
+    model_id: sample-service
+    reference_kind: document
+    title: Request handling service description (synthetic)
+    authority: Synthetic example
+
+reference_links:
+  # Supports one specific assertion — the interface's authentication mechanism — rather than
+  # appearing to validate the whole application.
+  - link_id: link-1
+    model_id: sample-service
+    reference_id: ref-1
+    subject: {subject_kind: field, element_id: interface-1,
+              field_path: detail.authentication_description}
+    link_role: supports
+
+notation_bindings:
+  - binding_id: binding-1
+    model_id: sample-service
+    subject: {subject_kind: element, element_id: process-1}
+    notation: bpmn
+    notation_type: bpmn:Process
+    notation_object_id: Process_ReviewRequest
+    mapping_profile_version: "1.0.0"

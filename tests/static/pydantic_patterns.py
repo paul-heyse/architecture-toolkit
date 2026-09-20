@@ -10,13 +10,28 @@ introduce new ones — a pattern the domain uses but this file does not exercise
 
 from __future__ import annotations
 
+from enum import StrEnum
+from functools import cached_property
 from typing import Annotated, Literal, Self, assert_never, assert_type
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    TypeAdapter,
+    model_validator,
+)
 
 # CORE-03: centralized constrained aliases rather than repeated raw-string rules.
-ElementId = Annotated[str, Field(min_length=1, pattern=r"^[a-z][a-z0-9_.-]*$")]
-Digest = Annotated[str, Field(min_length=64, max_length=64)]
+#
+# `StringConstraints`, not `Field`, and the choice is load-bearing rather than stylistic. Measured
+# against the pinned versions: `st.from_type` on a `StringConstraints` alias raises a
+# `HypothesisWarning` that `filterwarnings` turns into a failure, while on a `Field`-constrained
+# alias it warns not at all and yields values that fail validation. The seeded form of this file
+# used `Field`, which would have qualified the pattern that silently disables the guard.
+ElementId = Annotated[str, StringConstraints(min_length=1, pattern=r"^[a-z][a-z0-9_.-]*$")]
+Digest = Annotated[str, StringConstraints(min_length=64, max_length=64)]
 
 
 class Strict(BaseModel):
@@ -74,3 +89,79 @@ def parse_details(payload: list[dict[str, object]]) -> list[InterfaceDetail | Re
     parsed = DETAILS.validate_python(payload)
     assert_type(parsed, list[InterfaceDetail | RequirementDetail])
     return parsed
+
+
+# -- patterns introduced by W1 ------------------------------------------------------------------
+# Each is used by `domain/`, so each has to type-check here or it is unqualified (CORE-56).
+
+
+class GapState(StrEnum):
+    UNKNOWN = "unknown"
+    NOT_APPLICABLE = "not_applicable"
+
+
+class Disposition(StrEnum):
+    PROPOSED = "proposed"
+    ACCEPTED = "accepted"
+
+
+class StatusSlice(Strict):
+    """DATA-41: a gap is a value in the union, not a missing field.
+
+    `Disposition | GapState` rather than `Disposition | None`, because a null says nobody wrote
+    anything and a `GapState` says we looked. Pyrefly has to accept the union of two `StrEnum`s
+    as a field annotation for this to be expressible at all.
+    """
+
+    disposition: Disposition | GapState = GapState.UNKNOWN
+
+
+def describe_status(value: Disposition | GapState) -> str:
+    """CORE-59 over the gap union: adding a member to either enum must break this statically."""
+    match value:
+        case Disposition.PROPOSED:
+            return "proposed"
+        case Disposition.ACCEPTED:
+            return "accepted"
+        case GapState.UNKNOWN:
+            return "not known"
+        case GapState.NOT_APPLICABLE:
+            return "not applicable"
+        case _ as unreachable:
+            assert_never(unreachable)
+
+
+class ImmutableNested(Strict):
+    """CORE-08: immutable nested field types only.
+
+    `tuple` and `frozenset`, never `list`, `set` or `dict`. Pydantic rejects `MappingProxyType`
+    outright, so an immutable mapping is spelled as a tuple of pairs.
+    """
+
+    names: tuple[str, ...] = ()
+    tags: frozenset[str] = frozenset()
+    labels: tuple[tuple[str, str], ...] = ()
+
+
+class CachedRegistry(Strict):
+    """A frozen record with an O(1) index and no mutable field.
+
+    `cached_property` writes to the instance `__dict__`, which a frozen Pydantic model permits,
+    and the model stays hashable because Pydantic hashes field values. That is what lets a
+    profile be a value rather than a loaded file.
+    """
+
+    entries: tuple[str, ...] = ()
+
+    @cached_property
+    def by_name(self) -> dict[str, int]:
+        return {name: index for index, name in enumerate(self.entries)}
+
+
+def read_cached(registry: CachedRegistry) -> int | None:
+    assert_type(registry.by_name, dict[str, int])
+    return registry.by_name.get("a")
+
+
+DETAIL_UNION = TypeAdapter(list[ElementDetail])
+"""CORE-05 over a collection boundary; no wrapper model is created to call validation."""
