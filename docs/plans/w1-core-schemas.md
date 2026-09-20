@@ -85,9 +85,11 @@ mutation replaces in-place edits. Nothing is persisted yet.
     `AddElement`, `UpdateElement`, `RenameElement`, `RetireElement`, `AddRelationship`,
     `RemoveRelationship`, `UpdateDetail` — with expected base identity where relevant. Candidate
     construction runs baseline plus commands through full Pydantic validation and then cross-record
-    validation. A guard test asserts normal flows use no `model_construct()`, `SkipValidation` or
-    `model_copy(update=...)`. `tests/unit/test_model.py` currently uses `model_copy(update=...)` to
-    test rename and must move to `RenameElement`.
+    validation. The `no-validation-bypass` ast-grep rule already asserts
+    that normal flows use no `model_construct()`, `SkipValidation` or `model_copy(update=...)`;
+    widen its `files:` scope from `src/**` to include `tests/**` once the rename test moves.
+    `tests/unit/test_model.py` currently uses `model_copy(update=...)` to test rename and must
+    move to `RenameElement`.
 14. **TypeAdapter boundaries** (CORE-05). Use `TypeAdapter` for command batches and registry
     entries. Do not create wrapper models solely to call validation.
 15. **Generated JSON Schema** (CORE-12, CORE-13). Versioned schemas for the authoring model, detail
@@ -116,7 +118,7 @@ Also required, though not the single gate: **no normal validation bypass APIs** 
 
 ## Policy only
 
-CORE-09 — a guard test over the source tree, not a feature.
+CORE-09 — enforced by the `no-validation-bypass` structural rule, not a feature.
 
 ## Executable checks
 

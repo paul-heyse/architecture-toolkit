@@ -1,0 +1,24 @@
+id: domain-layer-imports
+language: python
+severity: error
+message: The domain layer must not import storage, query or graph libraries.
+note: |
+  implementation-contract.md Package boundaries and DATA-01: Pydantic owns domain semantics,
+  Arrow owns physical schemas, DataFusion and NetworkX are derived read surfaces. A domain
+  module that imports them has collapsed the boundary.
+
+  Matches the module-name node rather than the import line, so `import x`, `import x as y` and
+  `from x import y` are all covered by one anchored expression, and `networkx_stub` is not a
+  false positive.
+files:
+  - "src/architecture_toolkit/domain/**/*.py"
+rule:
+  kind: dotted_name
+  regex: ^(pyarrow|deltalake|datafusion|networkx)(\..+)?$
+  any:
+    - inside:
+        kind: import_statement
+        stopBy: end
+    - inside:
+        kind: import_from_statement
+        field: module_name

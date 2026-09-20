@@ -1,0 +1,7 @@
+id: no-shell-invocation
+valid:
+  - "subprocess.run([\"java\", \"-jar\", jar], check=True, timeout=120)"
+  - "subprocess.run(args, check=True, shell=False)"
+invalid:
+  - "subprocess.run(command, shell=True)"
+  - "os.system(command)"

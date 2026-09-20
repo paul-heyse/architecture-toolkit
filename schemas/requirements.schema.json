@@ -62,7 +62,7 @@
         },
         "contract": {
           "type": "string",
-          "pattern": "^docs/contracts/.+\\\\.md$"
+          "pattern": "^docs/contracts/[^/]+\\.md$"
         }
       }
     },

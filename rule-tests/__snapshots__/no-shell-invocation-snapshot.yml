@@ -1,0 +1,14 @@
+id: no-shell-invocation
+snapshots:
+  os.system(command):
+    labels:
+    - source: os.system(command)
+      style: primary
+      start: 0
+      end: 18
+  subprocess.run(command, shell=True):
+    labels:
+    - source: shell=True
+      style: primary
+      start: 24
+      end: 34

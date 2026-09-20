@@ -1,0 +1,19 @@
+id: storage-no-graph-import
+language: python
+severity: error
+message: The storage layer must not import NetworkX.
+note: |
+  DATA-01 and CORE-22: NetworkX is a disposable analysis projection built in queries/ from a
+  selected release. Storage persists typed tables and knows nothing about graph traversal.
+files:
+  - "src/architecture_toolkit/storage/**/*.py"
+rule:
+  kind: dotted_name
+  regex: ^networkx(\..+)?$
+  any:
+    - inside:
+        kind: import_statement
+        stopBy: end
+    - inside:
+        kind: import_from_statement
+        field: module_name

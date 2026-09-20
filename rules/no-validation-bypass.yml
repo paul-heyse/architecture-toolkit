@@ -1,0 +1,15 @@
+id: no-validation-bypass
+language: python
+severity: error
+message: Normal domain flow must not bypass validation.
+note: |
+  CORE-09 and CORE-10: mutation is a validated typed ChangeCommand producing a fully revalidated
+  candidate. core.md forbids model_construct(), SkipValidation, unvalidated in-place mutation and
+  model_copy(update=...) as the architecture mutation mechanism.
+files:
+  - "src/**/*.py"
+rule:
+  any:
+    - pattern: $X.model_construct($$$)
+    - pattern: $X.model_copy(update=$$$)
+    - pattern: SkipValidation

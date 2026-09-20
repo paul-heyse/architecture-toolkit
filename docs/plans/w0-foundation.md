@@ -72,14 +72,16 @@ every package.
 14. **EngineeringQualificationArtifact** (CORE-66). Model it in `domain/` with the fields core.md
     names. A guard test asserts it shares no type with the architecture `Diagnostic` and that
     neither module imports the other — engineering evidence never becomes model validation.
-15. **Import-layering guard** (DATA-01, DATA-32). Generate a test from the Package boundaries table:
-    `domain` imports none of pyarrow, deltalake, datafusion or networkx; `storage` does not import
-    networkx; `queries` reaches Delta only through the storage adapter.
+15. **Import-layering guard** (DATA-01, DATA-32). Extend the existing ast-grep rules
+    `domain-layer-imports` and `storage-no-graph-import` to cover `queries` reaching Delta only
+    through the storage adapter. Structural rules, not text patterns: see
+    [contract enforcement](../contract-enforcement.md).
 16. **Dependency guards** (DATA-02, DATA-33, DATA-35). Assert against the resolved `uv.lock`, not
     `pyproject.toml`, so transitive pulls are caught: no pandas, polars, duckdb, sqlalchemy, spark,
     a graph or vector database, or an orchestrator. One project, one lock, one environment.
-17. **Workspace boundary guard** (DATA-36). Assert no private workspace URL and no `.runtime/` or
-    `.tools/` payload is tracked by Git.
+17. **Workspace boundary guard** (DATA-36). `scripts/check_boundaries.py` already asserts no
+    private workspace URL is tracked and no excluded dependency resolves in `uv.lock`; extend it to
+    reject a tracked `.runtime/` or `.tools/` payload.
 
 ## Hard gate
 
@@ -114,7 +116,11 @@ uv run ruff format --check .
 uv run pyrefly check
 uv run pyrefly coverage check
 uv run pytest --strict-markers
+uv run python scripts/check_schema.py
 uv run python scripts/check_plan_coverage.py
+uv run python scripts/check_boundaries.py
+ast-grep scan
+ast-grep test
 ```
 
 `uv run ty check src` is removed from CI in the same change. Until that change is committed, ty

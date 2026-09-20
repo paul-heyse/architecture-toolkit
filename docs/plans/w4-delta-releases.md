@@ -33,7 +33,8 @@ release.
    and change-set IDs; schema and profile versions; per-table URI, exact Delta version and semantic
    digest from W2; source bundle digest; generator/toolkit commit; validation and change reports.
    **A Delta version number is never the architecture release number.** Readers load the manifest
-   once and open exactly the versions it names.
+   once and open exactly the versions it names. The `no-implicit-latest-delta-version` ast-grep
+   rule already fails any `DeltaTable(...)` opened without an explicit `version=`.
 4. **Reserve the projection fields now** (extends DATA-21, filled by W8). Declare
    `projection_artifact_digests`, `render_artifact_digests` and `validation_reports` as optional and
    empty. Adding them at W8 instead would force a DATA-56 migration on every existing release.

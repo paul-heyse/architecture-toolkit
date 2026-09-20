@@ -22,6 +22,7 @@ nav:
       - W7b Notation generators: plans/w7b-notation-generators.md
       - W8 Portal and export: plans/w8-portal-export.md
       - W9 Qualification: plans/w9-qualification.md
+  - Contract enforcement: contract-enforcement.md
   - Toolchain: toolchain.md
   - Qualification: qualification.md
   - References: references.md

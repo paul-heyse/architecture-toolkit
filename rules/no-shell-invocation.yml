@@ -1,0 +1,16 @@
+id: no-shell-invocation
+language: python
+severity: error
+message: Vendor tools are invoked with an argument array, never a shell string.
+note: |
+  projections.md Rendering and provenance: "uses argument arrays not shell interpolation".
+  A shell-built command line makes generated model content injectable into the renderer.
+files:
+  - "src/**/*.py"
+  - "scripts/**/*.py"
+rule:
+  any:
+    - pattern:
+        context: f(shell=True)
+        selector: keyword_argument
+    - pattern: os.system($$$)

@@ -171,11 +171,16 @@ uv run ty check src
 uv run pytest
 uv run python scripts/check_schema.py
 uv run python scripts/check_plan_coverage.py
+uv run python scripts/check_boundaries.py
+ast-grep scan
+ast-grep test
 uv run architecture validate examples/minimal/model.yaml
 uv run --group docs mkdocs build --strict
 uv run python scripts/bootstrap_tools.py
 uv run python scripts/qualify_tools.py
 ```
+
+`ast-grep` is a system tool, not a locked dependency; see [contract enforcement](contract-enforcement.md).
 
 After the Pyrefly migration, replace the ty command with the accepted Pyrefly check/coverage commands
 and update CI/toolchain evidence in the same implementation PR.

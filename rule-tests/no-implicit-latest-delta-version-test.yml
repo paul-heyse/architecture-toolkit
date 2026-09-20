@@ -1,0 +1,16 @@
+id: no-implicit-latest-delta-version
+valid:
+  - "DeltaTable(location, version=9)"
+  - "DeltaTable(location, version=manifest.tables[\"elements\"].delta_version)"
+  # The version keyword split across lines: a line-oriented check would miss it.
+  - |
+    DeltaTable(
+        location,
+        version=pinned,
+    )
+  # Inside a string literal, so not a call at all.
+  - "example = \"DeltaTable(location)\""
+invalid:
+  - "DeltaTable(location)"
+  - "DeltaTable(\"tables/elements\")"
+  - "DeltaTable(location, storage_options=options)"

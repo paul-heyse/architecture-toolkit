@@ -60,7 +60,8 @@ not the change narrative.
    entities disabled, no huge-tree override and no recovery for canonical validation, or the exact
    pinned-lxml equivalent. `scripts/qualify_tools.py` already uses
    `etree.XMLParser(resolve_entities=False, no_network=True)`; generalize that into the shared
-   factory rather than repeating it.
+   factory rather than repeating it. The `secure-xml-parser` ast-grep rule already fails the
+   unsafe keyword forms.
 10. **Checksummed local resolver** (CORE-41). Standards schema imports and includes resolve only
     from reviewed local paths recorded in `tools.lock.json`. Unexpected external URI resolution
     fails. The BPMN 2.0.2 XSD set is already pinned; ArchiMate Exchange XSDs are not yet and are a

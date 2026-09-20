@@ -91,7 +91,9 @@ The last three of these require amendments A1..A4 to `docs/agent-handoff.md`, re
 5. The PR names its requirement IDs, executable checks, remaining gaps and design questions.
 
 A requirement listed under **Policy only** in a wave is satisfied by a documented constraint plus a
-guard test. Reviewers should not expect a feature for it.
+guard test. Reviewers should not expect a feature for it. Prefer a structural rule under `rules/`
+over a hand-written pattern; see [contract enforcement](../contract-enforcement.md) for the tiers
+and for why each guard must carry a known-bad case.
 
 ## Status
 
