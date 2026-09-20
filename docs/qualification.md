@@ -9,8 +9,8 @@ This file describes evidence for the **current repository**, not target architec
 | CORE domain | minimal strict Pydantic model, unique IDs, endpoint checks | CORE-01..67 | partial |
 | YAML | configured 1.2 round-trip profile, forbidden constructs with stable codes, SourceMap, source-located diagnostics with a stated resolution, command-driven round-trip editing and a presentation-invariance property (W2) | authored-order semantics for W5/W6 traversal | proven for M1 |
 | Static typing | Pyrefly over src/tests/scripts, 0 errors; strict `src` coverage 100.00%; `pyarrow-stubs` qualified statically and at run time with two divergences pinned | D-032 / Pyrefly CORE-53..62 | migrated; coverage floor 98 |
-| DATA Arrow/Delta | nested interface, nullable scalar, empty table, explicit Arrow schema, Delta history | DATA-01..60 | partial |
-| Snapshot provider | explicit-version materialized PyArrow registration | materialized fallback + qualified Dataset/stream candidates | partial |
+| DATA Arrow/Delta | eleven declared schemas with asserted invariants, bidirectional mappings, chunk-independent table digests, the metadata policy and a continuously tested compatibility matrix (W3) | DATA-01..60 | partial; publication and history are W4 |
+| Snapshot provider | the `SnapshotProvider` boundary filled in, with the materialized PyArrow provider behind it and arro3 normalization at one place (W3) | materialized fallback + qualified Dataset/stream candidates | fallback proven; candidates are W4 |
 | DataFusion | scalar SQL binding over pinned snapshot | release-scoped catalogs/query recipes/plan evidence | partial |
 | NetworkX | parallel MultiDiGraph edges preserved | private GraphPolicy facade/explainable analyses | partial |
 | Release publication | none | coherent manifest/lock/staging/failure protocol | pending |

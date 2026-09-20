@@ -1,9 +1,13 @@
 # W2/W3 execution handoff — authoring adapter, semantic identity and the Arrow fabric
 
-> Status on 2026-09-20: W2 is four of five commits in on branch `wave-2/authoring`; W3 is not
-> started. This document is the complete handoff for the agent that finishes W2 and executes W3.
-> It states what exists, what is verified, what is half-done in the working tree, and every
-> remaining work item with enough detail to implement without re-deriving the design.
+> **Status: executed.** This was written on 2026-09-20 as the handoff for finishing W2 and
+> executing W3, and both are now complete on branch `wave-2/authoring`. The plan below is kept as
+> written, because the value that survives execution is the *reasoning* — why eleven tables, why
+> no nullable struct, why the table digest is defined over records — and a plan rewritten after
+> the fact stops being evidence of what was decided in advance. §7 records what actually
+> happened, including the three places execution departed from this plan and why.
+
+> Read §7 first if you want the outcome; read §1–§6 for the design.
 
 Read in this order: this document; [W2 plan](w2-authoring.md); [W3 plan](w3-arrow-fabric.md);
 [core contract](../contracts/core.md) §YAML authoring and §Diagnostics;
@@ -651,3 +655,77 @@ Hand-off to W4: `TableSet`, `table_set_digests`, `canonical_table`,
    --fail-under 98`, `pytest`, `scripts/check_schema.py`, `scripts/check_plan_coverage.py`,
    `scripts/check_boundaries.py`, `ast-grep scan`, `ast-grep test`, `architecture validate
    examples/minimal/model.yaml`, `mkdocs build --strict`. CI runs the same on ubuntu and macos-14.
+
+
+## 7. What actually happened
+
+Every work item in §4 and §5 landed. The suite is 561 tests; strict Pyrefly coverage is 100.00%
+over `src`; both hard gates hold. Seven commits followed this document:
+
+| Commit | Scope |
+| --- | --- |
+| `cd6df82` | W2 step 5 — the presentation-invariance property, the emitter fix it found, and the W2 decisions |
+| `b504d20` | the example-reformat question, answered against reformatting |
+| `d50303e` | W3 step 1 — `pyarrow-stubs` adopted and qualified |
+| `51305c4` | W3 step 2 — `extensions`, the Arrow capsule Protocols, the provider description |
+| `923494e` | W3 step 3 — the eleven schemas, the metadata policy, the interchange layer |
+| *(step 4)* | the mappings, table sets and digests, with the M2 hard gate |
+| *(step 5)* | the materialized `SnapshotProvider` |
+| *(step 6)* | the compatibility matrix and the decision records |
+
+### Three departures from this plan
+
+**The presentation property found a defect in the adapter, not in the strategy.** §4.1 anticipated
+a failure and said to fix the *strategy* unless the difference was reproducible through
+`render_model_text` alone. It was: ruamel's double-quoted emitter drops the line-continuation
+backslash on a split it did not make at a space, so a scalar wrapped just after an escape sequence
+gains a space nobody authored — reachable at the profile's own width with a 93-character prefix, a
+control character and a later space. The fix is `profile._SafeRoundTripEmitter`, which withholds
+that one split; ordinary wrapping is untouched, and all 67 characters the emitter escapes are
+covered by a parametrized test.
+
+**The example was not reformatted.** §4.2 recommended replacing `examples/minimal/model.yaml` with
+the profile's own output so the fixed-point test could assert byte identity. Measured, the output
+is worse than the input: trailing whitespace on fifteen lines, `guard:` separated from its value by
+a line break, and one line still 101 columns wide. The example is the first document a reader
+sees, and `canonical.yaml` already proves byte identity for a document in the profile's own style,
+so the question is answered against reformatting rather than left open. Recorded in `b504d20`.
+
+**`pyarrow-stubs` needed three suppressions, not none.** §5.2 set "zero new errors" as the
+acceptance bar and named a fallback to project-owned stubs. The stub is accurate enough to take
+strict coverage from 99.62% to 100.00%, and it misreports three things against pyarrow 25.0.1:
+`Table.equals` is declared as returning a `Table`, `pyarrow.compute.dictionary_decode` is absent,
+and `pa.schema()`'s capsule overload is missing. The fallback was not taken, because replacing an
+almost-right stub with a partial hand-written one would have traded three known divergences for an
+unknown number. Instead each is pinned *as declared* in `tests/static/pyarrow_surface.py` and
+asserted against the runtime in `tests/qualification/test_pyarrow_stub.py`, so a corrected stub
+release fails the build and the workaround is removed deliberately.
+
+### Two refinements worth knowing about
+
+**The eleven table digests are not a decomposition of the model digest.** §5.5 said
+`table_set_digests` equals the domain `collection_digest` per collection. It does for ten of the
+eleven; `elements` is the exception, because detail is normalized out of it, so its digest covers
+elements without detail. That turns out to be the useful behaviour rather than a compromise: a
+per-table digest answers *which tables must be republished*, which is what DATA-21's reuse gate
+needs, while `model_digest` answers *is this the same model*. W4 records both. Stated in
+`storage/digests.py` and asserted in `tests/unit/test_storage_properties.py`.
+
+**`check_nullability` became two functions.** §5.5 gave it three jobs — nulls, wrong types and
+unknown columns. It is `check_nullability` and `check_columns`, because "this table has the wrong
+columns" and "this column has a null it should not" are different failures and a caller reading
+the message should not have to work out which one happened.
+
+### Open items carried into W4
+
+- The `CORE.YAML.UNSUPPORTED_TAG` code from §4.3 is still an owner preference, not a decision.
+- `UpdateElement` still cannot edit `extensions`; W6 decides whether an extension edit is a
+  semantic change.
+- `--fail-under` was raised from 98 to 100, the measured figure, rather than deferred. The
+  argument that decided it: at 98 a partial annotation sits unnoticed until two percent of the
+  package has accumulated them, while at 100 the first one fails in the change that introduced
+  it. If W4 meets a genuinely untypable surface, lowering the floor is a decision with a recorded
+  reason — which is the conversation that should happen — not a silent slide.
+- Historical reproducibility is the one §11I dimension the matrix does not cover, because it needs
+  several published releases. W4 extends `tests/qualification/test_arrow_matrix.py` rather than
+  starting a second matrix.

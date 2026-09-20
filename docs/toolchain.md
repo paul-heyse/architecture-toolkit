@@ -40,10 +40,15 @@ platforms, and record the new coverage floor.
 
 `[tool.pyrefly.coverage]` narrows *measurement* to `src` while the *check* surface stays wide.
 Without it the strict figure is diluted by unannotated test bodies (63.83% against 85.71%).
-CI enforces `--strict --fail-under 98`, the measured `src` floor. W1 raised it from 85 as
-annotated domain and validation code landed; it never moves down without a recorded reason. The
-measured figure is now 100.00% (264 of 264 typable) — see the pyarrow paragraph below — and the
-floor is raised to match once W3's storage layer has landed against it.
+CI enforces `--strict --fail-under 100`, the measured `src` floor. W0 set 85, W1 raised it to 98
+as annotated domain and validation code landed, and W3 raised it to 100 once `pyarrow-stubs`
+closed the last `[coverage-partial]` function. It never moves down without a recorded reason.
+
+A floor at the measured figure is the point rather than an accident. At 98 a partial annotation
+can be introduced and sit unnoticed until two percent of the package has accumulated them; at 100
+the first one fails CI, in the change that introduced it, where it is cheapest to fix. If a wave
+meets a genuinely untypable third-party surface, lowering the floor is a decision with a recorded
+reason — which is exactly the conversation that should happen — not a silent slide.
 
 No baseline file is used (CORE-60). Suppressions are narrow `# pyrefly: ignore[error-code]`
 comments with a local rationale. `pyrefly infer` never runs in CI (CORE-62).

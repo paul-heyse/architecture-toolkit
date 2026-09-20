@@ -27,6 +27,9 @@ Implemented:
 - the configured YAML 1.2 authoring adapter, the SourceMap, source-located diagnostics with a
   stated resolution, command-driven round-trip editing and the versioned canonical semantic hash
   with a record-level delta (W2);
+- the Arrow fabric: eleven declared table schemas, bidirectional Pydantic mappings, the metadata
+  policy, arro3 and C-stream normalization, chunk-independent table digests and the
+  `SnapshotProvider` boundary with its materialized provider (W3);
 - explicit-version Delta -> PyArrow -> DataFusion materialized adapter;
 - synthetic examples and basic qualification tests;
 - checksummed local Java/vendor bootstrap;
@@ -34,7 +37,6 @@ Implemented:
 - MkDocs documentation scaffold and two-platform CI.
 
 Not implemented:
-- explicit Arrow schemas, Pydantic <-> Arrow mappings and the table digest;
 - coherent multi-table release manager;
 - Dataset/stream SnapshotProviders;
 - semantic diff/scenarios/GraphPolicy facade;
@@ -169,7 +171,7 @@ uv sync --locked --all-groups
 uv run ruff check .
 uv run ruff format --check .
 uv run pyrefly check
-uv run pyrefly coverage check --strict --fail-under 98
+uv run pyrefly coverage check --strict --fail-under 100
 uv run pytest
 uv run python scripts/check_schema.py
 uv run python scripts/check_plan_coverage.py
