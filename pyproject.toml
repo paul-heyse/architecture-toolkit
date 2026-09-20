@@ -26,9 +26,12 @@ build-backend = "uv_build"
 dev = [
     "hypothesis>=6.168.0",
     "jsonschema>=4.26.0",
+    "pyrefly>=1.3.1",
     "pytest>=9.1.1",
     "ruff>=0.16.8",
-    "ty>=0.0.82",
+    "types-jsonschema>=4.26.0.20260518",
+    "types-lxml>=2026.2.16",
+    "types-networkx>=3.6.1.20260911",
 ]
 docs = [
     "mkdocs>=1.6.1",
@@ -39,11 +42,36 @@ target-version = "py314"
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+# CORE-63 baseline plus the CORE-64 expansion, qualified against this tree: RUF, PT and PTH
+# report nothing today; S reports only the reviewed clusters excepted below.
+select = ["E", "F", "I", "UP", "B", "RUF", "PT", "PTH", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests assert. CORE-64 asks for narrow reviewed exceptions rather than dropping the family.
+"tests/**" = ["S101"]
+# Vendor and git invocations are argument arrays resolved from PATH, never shell strings, with
+# explicit timeouts. rules/no-shell-invocation.yml enforces the argv form structurally.
+"scripts/*.py" = ["S603", "S607"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
 
-[tool.ty.environment]
+# D-032: Pyrefly replaces ty as the target static type checker.
+[tool.pyrefly]
+# CORE-57: check source, tests and executable scripts, not just src.
+project-includes = ["src", "tests", "scripts"]
+project-excludes = [".tools/**", ".runtime/**", "site/**", ".venv/**"]
+search-path = ["src"]
 python-version = "3.14"
+# CORE-55: a mismatched checker is a fatal configuration error, independent of the lock.
+required-version = ">=1.3.1,<1.4.0"
+# CORE-54: configured explicitly; never unconfigured or basic mode. Matches the current default,
+# set so that a future default change cannot silently relax the project.
+check-unannotated-defs = true
+# CORE-60: no `baseline` key. Suppressions are narrow `# pyrefly: ignore[error-code]` comments.
+
+# CORE-61: measure coverage over the package only. `project-includes` above keeps the *check*
+# surface wide; this keeps the *measurement* surface from being diluted by test bodies.
+[tool.pyrefly.coverage]
+includes = ["src"]

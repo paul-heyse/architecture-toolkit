@@ -161,13 +161,12 @@ or real-world model correctness.
 
 ## Current checks
 
-Until D-032 is implemented:
-
 ```sh
 uv sync --locked --all-groups
 uv run ruff check .
 uv run ruff format --check .
-uv run ty check src
+uv run pyrefly check
+uv run pyrefly coverage check --strict --fail-under 85
 uv run pytest
 uv run python scripts/check_schema.py
 uv run python scripts/check_plan_coverage.py
