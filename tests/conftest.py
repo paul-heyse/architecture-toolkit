@@ -36,7 +36,8 @@ def minimal_model_source() -> dict[str, Any]:
     Function-scoped on purpose: tests mutate the mapping to build invalid variants, and a shared
     instance would leak those mutations between tests.
     """
-    from ruamel.yaml import YAML
+    from architecture_toolkit.domain.authoring import parse_source
 
-    raw = YAML(typ="safe").load((ROOT / "examples/minimal/model.yaml").read_text())
-    return json.loads(json.dumps(raw))
+    source = ROOT / "examples/minimal/model.yaml"
+    loaded = parse_source(source.read_text(), source_id=str(source))
+    return json.loads(loaded.json_text())

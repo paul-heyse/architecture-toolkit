@@ -171,6 +171,7 @@ def schema_references_resolve(
                         canonical_object_id=element.element_id,
                         field_path=(
                             f"elements.{element.element_id}.detail.fields.{field.field_id}"
+                            ".references_element_id"
                         ),
                     )
 

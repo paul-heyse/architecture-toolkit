@@ -40,4 +40,5 @@ def profile_version_supported(
             ),
             rule_id="profile-version-supported",
             canonical_object_id=candidate.model.model_id,
+            field_path="profile_version",
         )

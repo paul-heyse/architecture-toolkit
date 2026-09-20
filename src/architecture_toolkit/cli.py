@@ -5,16 +5,8 @@ import json
 from importlib.metadata import version
 from pathlib import Path
 
-from pydantic import ValidationError
-
 from architecture_toolkit.contracts import SCHEMA_FAMILIES, emit, emittable
-from architecture_toolkit.domain.authoring import AuthoringError, parse_model, parse_source
-from architecture_toolkit.domain.model import Model
-from architecture_toolkit.validation.normalize import (
-    normalize_authoring_error,
-    normalize_validation_error,
-)
-from architecture_toolkit.validation.pipeline import validate_model
+from architecture_toolkit.validation.authoring import validate_source_text
 from architecture_toolkit.validation.render import render_diagnostics, render_report
 
 # Exit codes are part of the interface. Four, and no more:
@@ -98,11 +90,10 @@ def _schema(parser: argparse.ArgumentParser, *, family_id: str | None, write: bo
 
 
 def _validate(source: Path, *, output: str) -> int:
-    """Record validation, then cross-record validation, then an honest claim report.
+    """Adapter, strict records, cross-record rules, then an honest claim report.
 
-    Reading goes through the authoring adapter: the forbidden-construct pre-pass, the profile's
-    parser and the SourceMap. The adapter hands back plain data and the model is validated
-    through JSON, which is the path that reports the full location of every nested error.
+    Every diagnostic is source-located through the SourceMap: exact where the map has the
+    position, and stated as `nearest` where the chain fell back to a parent or the document.
     """
     try:
         text = source.read_text(encoding="utf-8")
@@ -110,25 +101,18 @@ def _validate(source: Path, *, output: str) -> int:
         print(f"{source}\nERROR CORE.YAML.SYNTAX\n(document)\n{unreadable}")
         return EXIT_UNREADABLE
 
-    try:
-        loaded = parse_source(text, source_id=str(source))
-    except AuthoringError as rejected:
-        print(render_diagnostics(normalize_authoring_error(rejected), source=str(source)))
+    result = validate_source_text(text, source_id=str(source))
+    if result.outcome == "unreadable":
+        print(render_diagnostics(result.diagnostics, source=str(source)))
         return EXIT_UNREADABLE
-
-    try:
-        model = parse_model(loaded)
-    except ValidationError as invalid:
+    if result.outcome == "invalid_records" or result.report is None:
         # Record-local failures never reach the cross-record layer, so they are rendered on
-        # their own. They are still normalized, so a reader sees the same codes either way.
-        print(
-            render_diagnostics(normalize_validation_error(invalid, root=Model), source=str(source))
-        )
+        # their own. They are still normalized and located, so a reader sees the same shape.
+        print(render_diagnostics(result.diagnostics, source=str(source)))
         return EXIT_DIAGNOSTICS
 
-    report = validate_model(model)
     if output == "json":
-        print(report.model_dump_json(indent=2))
+        print(result.report.model_dump_json(indent=2))
     else:
-        print(render_report(report, source=str(source)))
-    return EXIT_DIAGNOSTICS if report.hard_errors else EXIT_OK
+        print(render_report(result.report, source=str(source)))
+    return EXIT_DIAGNOSTICS if result.report.hard_errors else EXIT_OK

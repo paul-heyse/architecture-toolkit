@@ -7,7 +7,7 @@ This file describes evidence for the **current repository**, not target architec
 | Layer | Proven now | Target | State |
 | --- | --- | --- | --- |
 | CORE domain | minimal strict Pydantic model, unique IDs, endpoint checks | CORE-01..67 | partial |
-| YAML | safe load in minimal CLI/tests; no SourceMap | controlled round-trip authoring/source diagnostics | pending |
+| YAML | configured 1.2 round-trip profile, forbidden constructs with stable codes, SourceMap, source-located diagnostics with a stated resolution (W2) | round-trip editing and presentation-invariant hashing | partial |
 | Static typing | Pyrefly over src/tests/scripts, 0 errors; strict `src` coverage 98.05% | D-032 / Pyrefly CORE-53..62 | migrated; coverage floor 98 |
 | DATA Arrow/Delta | nested interface, nullable scalar, empty table, explicit Arrow schema, Delta history | DATA-01..60 | partial |
 | Snapshot provider | explicit-version materialized PyArrow registration | materialized fallback + qualified Dataset/stream candidates | partial |

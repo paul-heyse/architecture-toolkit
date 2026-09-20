@@ -48,8 +48,9 @@ comments with a local rationale. `pyrefly infer` never runs in CI (CORE-62).
 
 ### Third-party typing gaps
 
-`pyarrow`, `ruamel.yaml` and `networkx` ship no `py.typed`; `datafusion`, `deltalake`, `pydantic`
-and `jinja2` do. Stubs cover networkx, jsonschema and lxml. **pyarrow remains uncovered**: the
+`pyarrow` and `networkx` ship no `py.typed`; `ruamel.yaml` (0.19.1), `datafusion`, `deltalake`,
+`pydantic` and `jinja2` do — ruamel's `compose`, `parse`, `load` and `dump` return `Any`, so the
+authoring adapter declares every return type itself. Stubs cover networkx, jsonschema and lxml. **pyarrow remains uncovered**: the
 published `pyarrow-stubs` targets major 20 against the pinned 25, so it is not adopted. The single
 consequence today is that `storage.datafusion_adapter.register_snapshot` is `[coverage-partial]`,
 which is why the floor is 85 rather than 100. Revisit when W3 builds the Arrow layer.

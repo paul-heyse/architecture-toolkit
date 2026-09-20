@@ -7,10 +7,11 @@ The four-line form is specified in `ARCH-TOOL-CORE-001` §5E and repeated in the
     elements[4].relationships[2].target_element_id
     "software.system.missing" does not resolve.
 
-W1 has no source map, so `source_location` is always `None` and line one degrades to the bare
-path with no `:line:column`. That degradation is specified rather than improvised: emitting
-`:0:0` would teach every downstream reader to accept a position that means "unknown", and W2
-would then be unable to tell a real position from a placeholder.
+Without a source map `source_location` is `None` and line one degrades to the bare path with no
+`:line:column`. That degradation is specified rather than improvised: emitting `:0:0` would teach
+every downstream reader to accept a position that means "unknown". When W2's resolution chain
+fell back to a parent record or to the document, line one says so — `(nearest: <path>)` — so a
+reader never mistakes the nearest mapped position for the exact one.
 
 Rendering lives here rather than in the CLI so it can be tested without argparse, and so the
 portal later produces the same bytes.
@@ -28,9 +29,15 @@ def _location(diagnostic: Diagnostic, source: str) -> str:
     where = diagnostic.source_location
     if where is None or where.line is None:
         return source
-    if where.column is None:
-        return f"{source}:{where.line}"
-    return f"{source}:{where.line}:{where.column}"
+    position = (
+        f"{source}:{where.line}"
+        if where.column is None
+        else (f"{source}:{where.line}:{where.column}")
+    )
+    resolution = dict(diagnostic.context).get("location_resolution")
+    if resolution in {"parent", "document"}:
+        return f"{position} (nearest: {where.semantic_path or '(document)'})"
+    return position
 
 
 def render_diagnostics(diagnostics: Iterable[Diagnostic], *, source: str) -> str:

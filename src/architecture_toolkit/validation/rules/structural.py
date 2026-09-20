@@ -119,6 +119,7 @@ def endpoint_kinds(candidate: Candidate, context: ValidationContext) -> Iterable
                     rule_id="endpoint-kinds",
                     relationship_id=relation.relationship_id,
                     canonical_object_id=element_id,
+                    field_path=f"relationships.{relation.relationship_id}.{side}_element_id",
                     context=(("kind", kind), ("side", side)),
                 )
 

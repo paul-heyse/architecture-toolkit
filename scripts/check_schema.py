@@ -31,9 +31,9 @@ import re
 
 from _common import ROOT, load_json, report
 from jsonschema import Draft202012Validator
-from ruamel.yaml import YAML
 
 from architecture_toolkit.contracts import SCHEMA_FAMILIES, emit, emittable
+from architecture_toolkit.domain.authoring import parse_source
 from architecture_toolkit.domain.model import Model
 
 # Written by hand rather than generated, so they are exempt from the drift and orphan checks
@@ -95,7 +95,7 @@ def check_schemas_are_draft_2020_12() -> list[str]:
 def check_example_agrees_with_pydantic() -> list[str]:
     """The example must be accepted by the schema and by Pydantic, or rejected by both."""
     source = ROOT / "examples" / "minimal" / "model.yaml"
-    payload = json.loads(json.dumps(YAML(typ="safe").load(source.read_text())))
+    payload = json.loads(parse_source(source.read_text(), source_id=str(source)).json_text())
     schema = load_json("schemas/model.schema.json")
 
     by_schema = list(Draft202012Validator(schema).iter_errors(payload))
