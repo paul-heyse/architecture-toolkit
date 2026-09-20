@@ -1,0 +1,3 @@
+# expect: CORE.YAML.PYTHON_TAG 3:4
+model_id: demo
+w: !!python/name:os.system

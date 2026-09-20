@@ -1,0 +1,14 @@
+id: ruamel-only-in-authoring
+valid:
+  - "import json"
+  - "from pydantic import BaseModel"
+  # Substring of the banned name, but a different package.
+  - "import ruamel_stub"
+  - "from ruamelish import thing"
+  - "example = \"import ruamel\""
+invalid:
+  - "import ruamel"
+  - "import ruamel.yaml"
+  - "import ruamel.yaml as ry"
+  - "from ruamel.yaml import YAML"
+  - "from ruamel.yaml.comments import CommentedMap"

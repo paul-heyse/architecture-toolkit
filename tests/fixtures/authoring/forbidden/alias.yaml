@@ -1,0 +1,3 @@
+# expect: CORE.YAML.ALIAS 3:8
+model_id: demo
+other: *missing

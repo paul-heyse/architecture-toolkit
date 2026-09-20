@@ -1,0 +1,45 @@
+# A fixture written in the authoring profile's own style: block collections, two-space mapping
+# indentation, four-space sequence indentation with a two-space dash offset, lines at or under
+# 100 columns. This is the document the profile must reproduce byte for byte.
+schema_version: "1.0.0"
+profile_version: "1.0.0"
+model_id: canonical-fixture
+
+elements:
+  - element_id: system-1
+    model_id: canonical-fixture
+    kind_id: software.system
+    name: Request service
+    description: 'A single-quoted description.'
+    aliases:
+      - "Request svc"
+      - The service
+    status:
+      design_disposition: accepted
+      implementation_state: implemented
+  - element_id: schema-1
+    model_id: canonical-fixture
+    kind_id: information.schema
+    name: Request schema
+    detail:
+      detail_family: data_schema
+      element_id: schema-1
+      fields:
+        - field_id: request_id
+          field_name: request_id
+          data_type: string
+          nullability: required
+          key_membership:
+            - primary_key
+          ordinal: 0
+        - field_id: note   # an optional free-text field
+          field_name: note
+          data_type: string
+          ordinal: 1
+
+relationships:
+  - relationship_id: rel-1
+    model_id: canonical-fixture
+    relationship_type_id: depends_on
+    source_element_id: system-1
+    target_element_id: schema-1

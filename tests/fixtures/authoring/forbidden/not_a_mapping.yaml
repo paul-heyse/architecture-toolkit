@@ -1,0 +1,3 @@
+# expect: CORE.YAML.NOT_A_MAPPING 2:1
+- a
+- b

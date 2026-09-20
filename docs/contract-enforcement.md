@@ -85,6 +85,7 @@ behaviour changed.
 | `no-validation-bypass` | CORE-09, CORE-10 — scope widened in W1 to `tests/` and `scripts/` |
 | `no-shell-invocation` | projections.md rendering security |
 | `secure-xml-parser` | CORE-40, CORE-41 |
+| `ruamel-only-in-authoring` | CORE-17 — `ruamel` imports are confined to `domain/authoring/`; the exclusion glob is proven by `tests/unit/test_layering.py` |
 
 Each wave adds the rules for the boundaries it introduces; see `docs/plans/`.
 
@@ -106,6 +107,9 @@ ones most likely to be quietly skipped, so each is paired with an executable gua
 | CORE-11 | Every Pydantic failure maps to a stable code | the map is total over all 104 `pydantic_core.ErrorType` members, asserted in both directions, so a library upgrade fails a test rather than degrading a report |
 | CORE-01, CORE-07 | `validation` depends on `domain`, never the reverse | an AST import scan that ignores `TYPE_CHECKING` blocks, with the one permitted type-only edge asserted positively so it cannot be quietly removed |
 | CORE-45 | Strategies build valid data directly | `filterwarnings` promotes the Hypothesis warning to an error, and every alias is pinned to the `StringConstraints` form that triggers it. Pyrefly independently rejects `from_type` on a constrained alias |
+| CORE-14 | One configured YAML 1.2 round-trip profile with explicit depth and output settings | `domain/authoring/profile.py` is the only constructor of a `YAML()`; a test pins every setting, the depth boundary on both the pre-pass and the composer, and a byte-identical round trip of a fixture in the profile's own style |
+| CORE-17 | ruamel presentation objects never escape the authoring adapter | the ast-grep rule above for imports, an AST scan for the exclusion glob, and a runtime check that the adapter's plain output is exactly `str`, `int`, `float`, `bool`, `None`, `tuple` and `dict` by type identity |
+| CORE-15, CORE-16 | Duplicate keys and forbidden constructs fail deterministically | one fixture per `CORE.YAML.*` code under `tests/fixtures/authoring/forbidden/`, each proving its code and its line and column; a totality test keeps the adapter's code set, the registry's YAML area and the fixture directory equal |
 | CORE-07 | Every validation rule catches something | each registered rule has a known-bad fixture that must trigger it, and a totality test makes a rule without one impossible to add |
 
 Type stubs (`types-networkx`, `types-jsonschema`, `types-lxml`) are dev-only typing aids with no

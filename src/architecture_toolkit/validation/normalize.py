@@ -22,10 +22,18 @@ from typing import Annotated, Any, Union, get_args, get_origin
 
 from pydantic import BaseModel, ValidationError
 
+from architecture_toolkit.domain.authoring.errors import AuthoringError
+from architecture_toolkit.domain.source import LocationResolution, render_segments
 from architecture_toolkit.validation.codes import CODES
 from architecture_toolkit.validation.diagnostics import Diagnostic, build_diagnostic
 
-__all__ = ["ERROR_TYPE_CODES", "field_path", "normalize_validation_error"]
+__all__ = [
+    "ERROR_TYPE_CODES",
+    "field_path",
+    "normalize_authoring_error",
+    "normalize_validation_error",
+    "semantic_segments",
+]
 
 # Keyed by `str`, not by `pydantic_core.ErrorType`. The value arriving from `errors()` is an
 # ordinary string, and annotating the key as the `Literal` would force a cast at the one place
@@ -194,20 +202,20 @@ def _sequence_item(annotation: Any) -> Any:
     return args[0] if args else None
 
 
-def field_path(root: type[BaseModel] | None, loc: Sequence[str | int]) -> str | None:
-    """Render a Pydantic error location as a path into the authored document.
+def semantic_segments(
+    root: type[BaseModel] | None, loc: Sequence[str | int]
+) -> tuple[str | int, ...]:
+    """The document path of a Pydantic error location, with injected union tags dropped.
 
-    `root` may be `None` when the model type is unknown; the walk then degrades to a plain
-    render, which is still better than nothing and is never silently wrong about a tag, because
-    without annotations it drops no segment at all.
+    `root` may be `None` when the model type is unknown; the walk then degrades to a plain copy,
+    which is still better than nothing and is never silently wrong about a tag, because without
+    annotations it drops no segment at all.
     """
-    if not loc:
-        return None
-    parts: list[str] = []
+    segments: list[str | int] = []
     current: Any = root
     for segment in loc:
         if isinstance(segment, int):
-            parts.append(f"[{segment}]")
+            segments.append(segment)
             current = _sequence_item(_unwrap(current)) if current is not None else None
             continue
         discriminator, variants = _discriminator(current)
@@ -217,12 +225,18 @@ def field_path(root: type[BaseModel] | None, loc: Sequence[str | int]) -> str | 
                 # The injected tag. Not a field of the document; skip it and descend.
                 current = matched[0]
                 continue
-        parts.append(f".{segment}" if parts else segment)
+        segments.append(segment)
         fields = getattr(_unwrap(current), "model_fields", None) if current is not None else None
         field = fields.get(segment) if isinstance(fields, dict) else None
         current = field.annotation if field is not None else None
-    rendered = "".join(parts)
-    return rendered.lstrip(".") or None
+    return tuple(segments)
+
+
+def field_path(root: type[BaseModel] | None, loc: Sequence[str | int]) -> str | None:
+    """Render a Pydantic error location as a path into the authored document."""
+    if not loc:
+        return None
+    return render_segments(semantic_segments(root, loc)) or None
 
 
 def _context(error: Mapping[str, Any]) -> tuple[tuple[str, str], ...]:
@@ -271,3 +285,24 @@ def normalize_validation_error(
             )
         )
     return tuple(produced)
+
+
+def normalize_authoring_error(error: AuthoringError) -> tuple[Diagnostic, ...]:
+    """One diagnostic per finding — the raised error and every related one, in stream order.
+
+    The location is exact by construction: the adapter reports the mark of the construct
+    itself, so `location_resolution` says so and the renderer prints `file:line:column`.
+    """
+    return tuple(
+        build_diagnostic(
+            finding.code,
+            message=finding.message,
+            field_path=finding.location.semantic_path or None,
+            context=(
+                *finding.context,
+                ("location_resolution", LocationResolution.EXACT.value),
+            ),
+            source_location=finding.location,
+        )
+        for finding in error
+    )

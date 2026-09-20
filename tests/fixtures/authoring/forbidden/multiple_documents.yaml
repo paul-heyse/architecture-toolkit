@@ -1,0 +1,4 @@
+# expect: CORE.YAML.MULTIPLE_DOCUMENTS 3:1
+model_id: demo
+---
+model_id: two

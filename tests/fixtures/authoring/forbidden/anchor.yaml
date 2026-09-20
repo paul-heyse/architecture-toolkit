@@ -1,0 +1,4 @@
+# expect: CORE.YAML.ANCHOR 3:7
+model_id: demo
+base: &shared
+  x: 1

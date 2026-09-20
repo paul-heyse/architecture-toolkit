@@ -6,11 +6,14 @@ from importlib.metadata import version
 from pathlib import Path
 
 from pydantic import ValidationError
-from ruamel.yaml import YAML
 
 from architecture_toolkit.contracts import SCHEMA_FAMILIES, emit, emittable
+from architecture_toolkit.domain.authoring import AuthoringError, parse_model, parse_source
 from architecture_toolkit.domain.model import Model
-from architecture_toolkit.validation.normalize import normalize_validation_error
+from architecture_toolkit.validation.normalize import (
+    normalize_authoring_error,
+    normalize_validation_error,
+)
 from architecture_toolkit.validation.pipeline import validate_model
 from architecture_toolkit.validation.render import render_diagnostics, render_report
 
@@ -49,7 +52,14 @@ def main() -> int:
             json.dumps(
                 {
                     n: version(n)
-                    for n in ["pydantic", "pyarrow", "datafusion", "deltalake", "networkx"]
+                    for n in [
+                        "pydantic",
+                        "ruamel.yaml",
+                        "pyarrow",
+                        "datafusion",
+                        "deltalake",
+                        "networkx",
+                    ]
                 },
                 indent=2,
             )
@@ -90,21 +100,24 @@ def _schema(parser: argparse.ArgumentParser, *, family_id: str | None, write: bo
 def _validate(source: Path, *, output: str) -> int:
     """Record validation, then cross-record validation, then an honest claim report.
 
-    The JSON round trip is load-bearing rather than incidental. Under `strict=True` a Python
-    `list` handed to a `tuple[...]` field fails with the error location collapsed to the field,
-    discarding every nested error; the same payload through `model_validate_json` reports the
-    full path. Diagnostics that cannot name the field that was wrong are not worth much, so the
-    authoring path stays JSON until W2 supplies the proper adapter and source map.
+    Reading goes through the authoring adapter: the forbidden-construct pre-pass, the profile's
+    parser and the SourceMap. The adapter hands back plain data and the model is validated
+    through JSON, which is the path that reports the full location of every nested error.
     """
     try:
-        raw = YAML(typ="safe").load(source.read_text())
-        payload = json.dumps(raw)
-    except (OSError, ValueError) as unreadable:
-        print(f"{source}\nERROR CORE.SCHEMA.UNCLASSIFIED\n(document)\n{unreadable}")
+        text = source.read_text(encoding="utf-8")
+    except OSError as unreadable:
+        print(f"{source}\nERROR CORE.YAML.SYNTAX\n(document)\n{unreadable}")
         return EXIT_UNREADABLE
 
     try:
-        model = Model.model_validate_json(payload)
+        loaded = parse_source(text, source_id=str(source))
+    except AuthoringError as rejected:
+        print(render_diagnostics(normalize_authoring_error(rejected), source=str(source)))
+        return EXIT_UNREADABLE
+
+    try:
+        model = parse_model(loaded)
     except ValidationError as invalid:
         # Record-local failures never reach the cross-record layer, so they are rendered on
         # their own. They are still normalized, so a reader sees the same codes either way.

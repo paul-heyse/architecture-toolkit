@@ -38,6 +38,7 @@ class CodeArea(StrEnum):
     VIEW = "VIEW"
     RELEASE = "RELEASE"
     SCHEMA = "SCHEMA"
+    YAML = "YAML"
 
 
 class DiagnosticCodeSpec(CompiledRecord):
@@ -76,6 +77,7 @@ def _spec(
 
 _RECORD = DiagnosticCategory.RECORD_VALIDATION
 _CROSS = DiagnosticCategory.CROSS_RECORD_VALIDATION
+_AUTHORING = DiagnosticCategory.AUTHORING_PARSE
 _SEMANTIC = ValidationClaim.CROSS_MODEL_SEMANTICS
 _GAP = Disposition.EVIDENCE_GAP
 _PROFILE = Disposition.PROFILE_EXPECTATION
@@ -264,6 +266,87 @@ _ALL: tuple[DiagnosticCodeSpec, ...] = (
         "CORE.VIEW.UNRESOLVED_MEMBER",
         CodeArea.VIEW,
         summary="A view names an object that does not exist. Reserved; views arrive at W7a.",
+    ),
+    # -- YAML authoring (CORE-15, CORE-16) ----------------------------------------------------
+    # Raised by `domain/authoring/` as `AuthoringError` and normalized here. Parse failures never
+    # enter a claim report — no model exists to report on — so each keeps the default claim and
+    # disposition and the CLI renders them directly with exit code 3.
+    _spec(
+        "CORE.YAML.DUPLICATE_KEY",
+        CodeArea.YAML,
+        category=_AUTHORING,
+        summary="A mapping key appears more than once.",
+        remediation="Keys are unique within a mapping; there is no last-one-wins.",
+    ),
+    _spec(
+        "CORE.YAML.ANCHOR",
+        CodeArea.YAML,
+        category=_AUTHORING,
+        summary="A YAML anchor was declared.",
+        remediation="Repeat the value. The baseline profile forbids anchors so a document means "
+        "what it shows.",
+    ),
+    _spec(
+        "CORE.YAML.ALIAS",
+        CodeArea.YAML,
+        category=_AUTHORING,
+        summary="A YAML alias was used.",
+        remediation="Repeat the value; hidden source inheritance defeats source diagnostics.",
+    ),
+    _spec(
+        "CORE.YAML.MERGE_KEY",
+        CodeArea.YAML,
+        category=_AUTHORING,
+        summary="A merge key (<<) was used.",
+        remediation="Write the merged keys out in place.",
+    ),
+    _spec(
+        "CORE.YAML.CUSTOM_TAG",
+        CodeArea.YAML,
+        category=_AUTHORING,
+        summary="A tag outside the YAML 1.2 core schema was used.",
+        remediation="Only the core schema (str, int, float, bool, null, map, seq) is authored; "
+        "dates and binary values are strings.",
+    ),
+    _spec(
+        "CORE.YAML.PYTHON_TAG",
+        CodeArea.YAML,
+        category=_AUTHORING,
+        summary="A Python object tag was used.",
+        remediation="Remove the tag. Authoring sources never construct Python objects.",
+    ),
+    _spec(
+        "CORE.YAML.UNSUPPORTED_VERSION",
+        CodeArea.YAML,
+        category=_AUTHORING,
+        summary="The document declares a YAML version other than 1.2.",
+        remediation="Remove the %YAML directive or declare 1.2.",
+    ),
+    _spec(
+        "CORE.YAML.DEPTH_EXCEEDED",
+        CodeArea.YAML,
+        category=_AUTHORING,
+        summary="Collections are nested deeper than the profile permits.",
+    ),
+    _spec(
+        "CORE.YAML.MULTIPLE_DOCUMENTS",
+        CodeArea.YAML,
+        category=_AUTHORING,
+        summary="A source file holds more than one YAML document.",
+        remediation="One model per file. Split the stream.",
+    ),
+    _spec(
+        "CORE.YAML.SYNTAX",
+        CodeArea.YAML,
+        category=_AUTHORING,
+        summary="The document is not well-formed under the authoring profile.",
+    ),
+    _spec(
+        "CORE.YAML.NOT_A_MAPPING",
+        CodeArea.YAML,
+        category=_AUTHORING,
+        summary="The document root is not a mapping.",
+        remediation="A model is a mapping of `model_id`, `elements`, `relationships`, ...",
     ),
     # -- the toolkit's own failures -----------------------------------------------------------
     _spec(

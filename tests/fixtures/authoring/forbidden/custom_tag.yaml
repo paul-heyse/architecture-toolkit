@@ -1,0 +1,3 @@
+# expect: CORE.YAML.CUSTOM_TAG 3:4
+model_id: demo
+v: !custom foo

@@ -10,8 +10,11 @@ serialization schema and not the validation one, which is the only thing that ma
 schemas differ — so keeping these off the model is what lets CORE-13's check assert the strongest
 possible form: that the two modes are identical.
 
-`source_location` is present and nullable now, and W1 never populates it. W2 owns the source map.
-Adding the field later would mean replumbing every diagnostic W3 and W4 emit.
+`source_location` is populated by W2's source map (`validation/locate.py`). The `SourceLocation`
+class itself lives in `domain/source.py`, because the authoring adapter that produces locations
+cannot import this package; it is re-exported here unchanged, so callers and the generated JSON
+Schema see the same class they did in W1. A location is deliberately *not* part of a diagnostic's
+identity: two runs over a re-indented file report the same finding, and `diagnostic_id` says so.
 
 Identity is derived, not random. A uuid4 would make two runs of the same validation incomparable
 and would defeat the golden-output tests the renderer needs.
@@ -28,6 +31,7 @@ from architecture_toolkit.domain.identifiers import (
     RelationshipId,
     RuleId,
 )
+from architecture_toolkit.domain.source import SourceLocation
 from architecture_toolkit.validation.codes import CODES
 from architecture_toolkit.validation.taxonomy import (
     DiagnosticCategory,
@@ -37,18 +41,6 @@ from architecture_toolkit.validation.taxonomy import (
 )
 
 __all__ = ["Diagnostic", "SourceLocation", "build_diagnostic"]
-
-
-class SourceLocation(CompiledRecord):
-    """Where in the authored source a diagnostic came from. Populated at W2 (CORE-18)."""
-
-    source_id: str = Field(min_length=1)
-    document_id: str | None = None
-    semantic_path: str | None = None
-    line: int | None = Field(default=None, ge=1)
-    column: int | None = Field(default=None, ge=1)
-    end_line: int | None = Field(default=None, ge=1)
-    end_column: int | None = Field(default=None, ge=1)
 
 
 class Diagnostic(CompiledRecord):
@@ -111,6 +103,7 @@ def build_diagnostic(
     notation_object_id: NotationObjectId | None = None,
     context: tuple[tuple[str, str], ...] = (),
     severity: Severity | None = None,
+    source_location: SourceLocation | None = None,
 ) -> Diagnostic:
     """Construct one, taking category, severity and remediation from the registry.
 
@@ -138,6 +131,7 @@ def build_diagnostic(
         canonical_object_id=canonical_object_id,
         relationship_id=relationship_id,
         field_path=field_path,
+        source_location=source_location,
         notation_object_id=notation_object_id,
         rule_id=rule_id,
         context=tuple(sorted(context)),

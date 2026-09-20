@@ -1,0 +1,5 @@
+# expect: CORE.YAML.MERGE_KEY 4:3
+model_id: demo
+child:
+  <<: {x: 1}
+  y: 2

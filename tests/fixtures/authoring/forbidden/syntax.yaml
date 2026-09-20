@@ -1,0 +1,3 @@
+# expect: CORE.YAML.SYNTAX 3:2
+model_id: [1, 2
+x: 3

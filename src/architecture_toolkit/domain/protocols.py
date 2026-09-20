@@ -7,7 +7,7 @@ Only the boundaries whose data types already exist are fully typed. The rest are
 their intended shape and completed by the wave that builds them, because a Protocol must exchange
 typed DTOs rather than dictionaries, and those DTOs do not exist yet:
 
-    SourceLoader        W2   authoring sources            typed here
+    SourceLoader        W2   authoring sources            typed at W2
     ValidatorAdapter    W1   diagnostics                  typed here
     SnapshotProvider    W3   Arrow tables at a version
     QueryExecutor       W5   release-scoped query results
@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     # boundaries, but describing it honestly needs the diagnostic types. Protocols are
     # structural, so nothing is imported at runtime and the layering stays one-way — asserted
     # by `tests/unit/test_layering.py`.
+    from architecture_toolkit.domain.authoring.loader import LoadedSource
     from architecture_toolkit.domain.model import Model
     from architecture_toolkit.validation.context import ValidationContext
     from architecture_toolkit.validation.diagnostics import Diagnostic
@@ -49,9 +50,13 @@ __all__ = [
 
 @runtime_checkable
 class SourceLoader(Protocol):
-    """Reads authoring source into plain data plus a source map (W2, CORE-14..CORE-19)."""
+    """Reads authoring source into plain data plus a source map (W2, CORE-14..CORE-19).
 
-    def load(self, source_id: str) -> tuple[object, object]: ...
+    Filled in at W2: `LoadedSource` carries the plain data and the `SourceMap` and contains no
+    ruamel object, which is CORE-17 stated as a return type.
+    """
+
+    def load(self, source_id: str) -> LoadedSource: ...
 
 
 @runtime_checkable

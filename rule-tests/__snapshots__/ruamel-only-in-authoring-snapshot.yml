@@ -1,0 +1,52 @@
+id: ruamel-only-in-authoring
+snapshots:
+  from ruamel.yaml import YAML:
+    labels:
+    - source: ruamel.yaml
+      style: primary
+      start: 5
+      end: 16
+    - source: from ruamel.yaml import YAML
+      style: secondary
+      start: 0
+      end: 28
+  from ruamel.yaml.comments import CommentedMap:
+    labels:
+    - source: ruamel.yaml.comments
+      style: primary
+      start: 5
+      end: 25
+    - source: from ruamel.yaml.comments import CommentedMap
+      style: secondary
+      start: 0
+      end: 45
+  import ruamel:
+    labels:
+    - source: ruamel
+      style: primary
+      start: 7
+      end: 13
+    - source: import ruamel
+      style: secondary
+      start: 0
+      end: 13
+  import ruamel.yaml:
+    labels:
+    - source: ruamel.yaml
+      style: primary
+      start: 7
+      end: 18
+    - source: import ruamel.yaml
+      style: secondary
+      start: 0
+      end: 18
+  import ruamel.yaml as ry:
+    labels:
+    - source: ruamel.yaml
+      style: primary
+      start: 7
+      end: 18
+    - source: import ruamel.yaml as ry
+      style: secondary
+      start: 0
+      end: 24

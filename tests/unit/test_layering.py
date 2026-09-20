@@ -110,3 +110,26 @@ def test_validation_does_no_graph_or_storage_work() -> None:
     for path in (SRC / "validation").rglob("*.py"):
         imported = {module.split(".")[0] for module in runtime_imports(path)}
         assert not imported & banned, path
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("CORE-17")
+def test_ruamel_is_confined_to_the_authoring_adapter() -> None:
+    """The half of CORE-17 that `ast-grep test` cannot exercise: the rule's exclusion glob.
+
+    `rules/ruamel-only-in-authoring.yml` flags any `ruamel` import in `src/` outside
+    `domain/authoring/`. This proves the same statement from the AST, so the glob and the rule
+    cannot drift apart unnoticed, and it asserts the positive half — the adapter does import it.
+    """
+    allowed = SRC / "domain" / "authoring"
+    leaked = {
+        path.relative_to(SRC).as_posix()
+        for path in SRC.rglob("*.py")
+        if not path.is_relative_to(allowed)
+        and any(module.split(".")[0] == "ruamel" for module in runtime_imports(path))
+    }
+    assert not leaked, f"ruamel imported outside the authoring adapter: {leaked}"
+    adapter_imports = {
+        module.split(".")[0] for path in allowed.rglob("*.py") for module in runtime_imports(path)
+    }
+    assert "ruamel" in adapter_imports

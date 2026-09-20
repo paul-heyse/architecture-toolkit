@@ -1,0 +1,28 @@
+id: ruamel-only-in-authoring
+language: python
+severity: error
+message: ruamel.yaml is confined to the authoring adapter.
+note: |
+  CORE-17: ruamel presentation objects do not escape the authoring adapter into canonical
+  domain or storage logic. The structural half of that guarantee is that no module outside
+  `domain/authoring/` can even import the library; the runtime half is
+  `tests/unit/test_source_map.py`, which checks the adapter's output contains no ruamel type.
+
+  Matches the module-name node rather than the import line, so `import ruamel.yaml`,
+  `import ruamel.yaml as ry` and `from ruamel.yaml import YAML` are all covered by one anchored
+  expression. `ast-grep test` cannot exercise the `ignores` glob;
+  `tests/unit/test_layering.py` proves that half.
+files:
+  - "src/architecture_toolkit/**/*.py"
+ignores:
+  - "src/architecture_toolkit/domain/authoring/**"
+rule:
+  kind: dotted_name
+  regex: ^ruamel(\..+)?$
+  any:
+    - inside:
+        kind: import_statement
+        stopBy: end
+    - inside:
+        kind: import_from_statement
+        field: module_name
