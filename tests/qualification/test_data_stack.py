@@ -1,7 +1,10 @@
 """Real locked-stack interop checks; these do not implement release publication."""
 
+from pathlib import Path
+
 import networkx as nx
 import pyarrow as pa
+import pytest
 from datafusion import SessionContext
 from deltalake import DeltaTable, write_deltalake
 from pydantic import BaseModel, ConfigDict
@@ -40,7 +43,10 @@ SCHEMA = pa.schema(
 )
 
 
-def test_pinned_snapshot_nested_null_empty_and_scalar_query(tmp_path):
+@pytest.mark.qualification
+@pytest.mark.interop
+@pytest.mark.requirement("DATA-12", "DATA-18", "DATA-51")
+def test_pinned_snapshot_nested_null_empty_and_scalar_query(tmp_path: Path) -> None:
     record = Interface(
         element_id="api-1",
         transport=Transport(protocol="HTTP", timeout_ms=None),
@@ -73,7 +79,10 @@ def test_pinned_snapshot_nested_null_empty_and_scalar_query(tmp_path):
     # A provider API can exist while its binary ABI is incompatible; qualify separately.
 
 
-def test_empty_snapshot_retains_schema(tmp_path):
+@pytest.mark.qualification
+@pytest.mark.interop
+@pytest.mark.requirement("DATA-12", "DATA-51")
+def test_empty_snapshot_retains_schema(tmp_path: Path) -> None:
     location = tmp_path / "empty"
     write_deltalake(location, pa.Table.from_pylist([], schema=SCHEMA))
     ctx = SessionContext()
@@ -84,7 +93,9 @@ def test_empty_snapshot_retains_schema(tmp_path):
     ]
 
 
-def test_parallel_graph_edges_do_not_collapse():
+@pytest.mark.qualification
+@pytest.mark.requirement("CORE-23", "DATA-16")
+def test_parallel_graph_edges_do_not_collapse() -> None:
     graph = nx.MultiDiGraph(release_id="qualification-only")
     graph.add_edge("a", "b", key="supports-1", kind="supports")
     graph.add_edge("a", "b", key="depends-1", kind="depends_on")

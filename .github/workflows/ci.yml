@@ -29,7 +29,7 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run pyrefly check
       - run: uv run pyrefly coverage check --strict --fail-under 85
-      - run: uv run pytest
+      - run: uv run pytest --junitxml=.runtime/junit.xml
       - run: uv run python scripts/check_schema.py
       - run: uv run python scripts/check_plan_coverage.py
       - name: Install ast-grep
@@ -51,3 +51,10 @@ jobs:
         run: brew install graphviz
       - run: uv run python scripts/bootstrap_tools.py
       - run: uv run python scripts/qualify_tools.py
+      - name: Archive qualification evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: qualification-evidence-${{ matrix.os }}
+          path: .runtime/
+          if-no-files-found: warn

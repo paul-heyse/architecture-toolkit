@@ -52,10 +52,31 @@ select = ["E", "F", "I", "UP", "B", "RUF", "PT", "PTH", "S"]
 # Vendor and git invocations are argument arrays resolved from PATH, never shell strings, with
 # explicit timeouts. rules/no-shell-invocation.yml enforces the argv form structurally.
 "scripts/*.py" = ["S603", "S607"]
+# The evidence plugin resolves the toolkit commit the same way, with the same argv discipline.
+"tests/plugins/*.py" = ["S603", "S607"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra"
+# `tests` is a package so the evidence plugin can be loaded by dotted path and test module
+# basenames cannot collide.
+pythonpath = ["."]
+# --strict-markers (CORE-48): an unregistered marker is an error, not a silent no-op, so a typo in
+# a requirement marker cannot quietly drop evidence.
+addopts = "-ra --strict-markers -p tests.plugins.requirement_evidence"
+# xfail_strict (CORE-52): a known limitation must state its upstream reason and must fail loudly
+# once it is fixed.
+xfail_strict = true
+markers = [
+    "unit: isolated behaviour of one module",
+    "property: Hypothesis-generated invariant",
+    "integration: several toolkit layers together",
+    "interop: a real third-party library boundary",
+    "vendor: an external tool binary is invoked",
+    "qualification: evidence for an acceptance requirement",
+    "platform: behaviour that genuinely differs by platform",
+    "slow: excluded from the default developer loop",
+    "requirement(id): acceptance requirement this test evidences, e.g. CORE-49",
+]
 
 # D-032: Pyrefly replaces ty as the target static type checker.
 [tool.pyrefly]
