@@ -23,7 +23,17 @@ checks conformance statically.
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
+
+if TYPE_CHECKING:
+    # The only edge from `domain` to `validation`, and it exists only for the type checker.
+    # `ValidatorAdapter` describes what a validator does, so it belongs here with the other
+    # boundaries, but describing it honestly needs the diagnostic types. Protocols are
+    # structural, so nothing is imported at runtime and the layering stays one-way — asserted
+    # by `tests/unit/test_layering.py`.
+    from architecture_toolkit.domain.model import Model
+    from architecture_toolkit.validation.context import ValidationContext
+    from architecture_toolkit.validation.diagnostics import Diagnostic
 
 __all__ = [
     "ArtifactStore",
@@ -46,9 +56,16 @@ class SourceLoader(Protocol):
 
 @runtime_checkable
 class ValidatorAdapter(Protocol):
-    """Returns diagnostics for a candidate without mutating it (W1, CORE-07)."""
+    """Returns diagnostics for a candidate without mutating it (W1, CORE-07).
 
-    def validate(self, candidate: object) -> list[object]: ...
+    Typed here in W1, as this module's header scheduled. The context parameter is not optional:
+    CORE-06 requires validation to be explicit about the schema and profile versions it judged
+    against, and a default would let a caller skip saying.
+    """
+
+    def validate(
+        self, candidate: Model, *, context: ValidationContext
+    ) -> tuple[Diagnostic, ...]: ...
 
 
 @runtime_checkable

@@ -7,7 +7,11 @@ test that would silently pass.
 
 from __future__ import annotations
 
+from architecture_toolkit.domain.model import Model
 from architecture_toolkit.domain.protocols import SnapshotProvider, ValidatorAdapter
+from architecture_toolkit.validation.context import ValidationContext
+from architecture_toolkit.validation.diagnostics import Diagnostic
+from architecture_toolkit.validation.pipeline import CrossRecordValidator
 
 
 class MaterializedProvider:
@@ -16,10 +20,16 @@ class MaterializedProvider:
 
 
 class RecordingValidator:
-    def validate(self, candidate: object) -> list[object]:
-        return [candidate]
+    """A second, minimal conformer, so the Protocol is not accidentally shaped around one class."""
+
+    def validate(self, candidate: Model, *, context: ValidationContext) -> tuple[Diagnostic, ...]:
+        del candidate, context
+        return ()
 
 
 # Assignment is the assertion: a signature mismatch fails `pyrefly check`.
 _provider: SnapshotProvider = MaterializedProvider()
 _validator: ValidatorAdapter = RecordingValidator()
+# The one that matters, now that `ValidatorAdapter` is typed: the shipped implementation is
+# checked against the boundary it claims to implement, not just a fixture written to match it.
+_real_validator: ValidatorAdapter = CrossRecordValidator()

@@ -6,20 +6,35 @@ from typing import Any
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
-from pydantic import ValidationError
 
 from architecture_toolkit.domain.details import BehaviorDetail, DataSchemaDetail
 from architecture_toolkit.domain.model import Model
 from architecture_toolkit.domain.status import GapState
+from architecture_toolkit.validation.pipeline import validate_model
 
 
 @pytest.mark.unit
 @pytest.mark.requirement("CORE-07", "DATA-03")
-def test_rejects_dangling_endpoint(minimal_model_source: dict[str, Any]) -> None:
+def test_reports_a_dangling_endpoint_as_a_diagnostic(
+    minimal_model_source: dict[str, Any],
+) -> None:
+    """A behaviour change, and the point of CORE-07.
+
+    This used to raise `ValidationError` from a validator on `Model`. Endpoint resolution is a
+    cross-record question and §3F puts it outside record-local validators, so it is now a
+    diagnostic — which can say which relationship and which side, where the exception could only
+    say that something somewhere was wrong.
+    """
     raw = minimal_model_source
     raw["relationships"][0]["target_element_id"] = "missing"
-    with pytest.raises(ValidationError, match="unresolved endpoint"):
-        Model.model_validate_json(json.dumps(raw))
+    model = Model.model_validate_json(json.dumps(raw))
+
+    report = validate_model(model)
+    unresolved = [d for d in report.diagnostics if d.code == "CORE.RELATION.UNRESOLVED_ENDPOINT"]
+    assert len(unresolved) == 1
+    assert unresolved[0].relationship_id == "rel-1"
+    assert unresolved[0].field_path == "relationships.rel-1.target_element_id"
+    assert report.hard_errors
 
 
 @pytest.mark.property
