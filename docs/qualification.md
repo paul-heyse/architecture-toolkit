@@ -1,35 +1,68 @@
 # Qualification scope
 
-## Initial evidence
+This file describes evidence for the **current repository**, not target architecture.
 
-The qualification suite exercises the locked CPython 3.14 stack with a nested interface
-record, nullable scalar, empty collection/table, explicit Arrow types, Delta version history,
-materialized pinned-snapshot registration, scalar SQL binding and parallel graph relationships.
-Unit tests cover minimal source identity and endpoint invariants. The vendor script independently
-checks an ArchiMate SVG, Structurizr DSL validation/export and BPMN XML against local OMG schemas.
-These are deliberately limited scaffold checks, not a full release or projection certification.
+## Current evidence matrix
 
-## Known interoperability limitation
+| Layer | Proven now | Target | State |
+| --- | --- | --- | --- |
+| CORE domain | minimal strict Pydantic model, unique IDs, endpoint checks | CORE-01..67 | partial |
+| YAML | safe load in minimal CLI/tests; no SourceMap | controlled round-trip authoring/source diagnostics | pending |
+| Static typing | ty check in current CI | D-032 / Pyrefly CORE-53..62 | pending migration |
+| DATA Arrow/Delta | nested interface, nullable scalar, empty table, explicit Arrow schema, Delta history | DATA-01..60 | partial |
+| Snapshot provider | explicit-version materialized PyArrow registration | materialized fallback + qualified Dataset/stream candidates | partial |
+| DataFusion | scalar SQL binding over pinned snapshot | release-scoped catalogs/query recipes/plan evidence | partial |
+| NetworkX | parallel MultiDiGraph edges preserved | private GraphPolicy facade/explainable analyses | partial |
+| Release publication | none | coherent manifest/lock/staging/failure protocol | pending |
+| Semantic diff/migration | none | typed diff, scenarios, historical migrations | pending |
+| PlantUML | handwritten ArchiMate fixture renders SVG | generated ArchiMate/UML/ERD with provenance/security | scaffold only |
+| Structurizr | handwritten DSL validates/exports | generated explicit-ID C4 + rich static export | scaffold only |
+| BPMN | handwritten XML validates against local OMG XSD | generated semantic/DI/moddle/lint/layout/bpmn-js pipeline | scaffold only |
+| Portal | strict basic MkDocs build | offline generated portal + rich C4/BPMN | scaffold only |
+| Requirement evidence | legacy v1 DATA-only index on the base scaffold | 169-requirement v2 index + generated evidence | docs update |
 
-On 2026-09-20, deltalake 1.6.4 rejected native registration with DataFusion 54.0.0 because its
-FFI provider requires DataFusion 55.x. The configured package index offered only DataFusion
-54.0.0. An API being present did not imply compatible binary interfaces.
+## Known DataFusion / deltalake limitation
 
-The scaffold therefore uses `storage/datafusion_adapter.py`, materializing a specifically
-selected Delta version into PyArrow record batches. It also preserves empty-table schema.
-Native FFI is disabled and is not counted as a passing test. Upgrade and qualify both libraries
-together before changing that decision. Large/unbounded table scans need a separate adapter.
+On 2026-09-20, deltalake 1.6.4's direct provider targeted a different DataFusion major than the
+repository's DataFusion 54 lock. Presence of a provider API did not imply binary compatibility.
 
-## Still to prove during implementation
+The current fallback opens an explicit Delta version, materializes it to PyArrow record batches and
+registers those batches in DataFusion while preserving empty-table schema. Native FFI remains
+disabled. Dataset/stream alternatives are target capabilities, not passing evidence.
 
-- Full normalized metamodel, profile registry and all type/foreign-key/status constraints.
-- Multi-table release publication, locking, expected-parent and failure injection.
-- Historical schema migrations, retained releases, semantic diff and scenario isolation.
-- All generated notation views and agreement on source identities.
-- BPMN browser rendering; ArchiMate semantic conformance beyond renderer acceptance.
-- Deterministic output across fonts/layout engines and OS versions.
-- Real-world model accuracy, evidence review and consumer acceptance.
+## Current vendor smoke checks
 
-CI qualifies the locked foundation on hosted macOS ARM64 and Linux x86-64 runners. This does
-not imply a test on any particular consumer desktop. The repository's Actions page and the
-commit's check results provide the current evidence; do not treat this text as a permanent pass.
+`scripts/qualify_tools.py` validates only:
+- handwritten PlantUML ArchiMate fixture -> SVG;
+- handwritten Structurizr workspace -> validate/export;
+- handwritten BPMN XML -> OMG XSD.
+
+It does not prove:
+- canonical-model projection generation;
+- ArchiMate semantic relationship validity or Exchange import;
+- C4 identity/membership parity;
+- BPMN semantic correctness beyond XSD;
+- BPMN browser rendering/layout;
+- portal integration.
+
+## Target evidence model
+
+`reference/requirements.json` defines static requirement statements. Future pytest qualification
+emits a separate machine-readable evidence artifact validated by
+`schemas/qualification-evidence.schema.json`.
+
+Do not hand-edit a requirement to “passed” because one partial test exists.
+
+## Still to prove
+
+- CORE-01..67 implementation, including source-aware diagnostics and Pyrefly migration;
+- DATA-01..60 coherent release/query/history architecture;
+- PROJ-01..42 generated standards projections and portal;
+- full synthetic vertical slice;
+- publication fault injection and stale-parent behavior;
+- historical replay and schema migration;
+- both-platform qualification for all affected dependency/tool families;
+- real-world architecture/evidence correctness and consumer acceptance.
+
+The repository's Actions/check results on a specific commit are the execution evidence; this page is
+a scope statement, not a permanent certification.

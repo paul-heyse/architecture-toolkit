@@ -1,300 +1,2447 @@
 {
-  "schema_version": 1,
-  "scope": "Generic implementation acceptance index; design narrative is maintained separately",
+  "schema_version": 2,
+  "scope": "Generic executable acceptance index. Narrative rationale and task state are maintained separately.",
+  "families": {
+    "DATA": {
+      "source_spec_id": "ARCH-TOOL-DATA-001",
+      "contract": "docs/contracts/data.md"
+    },
+    "PROJ": {
+      "source_spec_id": "ARCH-TOOL-PROJ-001",
+      "contract": "docs/contracts/projections.md"
+    },
+    "CORE": {
+      "source_spec_id": "ARCH-TOOL-CORE-001",
+      "contract": "docs/contracts/core.md"
+    }
+  },
   "requirements": [
     {
       "id": "DATA-01",
-      "requirement": "Use Pydantic, PyArrow, DataFusion, NetworkX and deltalake with distinct responsibilities and one logical model.",
-      "section": "Recommendation; Sections 1 and 8A",
-      "status": "pending",
-      "evidence": []
+      "statement": "Use Pydantic, PyArrow, DataFusion, NetworkX and deltalake with distinct responsibilities and one logical model.",
+      "contract_ref": "data.relational-model",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/storage"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-02",
-      "requirement": "Retain SQLite as a credible transactional alternative; justify the selected stack by types, revisions and interoperability rather than size.",
-      "section": "Recommendation",
-      "status": "pending",
-      "evidence": []
+      "statement": "Retain SQLite as a credible transactional alternative; justify the selected stack by types, revisions and interoperability rather than size.",
+      "contract_ref": "data.relational-model",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/storage"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-03",
-      "requirement": "Persist a typed relational core, not only JSON node/edge bags.",
-      "section": "Section 2",
-      "status": "pending",
-      "evidence": []
+      "statement": "Persist a typed relational core, not only JSON node/edge bags.",
+      "contract_ref": "data.relational-model",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/storage"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-04",
-      "requirement": "Preserve element/model/type identities, independent names and readable aliases.",
-      "section": "Section 2A",
-      "status": "pending",
-      "evidence": []
+      "statement": "Preserve element/model/type identities, independent names and readable aliases.",
+      "contract_ref": "data.relational-model",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/storage"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-05",
-      "requirement": "Give relationships their own identities and explicit type registry with direction, endpoints, cardinality and traversal rules.",
-      "section": "Section 2B",
-      "status": "pending",
-      "evidence": []
+      "statement": "Give relationships their own identities and explicit type registry with direction, endpoints, cardinality and traversal rules.",
+      "contract_ref": "data.relational-model",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/storage"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-06",
-      "requirement": "Store canonical relationship directions and derive inverse views instead of maintaining duplicate inverses.",
-      "section": "Section 2B",
-      "status": "pending",
-      "evidence": []
+      "statement": "Store canonical relationship directions and derive inverse views instead of maintaining duplicate inverses.",
+      "contract_ref": "data.relational-model",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/storage"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-07",
-      "requirement": "Add typed interface, deployment, data-schema, behavior, requirement and notation details only when fields or constraints justify them.",
-      "section": "Section 2C",
-      "status": "pending",
-      "evidence": []
+      "statement": "Add typed interface, deployment, data-schema, behavior, requirement and notation details only when fields or constraints justify them.",
+      "contract_ref": "data.relational-model",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/storage"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-08",
-      "requirement": "Represent multi-party handoffs/interactions as first-class objects with typed participants.",
-      "section": "Section 2D",
-      "status": "pending",
-      "evidence": []
+      "statement": "Represent multi-party handoffs/interactions as first-class objects with typed participants.",
+      "contract_ref": "data.relational-model",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/storage"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-09",
-      "requirement": "Link evidence and decisions to elements, relationships, fields or releases without building a second evidence platform.",
-      "section": "Section 2E",
-      "status": "pending",
-      "evidence": []
+      "statement": "Link evidence and decisions to elements, relationships, fields or releases without building a second evidence platform.",
+      "contract_ref": "data.relational-model",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/storage"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-10",
-      "requirement": "Nest owned values; normalize independently identified and shared objects.",
-      "section": "Section 3",
-      "status": "pending",
-      "evidence": []
+      "statement": "Nest owned values; normalize independently identified and shared objects.",
+      "contract_ref": "data.arrow",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/storage"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-11",
-      "requirement": "Keep the explicit interface Arrow schema and its foreign references as an implementation example.",
-      "section": "Section 3A",
-      "status": "pending",
-      "evidence": []
+      "statement": "Keep the explicit interface Arrow schema and its foreign references as an implementation example.",
+      "contract_ref": "data.arrow",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/storage"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-12",
-      "requirement": "Use the tested Arrow/Delta/DataFusion type intersection, explicit nullability and UTC microsecond instants; avoid baseline unions and extension types.",
-      "section": "Section 3B",
-      "status": "pending",
-      "evidence": []
+      "statement": "Use the tested Arrow/Delta/DataFusion type intersection, explicit nullability and UTC microsecond instants; avoid baseline unions and extension types.",
+      "contract_ref": "data.arrow",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/storage"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-13",
-      "requirement": "Use small namespaced extensions only as an escape hatch; promote frequently queried meaning into typed fields.",
-      "section": "Section 3B",
-      "status": "pending",
-      "evidence": []
+      "statement": "Use small namespaced extensions only as an escape hatch; promote frequently queried meaning into typed fields.",
+      "contract_ref": "data.arrow",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/storage"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-14",
-      "requirement": "Use strict Pydantic domain validation and explicit Arrow mappings; validate cross-record architecture independently.",
-      "section": "Section 3C",
-      "status": "pending",
-      "evidence": []
+      "statement": "Use strict Pydantic domain validation and explicit Arrow mappings; validate cross-record architecture independently.",
+      "contract_ref": "data.arrow",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/storage"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-15",
-      "requirement": "Use DataFusion for relational queries, comparisons and tabular validation; qualify recursive SQL where needed.",
-      "section": "Section 4A",
-      "status": "pending",
-      "evidence": []
+      "statement": "Use DataFusion for relational queries, comparisons and tabular validation; qualify recursive SQL where needed.",
+      "contract_ref": "data.query",
+      "implementation_areas": [
+        "src/architecture_toolkit/queries"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-16",
-      "requirement": "Construct disposable NetworkX projections from release-selected records; return typed/Arrow results.",
-      "section": "Section 4B",
-      "status": "pending",
-      "evidence": []
+      "statement": "Construct disposable NetworkX projections from release-selected records; return typed/Arrow results.",
+      "contract_ref": "data.query",
+      "implementation_areas": [
+        "src/architecture_toolkit/queries"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-17",
-      "requirement": "Implement named traversal policies and retain paths, versions and evidence; do not equate reachability with certain failure.",
-      "section": "Section 4C",
-      "status": "pending",
-      "evidence": []
+      "statement": "Implement named traversal policies and retain paths, versions and evidence; do not equate reachability with certain failure.",
+      "contract_ref": "data.query",
+      "implementation_areas": [
+        "src/architecture_toolkit/queries"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-18",
-      "requirement": "Keep domain mutation separate from queries; use bound scalar SQL parameters or expressions.",
-      "section": "Section 4D",
-      "status": "pending",
-      "evidence": []
+      "statement": "Keep domain mutation separate from queries; use bound scalar SQL parameters or expressions.",
+      "contract_ref": "data.query",
+      "implementation_areas": [
+        "src/architecture_toolkit/queries"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-19",
-      "requirement": "Distinguish source history, storage history and architectural history.",
-      "section": "Section 5A",
-      "status": "pending",
-      "evidence": []
+      "statement": "Distinguish source history, storage history and architectural history.",
+      "contract_ref": "data.release",
+      "implementation_areas": [
+        "src/architecture_toolkit/releases",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-20",
-      "requirement": "Do not equate a Delta table version with an architecture release or claim native multi-table atomicity.",
-      "section": "Sections 5B and 5E",
-      "status": "pending",
-      "evidence": []
+      "statement": "Do not equate a Delta table version with an architecture release or claim native multi-table atomicity.",
+      "contract_ref": "data.release",
+      "implementation_areas": [
+        "src/architecture_toolkit/releases",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-21",
-      "requirement": "Publish an immutable manifest pinning every required table version, schema/profile version, source digest and artifact.",
-      "section": "Section 5C",
-      "status": "pending",
-      "evidence": []
+      "statement": "Publish an immutable manifest pinning every required table version, schema/profile version, source digest and artifact.",
+      "contract_ref": "data.release",
+      "implementation_areas": [
+        "src/architecture_toolkit/releases",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-22",
-      "requirement": "Start with full snapshots of changed tables, reuse unchanged versions and avoid replay-based micro-edit event sourcing.",
-      "section": "Section 5D",
-      "status": "pending",
-      "evidence": []
+      "statement": "Start with full snapshots of changed tables, reuse unchanged versions and avoid replay-based micro-edit event sourcing.",
+      "contract_ref": "data.release",
+      "implementation_areas": [
+        "src/architecture_toolkit/releases",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-23",
-      "requirement": "Use one writer, a publication lock and an expected-parent check; stage and read back before exposing a release.",
-      "section": "Section 5E",
-      "status": "pending",
-      "evidence": []
+      "statement": "Use one writer, a publication lock and an expected-parent check; stage and read back before exposing a release.",
+      "contract_ref": "data.release",
+      "implementation_areas": [
+        "src/architecture_toolkit/releases",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-24",
-      "requirement": "Permit orphan staged versions after failure, but never publish partial architecture state.",
-      "section": "Section 5E",
-      "status": "pending",
-      "evidence": []
+      "statement": "Permit orphan staged versions after failure, but never publish partial architecture state.",
+      "contract_ref": "data.release",
+      "implementation_areas": [
+        "src/architecture_toolkit/releases",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-25",
-      "requirement": "Retain referenced Delta history and create self-contained milestone Parquet/manifest/schema/source/output archives.",
-      "section": "Section 5F",
-      "status": "pending",
-      "evidence": []
+      "statement": "Retain referenced Delta history and create self-contained milestone Parquet/manifest/schema/source/output archives.",
+      "contract_ref": "data.release",
+      "implementation_areas": [
+        "src/architecture_toolkit/releases",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-26",
-      "requirement": "Record semantic change sets with rationale, authorship, decisions, field-level changes, validation and impact.",
-      "section": "Section 6",
-      "status": "pending",
-      "evidence": []
+      "statement": "Record semantic change sets with rationale, authorship, decisions, field-level changes, validation and impact.",
+      "contract_ref": "data.change",
+      "implementation_areas": [
+        "src/architecture_toolkit/releases",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-27",
-      "requirement": "Hash canonical semantic content, preserving ordered sequences; distinguish layout changes; keep CDF supplementary.",
-      "section": "Section 6A",
-      "status": "pending",
-      "evidence": []
+      "statement": "Hash canonical semantic content, preserving ordered sequences; distinguish layout changes; keep CDF supplementary.",
+      "contract_ref": "data.change",
+      "implementation_areas": [
+        "src/architecture_toolkit/releases",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-28",
-      "requirement": "Give design alternatives separate scenario/model identities and baseline references.",
-      "section": "Section 6B",
-      "status": "pending",
-      "evidence": []
+      "statement": "Give design alternatives separate scenario/model identities and baseline references.",
+      "contract_ref": "data.change",
+      "implementation_areas": [
+        "src/architecture_toolkit/releases",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-29",
-      "requirement": "Separate design disposition, implementation, qualification, client acceptance and evidence/review status.",
-      "section": "Section 6C",
-      "status": "pending",
-      "evidence": []
+      "statement": "Separate design disposition, implementation, qualification, client acceptance and evidence/review status.",
+      "contract_ref": "data.change",
+      "implementation_areas": [
+        "src/architecture_toolkit/releases",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-30",
-      "requirement": "Model BPMN behavior, UML ordering, ERD keys/cardinality and notation bindings explicitly; do not infer them from generic edges.",
-      "section": "Section 7",
-      "status": "pending",
-      "evidence": []
+      "statement": "Model BPMN behavior, UML ordering, ERD keys/cardinality and notation bindings explicitly; do not infer them from generic edges.",
+      "contract_ref": "data.change",
+      "implementation_areas": [
+        "src/architecture_toolkit/releases",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-31",
-      "requirement": "Separate semantic and layout versions and the four meanings of validation success.",
-      "section": "Section 7",
-      "status": "pending",
-      "evidence": []
+      "statement": "Separate semantic and layout versions and the four meanings of validation success.",
+      "contract_ref": "data.change",
+      "implementation_areas": [
+        "src/architecture_toolkit/releases",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-32",
-      "requirement": "Use ruamel.yaml, Jinja2, lxml, pytest, Hypothesis and ty for their bounded roles; use the standard library for ordinary utilities.",
-      "section": "Section 8B",
-      "status": "pending",
-      "evidence": []
+      "statement": "Use ruamel.yaml, Jinja2, lxml, pytest, Hypothesis and the selected static type checker for their bounded roles; use the standard library for ordinary utilities.",
+      "contract_ref": "data.operations",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "tests"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-33",
-      "requirement": "Exclude overlapping dataframe, database, orchestration and ORM layers initially; do not import the whole pilot ontology stack.",
-      "section": "Section 8C",
-      "status": "pending",
-      "evidence": []
+      "statement": "Exclude overlapping dataframe, database, orchestration and ORM layers initially; do not import the whole pilot ontology stack.",
+      "contract_ref": "data.operations",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "tests"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-34",
-      "requirement": "Isolate Delta/DataFusion registration, retain a pinned-snapshot PyArrow fallback and normalize arro3 boundaries.",
-      "section": "Section 8D",
-      "status": "pending",
-      "evidence": []
+      "statement": "Isolate Delta/DataFusion registration, retain a pinned-snapshot PyArrow fallback and normalize arro3 boundaries.",
+      "contract_ref": "data.operations",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "tests"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-35",
-      "requirement": "Keep application code Python-only, with one package/locked environment and no change to the separate book-library environment.",
-      "section": "Sections 8D and 9C",
-      "status": "pending",
-      "evidence": []
+      "statement": "Keep application code Python-only, with one package/locked environment and no change to the separate book-library environment.",
+      "contract_ref": "data.operations",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "tests"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-36",
-      "requirement": "Keep narrative/decisions in Notion, executable permitted inputs in GitHub, compiled Delta local and dated exports in Dropbox.",
-      "section": "Section 9A",
-      "status": "pending",
-      "evidence": []
+      "statement": "Keep narrative/decisions in Notion, executable permitted inputs in GitHub, compiled Delta local and dated exports in Dropbox.",
+      "contract_ref": "data.operations",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "tests"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-37",
-      "requirement": "Pin source revisions and digests, or authorized snapshots when immutable source versions are unavailable.",
-      "section": "Section 9B",
-      "status": "pending",
-      "evidence": []
+      "statement": "Pin source revisions and digests, or authorized snapshots when immutable source versions are unavailable.",
+      "contract_ref": "data.operations",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "tests"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-38",
-      "requirement": "Expose baseline/change/validate/diff/review/persist/publish/output operations through a small API and CLI.",
-      "section": "Section 9C",
-      "status": "pending",
-      "evidence": []
+      "statement": "Expose baseline/change/validate/diff/review/persist/publish/output operations through a small API and CLI.",
+      "contract_ref": "data.operations",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "tests"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-39",
-      "requirement": "Start without partitioning, Z-ordering, elaborate compaction or custom indexes; rebuild the query catalog from the manifest.",
-      "section": "Section 9D",
-      "status": "pending",
-      "evidence": []
+      "statement": "Start without partitioning, Z-ordering, elaborate compaction or custom indexes; rebuild the query catalog from the manifest.",
+      "contract_ref": "data.qualification",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "tests"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-40",
-      "requirement": "Qualify round trips, same-release queries, semantic changes, interrupted publication, stale parents and historical schema migration.",
-      "section": "Sections 10A–10E",
-      "status": "pending",
-      "evidence": []
+      "statement": "Qualify round trips, same-release queries, semantic changes, interrupted publication, stale parents and historical schema migration.",
+      "contract_ref": "data.qualification",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "tests"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-41",
-      "requirement": "Preserve unknowns, manual processes and evidence gaps; do not invent facts to satisfy structural checks.",
-      "section": "Section 10F",
-      "status": "pending",
-      "evidence": []
+      "statement": "Preserve unknowns, manual processes and evidence gaps; do not invent facts to satisfy structural checks.",
+      "contract_ref": "data.qualification",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "tests"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
     },
     {
       "id": "DATA-42",
-      "requirement": "Do not claim tested interoperability; retain immutable Parquet plus manifests as the simpler alternative.",
-      "section": "Section 10G; final assessment",
-      "status": "pending",
-      "evidence": []
+      "statement": "Do not claim tested interoperability; retain immutable Parquet plus manifests as the simpler alternative.",
+      "contract_ref": "data.qualification",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "tests"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
+    },
+    {
+      "id": "DATA-43",
+      "statement": "Use RecordBatchReader / Arrow C Stream as the preferred streaming interoperability contract where qualified; retain a materialized PyArrow fallback.",
+      "contract_ref": "data.arrow",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "src/architecture_toolkit/queries",
+        "src/architecture_toolkit/releases"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
+    },
+    {
+      "id": "DATA-44",
+      "statement": "Define a schema/field metadata policy; Arrow metadata may self-describe physical storage but cannot become hidden semantic authority.",
+      "contract_ref": "data.arrow",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "src/architecture_toolkit/queries",
+        "src/architecture_toolkit/releases"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
+    },
+    {
+      "id": "DATA-45",
+      "statement": "Make semantic hashes independent of Arrow chunk layout; dictionary encoding remains optional and qualification-gated.",
+      "contract_ref": "data.arrow",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "src/architecture_toolkit/queries",
+        "src/architecture_toolkit/releases"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
+    },
+    {
+      "id": "DATA-46",
+      "statement": "Build one manifest-scoped DataFusion query context per ArchitectureRelease rather than querying mutable latest state.",
+      "contract_ref": "data.query",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "src/architecture_toolkit/queries",
+        "src/architecture_toolkit/releases"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
+    },
+    {
+      "id": "DATA-47",
+      "statement": "Cross-release comparisons register explicit named sides/namespaces and never resolve table versions implicitly.",
+      "contract_ref": "data.query",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "src/architecture_toolkit/queries",
+        "src/architecture_toolkit/releases"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
+    },
+    {
+      "id": "DATA-48",
+      "statement": "Define versioned parameterized query recipes with input roles, parameter schema, expected result schema and qualification cases.",
+      "contract_ref": "data.query",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "src/architecture_toolkit/queries",
+        "src/architecture_toolkit/releases"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
+    },
+    {
+      "id": "DATA-49",
+      "statement": "Capture DataFusion logical/optimized/physical plan evidence during qualification without incorporating engine plans into semantic architecture identity.",
+      "contract_ref": "data.query",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "src/architecture_toolkit/queries",
+        "src/architecture_toolkit/releases"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
+    },
+    {
+      "id": "DATA-50",
+      "statement": "Prefer DataFusion built-ins; UDF/UDAF/UDWF/UDTF require a demonstrated capability gap.",
+      "contract_ref": "data.query",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "src/architecture_toolkit/queries",
+        "src/architecture_toolkit/releases"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
+    },
+    {
+      "id": "DATA-51",
+      "statement": "Abstract version-pinned Delta reads behind SnapshotProvider implementations so interoperability can change without changing domain/release semantics.",
+      "contract_ref": "data.persistence",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "src/architecture_toolkit/queries",
+        "src/architecture_toolkit/releases"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
+    },
+    {
+      "id": "DATA-52",
+      "statement": "Qualify PyArrow Dataset and Delta scan/Arrow-stream providers before replacing the materialized provider.",
+      "contract_ref": "data.persistence",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "src/architecture_toolkit/queries",
+        "src/architecture_toolkit/releases"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
+    },
+    {
+      "id": "DATA-53",
+      "statement": "Use deltalake Python commit metadata to bind table commits to publication attempts/change sets where supported and tested.",
+      "contract_ref": "data.persistence",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "src/architecture_toolkit/queries",
+        "src/architecture_toolkit/releases"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
+    },
+    {
+      "id": "DATA-54",
+      "statement": "Qualify deltalake application transaction markers for per-table retry/idempotency; never treat them as cross-table publication atomicity.",
+      "contract_ref": "data.persistence",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "src/architecture_toolkit/queries",
+        "src/architecture_toolkit/releases"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
+    },
+    {
+      "id": "DATA-55",
+      "statement": "Use Delta constraints only for row-local persisted invariants; cross-table, graph and evidence rules remain application validations.",
+      "contract_ref": "data.persistence",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "src/architecture_toolkit/queries",
+        "src/architecture_toolkit/releases"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
+    },
+    {
+      "id": "DATA-56",
+      "statement": "Treat persisted schema changes as explicit versioned migrations; do not automatically merge schemas during normal architecture publication.",
+      "contract_ref": "data.persistence",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "src/architecture_toolkit/queries",
+        "src/architecture_toolkit/releases"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
+    },
+    {
+      "id": "DATA-57",
+      "statement": "Use Delta CDF/history as storage-audit evidence and semantic-diff cross-checks, not as the architecture change log.",
+      "contract_ref": "data.persistence",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "src/architecture_toolkit/queries",
+        "src/architecture_toolkit/releases"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
+    },
+    {
+      "id": "DATA-58",
+      "statement": "Retention/checkpoint/vacuum policy must protect every Delta version required by a retained ArchitectureRelease manifest or milestone archive.",
+      "contract_ref": "data.persistence",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "src/architecture_toolkit/queries",
+        "src/architecture_toolkit/releases"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
+    },
+    {
+      "id": "DATA-59",
+      "statement": "Keep partitioning, compaction tuning and Z-order outside the baseline until measured file-layout pressure justifies them.",
+      "contract_ref": "data.persistence",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "src/architecture_toolkit/queries",
+        "src/architecture_toolkit/releases"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
+    },
+    {
+      "id": "DATA-60",
+      "statement": "Maintain and continuously test an exact Python PyArrow/DataFusion/deltalake/arro3 compatibility matrix on supported platforms; do not add a custom Rust implementation for capability completeness.",
+      "contract_ref": "data.persistence",
+      "implementation_areas": [
+        "src/architecture_toolkit/storage",
+        "src/architecture_toolkit/queries",
+        "src/architecture_toolkit/releases"
+      ],
+      "verification": [
+        "unit",
+        "integration",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-01",
+      "statement": "The canonical model/release is the only semantic source; notation and rendered artifacts are generated.",
+      "contract_ref": "projections.common",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-02",
+      "statement": "Every projected semantic object uses a stable NotationBinding back to a canonical object.",
+      "contract_ref": "projections.common",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-03",
+      "statement": "ViewDefinition explicitly owns view type, purpose/audience, membership, perspective/filter and layout profile.",
+      "contract_ref": "projections.common",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-04",
+      "statement": "LayoutProfile/LayoutArtifact are versioned separately from semantic view content.",
+      "contract_ref": "projections.common",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-05",
+      "statement": "ProjectionArtifact records release/view, mapping/generator version and semantic/source digests.",
+      "contract_ref": "projections.common",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-06",
+      "statement": "RenderArtifact records renderer/layout/platform/font/options/output provenance.",
+      "contract_ref": "projections.common",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-07",
+      "statement": "Validation distinguishes canonical structure, semantic/cross-model, notation, schema/syntax, renderer and real-world correctness.",
+      "contract_ref": "projections.common",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-08",
+      "statement": "C4 baseline includes landscape/context/container; component/dynamic are selective; deployment is conditional; code diagrams are excluded.",
+      "contract_ref": "projections.c4",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-09",
+      "statement": "Structurizr generation uses deterministic identifiers, relationship IDs where needed and explicit stable view keys.",
+      "contract_ref": "projections.c4",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-10",
+      "statement": "Structurizr implied relationships are disabled in baseline generated workspaces.",
+      "contract_ref": "projections.c4",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-11",
+      "statement": "Structurizr view membership derives from canonical ViewDefinition rather than uncontrolled wildcard/inference behavior.",
+      "contract_ref": "projections.c4",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-12",
+      "statement": "Structurizr tags/properties/static perspectives derive from canonical metadata; external dynamic perspectives are excluded.",
+      "contract_ref": "projections.c4",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-13",
+      "statement": "Generated Structurizr DSL does not use remote includes, scripts/plugins or duplicate narrative docs/ADRs as semantic inputs.",
+      "contract_ref": "projections.c4",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-14",
+      "statement": "Structurizr automatic layout is baseline; any manual layout is a separate LayoutArtifact tied to a view digest.",
+      "contract_ref": "projections.c4",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-15",
+      "statement": "Structurizr static export is the target rich C4 surface and portable PlantUML/SVG is a separate lower-fidelity artifact.",
+      "contract_ref": "projections.c4",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-16",
+      "statement": "Filtered Structurizr views are not baseline for portable auto-layout output; use explicit views/perspectives.",
+      "contract_ref": "projections.c4",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-17",
+      "statement": "Generate model-level ArchiMate Exchange XML as an interoperability artifact, never as the persistent source format.",
+      "contract_ref": "projections.archimate",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-18",
+      "statement": "Baseline ArchiMate Exchange covers model elements, relationships, modifiers, properties and optional organization metadata; diagram geometry is deferred.",
+      "contract_ref": "projections.archimate",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-19",
+      "statement": "ArchiMate concept/relationship validity is enforced by a versioned semantic mapping/relationship profile before export.",
+      "contract_ref": "projections.archimate",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-20",
+      "statement": "PlantUML ArchiMate is a visual projection separate from ArchiMate Exchange XML.",
+      "contract_ref": "projections.archimate",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-21",
+      "statement": "Use the selected PlantUML MIT distribution under a restrictive local security profile with no remote includes.",
+      "contract_ref": "projections.plantuml",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-22",
+      "statement": "PlantUML aliases derive from canonical IDs; optional links/tooltips are presentation only and qualified for portal mode.",
+      "contract_ref": "projections.plantuml",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-23",
+      "statement": "UML is selective: sequence/state where useful, class only when it materially clarifies implementation; BPMN remains workflow authority.",
+      "contract_ref": "projections.plantuml",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-24",
+      "statement": "ERD is generated from actual schema keys/nullability/FKs/cardinality using a tested implementation-oriented notation.",
+      "contract_ref": "projections.plantuml",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-25",
+      "statement": "PlantUML builds use syntax/failfast/timeouts and capture structured renderer diagnostics/provenance.",
+      "contract_ref": "projections.plantuml",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-26",
+      "statement": "Renderer/layout-engine version is presentation provenance; byte-identical SVG across platforms is not a semantic acceptance requirement.",
+      "contract_ref": "projections.plantuml",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-27",
+      "statement": "BPMN semantic XML and BPMN DI/layout are distinct versioned projection concerns.",
+      "contract_ref": "projections.bpmn",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-28",
+      "statement": "The supported BPMN subset is explicit/versioned; unsupported constructs never silently downgrade.",
+      "contract_ref": "projections.bpmn",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-29",
+      "statement": "BPMN qualification layers canonical validation, OMG XSD, bpmn-moddle, bpmnlint and renderer import separately.",
+      "contract_ref": "projections.bpmn",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-30",
+      "statement": "bpmnlint correctness is the candidate technical lint set; recommended/opinionated rules remain advisory unless explicitly adopted.",
+      "contract_ref": "projections.bpmn",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-31",
+      "statement": "bpmn-auto-layout is the preferred DI-generation candidate but must pass supported-subset, deterministic-layout, quality and packaging qualification before baseline adoption.",
+      "contract_ref": "projections.bpmn",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-32",
+      "statement": "bpmn-js is the preferred local interactive renderer; the required bpmn.io watermark is preserved.",
+      "contract_ref": "projections.bpmn",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-33",
+      "statement": "bpmn-to-image/Puppeteer is optional milestone export capability, not baseline runtime dependency.",
+      "contract_ref": "projections.bpmn",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-34",
+      "statement": "If Node is introduced, it is a pinned vendor runtime/tool bundle, not a second application or persistent service by default.",
+      "contract_ref": "projections.bpmn",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-35",
+      "statement": "Target Material for MkDocs 9.x as the offline-first portal theme only after exact-version lock/qualification.",
+      "contract_ref": "projections.portal",
+      "implementation_areas": [
+        "src/architecture_toolkit/publishing",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-36",
+      "statement": "Portal release output is offline/local first, with search/navigation/local assets and no analytics/comments/external runtime assets.",
+      "contract_ref": "projections.portal",
+      "implementation_areas": [
+        "src/architecture_toolkit/publishing",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-37",
+      "statement": "Generated portal routes for canonical elements/views/releases are stable and traceable to IDs.",
+      "contract_ref": "projections.portal",
+      "implementation_areas": [
+        "src/architecture_toolkit/publishing",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-38",
+      "statement": "Rich Structurizr C4 and qualified BPMN interactive views integrate with the portal without becoming editable sources.",
+      "contract_ref": "projections.portal",
+      "implementation_areas": [
+        "src/architecture_toolkit/publishing",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-39",
+      "statement": "Kroki is deferred/optional and, if enabled, is local, pinned and restricted; no public Kroki endpoint handles confidential models.",
+      "contract_ref": "projections.kroki",
+      "implementation_areas": [
+        "src/architecture_toolkit/publishing",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-40",
+      "statement": "Vendor tools/runtime/schema versions, checksums, licenses/notices and security configuration are recorded.",
+      "contract_ref": "projections.provenance",
+      "implementation_areas": [
+        "src/architecture_toolkit/publishing",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-41",
+      "statement": "ArchitectureRelease can pin projection/render/validation artifact digests and toolchain provenance.",
+      "contract_ref": "projections.provenance",
+      "implementation_areas": [
+        "src/architecture_toolkit/publishing",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "PROJ-42",
+      "statement": "Qualification proves cross-tool canonical identity consistency and runs relevant checks on macOS ARM64 and Linux x86-64.",
+      "contract_ref": "projections.provenance",
+      "implementation_areas": [
+        "src/architecture_toolkit/publishing",
+        "src/architecture_toolkit/rendering"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "vendor",
+        "qualification"
+      ]
+    },
+    {
+      "id": "CORE-01",
+      "statement": "Pydantic is the canonical runtime domain-validation layer; storage/rendering objects are not independently authored semantic models.",
+      "contract_ref": "core.domain",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "schema",
+        "pyrefly"
+      ]
+    },
+    {
+      "id": "CORE-02",
+      "statement": "Authoring/domain records use strict validation and forbid undeclared extra fields by default.",
+      "contract_ref": "core.domain",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "schema",
+        "pyrefly"
+      ]
+    },
+    {
+      "id": "CORE-03",
+      "statement": "Reusable semantic ID/version/digest concepts are represented by centralized constrained typed aliases rather than repeated raw-string rules.",
+      "contract_ref": "core.domain",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "schema",
+        "pyrefly"
+      ]
+    },
+    {
+      "id": "CORE-04",
+      "statement": "Domain variants use explicit discriminated unions where a stable variant tag exists.",
+      "contract_ref": "core.domain",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "schema",
+        "pyrefly"
+      ]
+    },
+    {
+      "id": "CORE-05",
+      "statement": "TypeAdapter is used only for natural type/collection boundaries and does not replace meaningful identified domain models.",
+      "contract_ref": "core.domain",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "schema",
+        "pyrefly"
+      ]
+    },
+    {
+      "id": "CORE-06",
+      "statement": "Pydantic validators are limited to record-local rules and explicit deterministic validation context.",
+      "contract_ref": "core.domain",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "schema",
+        "pyrefly"
+      ]
+    },
+    {
+      "id": "CORE-07",
+      "statement": "Cross-record/domain validation is implemented separately and returns structured Diagnostics without mutating records.",
+      "contract_ref": "core.domain",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "schema",
+        "pyrefly"
+      ]
+    },
+    {
+      "id": "CORE-08",
+      "statement": "Published compiled Pydantic records are frozen and use immutable nested field types where semantic immutability matters.",
+      "contract_ref": "core.domain",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "schema",
+        "pyrefly"
+      ]
+    },
+    {
+      "id": "CORE-09",
+      "statement": "Normal domain flows do not use model_construct, SkipValidation or equivalent validation bypasses.",
+      "contract_ref": "core.domain",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "schema",
+        "pyrefly"
+      ]
+    },
+    {
+      "id": "CORE-10",
+      "statement": "Architecture mutation is expressed as validated typed ChangeCommands producing a fully revalidated candidate rather than arbitrary in-place model edits.",
+      "contract_ref": "core.domain",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "schema",
+        "pyrefly"
+      ]
+    },
+    {
+      "id": "CORE-11",
+      "statement": "Pydantic validation failures are normalized into stable diagnostic codes, locations and structured context.",
+      "contract_ref": "core.domain",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "schema",
+        "pyrefly"
+      ]
+    },
+    {
+      "id": "CORE-12",
+      "statement": "JSON Schema is a versioned generated authoring/machine contract with checked snapshots and discriminators.",
+      "contract_ref": "core.domain",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "schema",
+        "pyrefly"
+      ]
+    },
+    {
+      "id": "CORE-13",
+      "statement": "Validation/serialization schema differences are introduced only deliberately and documented.",
+      "contract_ref": "core.domain",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "schema",
+        "pyrefly"
+      ]
+    },
+    {
+      "id": "CORE-14",
+      "statement": "Canonical YAML authoring uses a controlled YAML 1.2 round-trip profile with explicit depth and output settings.",
+      "contract_ref": "core.authoring",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "property"
+      ]
+    },
+    {
+      "id": "CORE-15",
+      "statement": "YAML duplicate keys are hard errors.",
+      "contract_ref": "core.authoring",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "property"
+      ]
+    },
+    {
+      "id": "CORE-16",
+      "statement": "YAML anchors/aliases, merge keys, custom application tags and unsafe Python tags are forbidden in the baseline authoring profile.",
+      "contract_ref": "core.authoring",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "property"
+      ]
+    },
+    {
+      "id": "CORE-17",
+      "statement": "ruamel presentation objects do not escape the authoring adapter into canonical domain/storage logic.",
+      "contract_ref": "core.authoring",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "property"
+      ]
+    },
+    {
+      "id": "CORE-18",
+      "statement": "A SourceMap captures YAML semantic paths and line/column locations before conversion to Pydantic models.",
+      "contract_ref": "core.authoring",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "property"
+      ]
+    },
+    {
+      "id": "CORE-19",
+      "statement": "Validation diagnostics resolve back to source file/line/column where authoring source exists.",
+      "contract_ref": "core.authoring",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "property"
+      ]
+    },
+    {
+      "id": "CORE-20",
+      "statement": "Round-trip authoring edits reparse/revalidate and present a semantic diff before publication.",
+      "contract_ref": "core.authoring",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "property"
+      ]
+    },
+    {
+      "id": "CORE-21",
+      "statement": "YAML comments, quote style, whitespace and semantically unordered key ordering are excluded from architecture semantic hashes.",
+      "contract_ref": "core.authoring",
+      "implementation_areas": [
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "property"
+      ]
+    },
+    {
+      "id": "CORE-22",
+      "statement": "NetworkX is a disposable release/candidate-derived analysis projection, not durable canonical storage.",
+      "contract_ref": "core.graph",
+      "implementation_areas": [
+        "src/architecture_toolkit/queries"
+      ],
+      "verification": [
+        "unit",
+        "property",
+        "integration"
+      ]
+    },
+    {
+      "id": "CORE-23",
+      "statement": "NetworkX node keys are canonical object IDs and MultiDiGraph edge keys are canonical relationship IDs.",
+      "contract_ref": "core.graph",
+      "implementation_areas": [
+        "src/architecture_toolkit/queries"
+      ],
+      "verification": [
+        "unit",
+        "property",
+        "integration"
+      ]
+    },
+    {
+      "id": "CORE-24",
+      "statement": "The raw NetworkX graph is encapsulated behind an ArchitectureGraph facade with no public general mutation API.",
+      "contract_ref": "core.graph",
+      "implementation_areas": [
+        "src/architecture_toolkit/queries"
+      ],
+      "verification": [
+        "unit",
+        "property",
+        "integration"
+      ]
+    },
+    {
+      "id": "CORE-25",
+      "statement": "nx.freeze is treated only as a partial structural guard because graph attribute mappings remain mutable.",
+      "contract_ref": "core.graph",
+      "implementation_areas": [
+        "src/architecture_toolkit/queries"
+      ],
+      "verification": [
+        "unit",
+        "property",
+        "integration"
+      ]
+    },
+    {
+      "id": "CORE-26",
+      "statement": "Graph queries use versioned GraphPolicy definitions with explicit edge types, directions, contexts, bounds and stopping rules.",
+      "contract_ref": "core.graph",
+      "implementation_areas": [
+        "src/architecture_toolkit/queries"
+      ],
+      "verification": [
+        "unit",
+        "property",
+        "integration"
+      ]
+    },
+    {
+      "id": "CORE-27",
+      "statement": "Policy-specific read-only graph views use filtered/subgraph views where appropriate rather than duplicating graph state.",
+      "contract_ref": "core.graph",
+      "implementation_areas": [
+        "src/architecture_toolkit/queries"
+      ],
+      "verification": [
+        "unit",
+        "property",
+        "integration"
+      ]
+    },
+    {
+      "id": "CORE-28",
+      "statement": "Graph impact/path results retain ordered relationship IDs and policy/release provenance.",
+      "contract_ref": "core.graph",
+      "implementation_areas": [
+        "src/architecture_toolkit/queries"
+      ],
+      "verification": [
+        "unit",
+        "property",
+        "integration"
+      ]
+    },
+    {
+      "id": "CORE-29",
+      "statement": "Unbounded path enumeration is prohibited; depth/result/path caps are enforced before materialization.",
+      "contract_ref": "core.graph",
+      "implementation_areas": [
+        "src/architecture_toolkit/queries"
+      ],
+      "verification": [
+        "unit",
+        "property",
+        "integration"
+      ]
+    },
+    {
+      "id": "CORE-30",
+      "statement": "Cycle, SCC, condensation and DAG analyses are used only under explicit graph semantics and retain mappings to canonical IDs.",
+      "contract_ref": "core.graph",
+      "implementation_areas": [
+        "src/architecture_toolkit/queries"
+      ],
+      "verification": [
+        "unit",
+        "property",
+        "integration"
+      ]
+    },
+    {
+      "id": "CORE-31",
+      "statement": "Transitive reduction/closure results are derived analysis/view artifacts and never replace canonical relationships.",
+      "contract_ref": "core.graph",
+      "implementation_areas": [
+        "src/architecture_toolkit/queries"
+      ],
+      "verification": [
+        "unit",
+        "property",
+        "integration"
+      ]
+    },
+    {
+      "id": "CORE-32",
+      "statement": "Jinja receives a fully prepared typed projection DTO; templates do not perform semantic graph/query/domain inference.",
+      "contract_ref": "core.jinja",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "qualification"
+      ]
+    },
+    {
+      "id": "CORE-33",
+      "statement": "Jinja uses a centralized deterministic Environment with StrictUndefined and controlled loaders/whitespace/newline settings.",
+      "contract_ref": "core.jinja",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "qualification"
+      ]
+    },
+    {
+      "id": "CORE-34",
+      "statement": "Jinja undeclared-variable analysis is used to qualify template/context contracts.",
+      "contract_ref": "core.jinja",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "qualification"
+      ]
+    },
+    {
+      "id": "CORE-35",
+      "statement": "Custom Jinja filters/tests are pure deterministic presentation helpers.",
+      "contract_ref": "core.jinja",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "qualification"
+      ]
+    },
+    {
+      "id": "CORE-36",
+      "statement": "Template bundle identity/digest includes transitive included/inherited templates that can change generated output.",
+      "contract_ref": "core.jinja",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "qualification"
+      ]
+    },
+    {
+      "id": "CORE-37",
+      "statement": "Baseline Jinja templates are trusted checked-in toolkit code; arbitrary consumer templates are not supported without a separate sandboxed extension design.",
+      "contract_ref": "core.jinja",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "qualification"
+      ]
+    },
+    {
+      "id": "CORE-38",
+      "statement": "Jinja is not used to generate BPMN/ArchiMate standards XML.",
+      "contract_ref": "core.jinja",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "qualification"
+      ]
+    },
+    {
+      "id": "CORE-39",
+      "statement": "lxml standards XML generation uses structured namespace-aware APIs such as QName/ElementMaker.",
+      "contract_ref": "core.xml",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "qualification"
+      ]
+    },
+    {
+      "id": "CORE-40",
+      "statement": "All lxml parsing/validation uses an explicit no-network/no-DTD/no-external-entity/no-recovery secure parser baseline unless separately qualified.",
+      "contract_ref": "core.xml",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "qualification"
+      ]
+    },
+    {
+      "id": "CORE-41",
+      "statement": "Standards schema imports/includes resolve only through a reviewed checksummed local resolver.",
+      "contract_ref": "core.xml",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "qualification"
+      ]
+    },
+    {
+      "id": "CORE-42",
+      "statement": "lxml XMLSchema error logs normalize into structured validation diagnostics.",
+      "contract_ref": "core.xml",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "qualification"
+      ]
+    },
+    {
+      "id": "CORE-43",
+      "statement": "Relevant XML artifacts retain both literal source digests and canonical C14N digests; formatting-only XML changes do not masquerade as semantic changes.",
+      "contract_ref": "core.xml",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "qualification"
+      ]
+    },
+    {
+      "id": "CORE-44",
+      "statement": "Schematron/XSLT/incremental XML processing remain deferred until a concrete standards use case justifies them.",
+      "contract_ref": "core.xml",
+      "implementation_areas": [
+        "src/architecture_toolkit/projections",
+        "src/architecture_toolkit/validation"
+      ],
+      "verification": [
+        "unit",
+        "interop",
+        "qualification"
+      ]
+    },
+    {
+      "id": "CORE-45",
+      "statement": "Hypothesis has reusable valid/invalid domain strategy libraries with bounded recursion and shrink-friendly construction.",
+      "contract_ref": "core.hypothesis",
+      "implementation_areas": [
+        "tests",
+        "pyproject.toml",
+        ".github/workflows"
+      ],
+      "verification": [
+        "pytest",
+        "property",
+        "static"
+      ]
+    },
+    {
+      "id": "CORE-46",
+      "statement": "Hypothesis rule-based stateful tests cover release publication failure/retry/stale-parent invariants.",
+      "contract_ref": "core.hypothesis",
+      "implementation_areas": [
+        "tests",
+        "pyproject.toml",
+        ".github/workflows"
+      ],
+      "verification": [
+        "pytest",
+        "property",
+        "static"
+      ]
+    },
+    {
+      "id": "CORE-47",
+      "statement": "Hypothesis profiles for dev/CI/deep qualification are explicit and version-controlled.",
+      "contract_ref": "core.hypothesis",
+      "implementation_areas": [
+        "tests",
+        "pyproject.toml",
+        ".github/workflows"
+      ],
+      "verification": [
+        "pytest",
+        "property",
+        "static"
+      ]
+    },
+    {
+      "id": "CORE-48",
+      "statement": "pytest uses registered qualification markers and a requirement marker spanning CORE/DATA/PROJ requirements.",
+      "contract_ref": "core.pytest",
+      "implementation_areas": [
+        "tests",
+        "pyproject.toml",
+        ".github/workflows"
+      ],
+      "verification": [
+        "pytest",
+        "property",
+        "static"
+      ]
+    },
+    {
+      "id": "CORE-49",
+      "statement": "A separate machine-readable pytest requirement-evidence report maps test outcomes to requirement IDs and implementation/platform provenance.",
+      "contract_ref": "core.pytest",
+      "implementation_areas": [
+        "tests",
+        "pyproject.toml",
+        ".github/workflows"
+      ],
+      "verification": [
+        "pytest",
+        "property",
+        "static"
+      ]
+    },
+    {
+      "id": "CORE-50",
+      "statement": "JUnit remains standard CI output; custom requirement evidence does not depend on nonstandard JUnit properties.",
+      "contract_ref": "core.pytest",
+      "implementation_areas": [
+        "tests",
+        "pyproject.toml",
+        ".github/workflows"
+      ],
+      "verification": [
+        "pytest",
+        "property",
+        "static"
+      ]
+    },
+    {
+      "id": "CORE-51",
+      "statement": "pytest fixtures are typed and use the narrowest practical scope; fault-injection tests are local/deterministic.",
+      "contract_ref": "core.pytest",
+      "implementation_areas": [
+        "tests",
+        "pyproject.toml",
+        ".github/workflows"
+      ],
+      "verification": [
+        "pytest",
+        "property",
+        "static"
+      ]
+    },
+    {
+      "id": "CORE-52",
+      "statement": "Known limitations use strict xfail with explicit upstream/version reason rather than silent broad exclusions.",
+      "contract_ref": "core.pytest",
+      "implementation_areas": [
+        "tests",
+        "pyproject.toml",
+        ".github/workflows"
+      ],
+      "verification": [
+        "pytest",
+        "property",
+        "static"
+      ]
+    },
+    {
+      "id": "CORE-53",
+      "statement": "Pyrefly is the target static type checker and replaces ty when the implementation cascade occurs.",
+      "contract_ref": "core.pyrefly",
+      "implementation_areas": [
+        "tests",
+        "pyproject.toml",
+        ".github/workflows"
+      ],
+      "verification": [
+        "pytest",
+        "property",
+        "static"
+      ]
+    },
+    {
+      "id": "CORE-54",
+      "statement": "Pyrefly is explicitly configured in pyproject for Python 3.14 and project source/tests/scripts rather than relying on basic/unconfigured mode.",
+      "contract_ref": "core.pyrefly",
+      "implementation_areas": [
+        "tests",
+        "pyproject.toml",
+        ".github/workflows"
+      ],
+      "verification": [
+        "pytest",
+        "property",
+        "static"
+      ]
+    },
+    {
+      "id": "CORE-55",
+      "statement": "The pinned Pyrefly version is lock-controlled and upgrades run full static/both-platform qualification because new versions may introduce new errors.",
+      "contract_ref": "core.pyrefly",
+      "implementation_areas": [
+        "tests",
+        "pyproject.toml",
+        ".github/workflows"
+      ],
+      "verification": [
+        "pytest",
+        "property",
+        "static"
+      ]
+    },
+    {
+      "id": "CORE-56",
+      "statement": "Pyrefly's built-in Pydantic support is qualified against every advanced Pydantic pattern the toolkit relies on.",
+      "contract_ref": "core.pyrefly",
+      "implementation_areas": [
+        "tests",
+        "pyproject.toml",
+        ".github/workflows"
+      ],
+      "verification": [
+        "pytest",
+        "property",
+        "static"
+      ]
+    },
+    {
+      "id": "CORE-57",
+      "statement": "Tests are type-checked and use Pyrefly's pytest fixture understanding.",
+      "contract_ref": "core.pyrefly",
+      "implementation_areas": [
+        "tests",
+        "pyproject.toml",
+        ".github/workflows"
+      ],
+      "verification": [
+        "pytest",
+        "property",
+        "static"
+      ]
+    },
+    {
+      "id": "CORE-58",
+      "statement": "Replaceable subsystem boundaries use typed Protocols where structural typing is appropriate.",
+      "contract_ref": "core.pyrefly",
+      "implementation_areas": [
+        "tests",
+        "pyproject.toml",
+        ".github/workflows"
+      ],
+      "verification": [
+        "pytest",
+        "property",
+        "static"
+      ]
+    },
+    {
+      "id": "CORE-59",
+      "statement": "Critical discriminated-union dispatch is statically exhaustive using narrowing/assert-never patterns where practical.",
+      "contract_ref": "core.pyrefly",
+      "implementation_areas": [
+        "tests",
+        "pyproject.toml",
+        ".github/workflows"
+      ],
+      "verification": [
+        "pytest",
+        "property",
+        "static"
+      ]
+    },
+    {
+      "id": "CORE-60",
+      "statement": "No Pyrefly baseline is used by default; suppressions are narrow error-code-specific reviewed exceptions.",
+      "contract_ref": "core.pyrefly",
+      "implementation_areas": [
+        "tests",
+        "pyproject.toml",
+        ".github/workflows"
+      ],
+      "verification": [
+        "pytest",
+        "property",
+        "static"
+      ]
+    },
+    {
+      "id": "CORE-61",
+      "statement": "Public toolkit API targets 100% strict Pyrefly type coverage after interface stabilization, with whole-src strict coverage tracked.",
+      "contract_ref": "core.pyrefly",
+      "implementation_areas": [
+        "tests",
+        "pyproject.toml",
+        ".github/workflows"
+      ],
+      "verification": [
+        "pytest",
+        "property",
+        "static"
+      ]
+    },
+    {
+      "id": "CORE-62",
+      "statement": "Pyrefly infer may assist local annotation work but never mutates source automatically in CI.",
+      "contract_ref": "core.pyrefly",
+      "implementation_areas": [
+        "tests",
+        "pyproject.toml",
+        ".github/workflows"
+      ],
+      "verification": [
+        "pytest",
+        "property",
+        "static"
+      ]
+    },
+    {
+      "id": "CORE-63",
+      "statement": "Ruff remains the formatter/linter with py314 target and existing E/F/I/UP/B baseline.",
+      "contract_ref": "core.ruff",
+      "implementation_areas": [
+        "tests",
+        "pyproject.toml",
+        ".github/workflows"
+      ],
+      "verification": [
+        "pytest",
+        "property",
+        "static"
+      ]
+    },
+    {
+      "id": "CORE-64",
+      "statement": "RUF/PT/PTH/S rule families are qualified against the codebase and enabled only with reviewed narrow exceptions.",
+      "contract_ref": "core.ruff",
+      "implementation_areas": [
+        "tests",
+        "pyproject.toml",
+        ".github/workflows"
+      ],
+      "verification": [
+        "pytest",
+        "property",
+        "static"
+      ]
+    },
+    {
+      "id": "CORE-65",
+      "statement": "Ruff preview behavior and unsafe automatic fixes are disabled in baseline CI.",
+      "contract_ref": "core.ruff",
+      "implementation_areas": [
+        "tests",
+        "pyproject.toml",
+        ".github/workflows"
+      ],
+      "verification": [
+        "pytest",
+        "property",
+        "static"
+      ]
+    },
+    {
+      "id": "CORE-66",
+      "statement": "Engineering/static check evidence is represented separately from architecture-model validation through EngineeringQualificationArtifact or equivalent implementation evidence.",
+      "contract_ref": "core.qualification",
+      "implementation_areas": [
+        "tests",
+        "pyproject.toml",
+        ".github/workflows"
+      ],
+      "verification": [
+        "pytest",
+        "property",
+        "static"
+      ]
+    },
+    {
+      "id": "CORE-67",
+      "statement": "The complete cross-library qualification matrix is executed before the GitHub implementation is described as satisfying the core architecture.",
+      "contract_ref": "core.qualification",
+      "implementation_areas": [
+        "tests",
+        "pyproject.toml",
+        ".github/workflows"
+      ],
+      "verification": [
+        "pytest",
+        "property",
+        "static"
+      ]
     }
   ]
 }

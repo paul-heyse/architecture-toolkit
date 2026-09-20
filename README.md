@@ -1,9 +1,11 @@
 # Architecture toolkit
 
-A reusable architecture-as-code **foundation for implementation**. Author a typed model once,
-then produce consistent architecture, process, software and data views. The full compiler,
-release manager and projection generators remain to be built; this repository makes their
-contracts, environment and acceptance work concrete.
+Reusable architecture-as-code foundation: author a typed canonical model, publish coherent
+versioned releases, query the same release relationally and as a graph, then generate traceable
+architecture/process/software/data projections and an offline documentation bundle.
+
+The full compiler and release/projection pipeline are not yet implemented. This repository defines
+the executable contracts and qualification boundaries for building them.
 
 ## Start here
 
@@ -18,36 +20,46 @@ uv run python scripts/qualify_tools.py
 uv run --group docs mkdocs build --strict
 ```
 
-Use uv 0.12.7. Install Graphviz (`dot`) using the platform package manager before tool
-qualification. All Python commands share **one project, one lockfile and one `.venv`**.
-Vendor Java tools live under ignored `.tools/`; they do not create another Python project.
-Supported qualification targets: macOS ARM64 and Linux x86-64, Python 3.14.
+Use uv 0.12.7. All Python commands share **one project, one lockfile and one `.venv`**.
+Vendor runtimes stay under ignored `.tools/`; generated/local runtime data stays under
+ignored `.runtime/`. Supported qualification targets are macOS ARM64 and Linux x86-64.
 
-- [Agent handoff](docs/agent-handoff.md): what to implement next and how to prove it.
-- [Implementation contract](docs/implementation-contract.md): boundaries and milestones.
-- [Toolchain](docs/toolchain.md): downloads, hashes, local execution and upgrades.
-- [Qualification](docs/qualification.md): verified scope and compatibility limitations.
-- [Public references](docs/references.md) and [acceptance index](reference/requirements.json).
+## Contracts
+
+- [Implementation contract](docs/implementation-contract.md): global invariants and contract map.
+- [Core contract](docs/contracts/core.md): Pydantic, YAML, diagnostics, NetworkX, Jinja/lxml,
+  Hypothesis/pytest, Pyrefly target and Ruff.
+- [Data contract](docs/contracts/data.md): Arrow/DataFusion/deltalake, releases, queries and history.
+- [Projection contract](docs/contracts/projections.md): ArchiMate, C4, BPMN, UML/ERD, rendering
+  and offline publishing.
+- [Agent handoff](docs/agent-handoff.md): dependency-ordered implementation sequence.
+- [Qualification](docs/qualification.md): what this commit actually proves.
+- [Toolchain](docs/toolchain.md): current and target library/vendor execution state.
+- [Acceptance index](reference/requirements.json): DATA-01..60, PROJ-01..42, CORE-01..67.
 
 ## Workspace responsibilities
 
-Git contains reusable code, schemas, synthetic examples, tests and operational documentation.
-Narrative design, research and decisions remain in the connected Notion workspace. Authorized
-maintainers can copy `.context.example.json` to `.context/workspace.json` and add private
-Notion/Dropbox locations there. That ignored file is deliberately absent from public Git.
-Cursor's optional Notion MCP configuration requires the user's own sign-in; no access token
-is included. External contributors can work against the public contracts without that access.
+Notion owns full design rationale, research, decisions, questions and work state. Git owns
+reusable implementation contracts, schemas, code, configuration, tests and runbooks.
+Authorized maintainers may copy `.context.example.json` to ignored
+`.context/workspace.json` and populate private workspace URLs locally. Never commit those URLs.
 
-Compiled Delta tables and release staging belong in host-local `.runtime/`. Dropbox can
-receive intentional dated, self-contained exports; never put a live Delta store or `.venv`
-in a sync folder. Consumer projects keep their models and evidence outside this public repo.
+Compiled Delta stores, staging data and caches remain host-local. Dropbox or another delivery
+location may receive intentional dated self-contained exports, never a live database or `.venv`.
+Consumer-specific models/evidence live outside this public repository.
 
-## Status and licensing
+## Current state
 
-`validate` checks only the experimental minimal schema, identities and endpoints.
-`build` deliberately exits with an unimplemented error. Passing tests are foundation evidence,
-not proof of a complete modeling tool or of real-world architecture correctness.
+Implemented today: one locked Python 3.14 environment, minimal strict domain model and CLI,
+version-pinned Delta -> PyArrow -> DataFusion fallback adapter, synthetic examples, basic
+qualification tests, local vendor bootstrap and handwritten vendor smoke fixtures.
 
-This public repository currently has no project license grant. A maintainer must choose a
-license before presenting it as licensed open-source software or distributing a release.
-Third-party tools retain their own licenses; see [notices](THIRD_PARTY_NOTICES.md).
+Not implemented today: the full metamodel/compiler, coherent multi-table releases, advanced
+snapshot providers, semantic diff, graph policies, generated standards projections, interactive
+portal, requirement-evidence plugin, or the Pyrefly migration. D-032 selects Pyrefly as the
+**target** checker; the current repository still executes ty.
+
+Passing tests establish only their stated scope and never prove real-world architecture accuracy.
+
+This repository currently has no project license grant. Third-party materials retain their own
+licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

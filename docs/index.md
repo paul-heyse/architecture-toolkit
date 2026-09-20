@@ -1,9 +1,12 @@
 # Architecture toolkit
 
-This is the operational documentation for the public scaffold. Start with the
-[implementation contract](implementation-contract.md) and [agent handoff](agent-handoff.md).
-Full narrative design is maintained in the authorized Notion workspace, configured locally.
+Start with the [implementation contract](implementation-contract.md), then the three normative
+subsystem contracts:
 
-The toolkit's end state is a typed model compiled into reproducible, versioned releases and
-multiple consistent views. Today's deliverable is the installable scaffold and qualification
-harness. It is not a completed architecture application.
+- [Python core/domain contract](contracts/core.md)
+- [Data/release/query contract](contracts/data.md)
+- [Projection/rendering/publishing contract](contracts/projections.md)
+
+The [agent handoff](agent-handoff.md) gives implementation order; [qualification](qualification.md)
+records current evidence. Full research, rationale and decisions remain in the authorized Notion
+workspace and are intentionally not duplicated here.

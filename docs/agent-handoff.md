@@ -2,52 +2,153 @@
 
 ## Establish context
 
-Use the README setup commands, read the implementation contract and requirement index, and
-inspect the working tree. Authorized maintainers should read the Notion links in ignored
-`.context/workspace.json`; copy from the example only if that file is absent. Use the connected
-Notion MCP in Cursor after authenticating. Do not commit authenticated exports or private URLs.
-No GPU is required for this toolkit. Do not modify another document-processing environment.
+Read the root contract, all three subsystem contracts and `reference/requirements.json`. Inspect
+the working tree before changes. If authorized private context exists in
+`.context/workspace.json`, read the linked Notion records; never commit those URLs or private
+content.
 
-## What works now
+The same capable programming agent can execute the milestones below. They are dependency gates,
+not separate team handoffs.
 
-One locked Python 3.14 environment; a package/CLI; strict minimal model; endpoint checks;
-version-pinned Delta → PyArrow → DataFusion adapter; synthetic examples; qualification tests;
-checksummed local vendor bootstrap; source schema snapshot; docs; CI and this handoff.
-`architecture build` is deliberately unavailable until the compiler is implemented.
+## Current executable state
 
-## Implementation sequence
+Implemented:
+- one locked Python 3.14 uv environment;
+- minimal strict Pydantic model and CLI;
+- endpoint/identity checks;
+- explicit-version Delta -> PyArrow -> DataFusion materialized adapter;
+- synthetic examples and basic qualification tests;
+- checksummed local Java/vendor bootstrap;
+- handwritten PlantUML/Structurizr/BPMN smoke fixtures;
+- MkDocs documentation scaffold and two-platform CI.
 
-1. **Typed model and compiler.** Expand the registry, references, typed details, explicit Arrow
-   schemas and profiles. Compile the synthetic model to normalized tables. Prove stable rename,
-   relation type/direction checks, nested null/empty round trips, foreign keys and explicit unknowns.
-   Cover DATA-03–14, 29–30, 41. Add a complete synthetic process, software and information slice.
-2. **Coherent releases.** Add source digest, immutable manifest, single-writer lock, expected parent,
-   staging/readback and current pointer. Prove failure after each stage never publishes a partial
-   release, stale writers fail, unchanged versions are reused and retained releases still read.
-   Cover DATA-19–25, 37, 39–40. Do not implement an append-only micro-edit event platform.
-3. **Queries and changes.** Rebuild DataFusion catalog and NetworkX from the same manifest. Add
-   parameterized queries, typed traversal policies, semantic diff and scenario comparison. Prove
-   path explanations, isolation between releases, rename vs deletion, ordered-sequence changes,
-   layout-only changes and separate status dimensions. Cover DATA-15–18, 26–29, 34, 38, 40.
-4. **Notation generators and renders.** Generate ArchiMate, BPMN with DI, Structurizr C4, selective
-   UML and actual-schema ERD. Prove IDs map back to source records and two views agree on the
-   same elements. Qualify BPMN rendering locally; schema validation alone is insufficient. Preserve
-   intentional layout separately. Cover DATA-30–31. Vendor fixtures are not generator tests.
-5. **Release output and handover.** Build the local MkDocs bundle and self-contained milestone
-   export; round-trip a historical release and a schema migration, then re-run all qualification
-   checks on macOS ARM64 and Linux x86-64. Complete the requirement evidence index, document
-   remaining gaps in Notion and retain versioned artifact provenance. Cover DATA-25, 35–42.
+Not implemented:
+- CORE domain/authoring/source-map architecture;
+- coherent multi-table release manager;
+- Dataset/stream SnapshotProviders;
+- semantic diff/scenarios/GraphPolicy facade;
+- generated ArchiMate/C4/BPMN/UML/ERD projections;
+- interactive/offline portal integration;
+- requirement-evidence plugin;
+- Pyrefly migration.
 
-Start each step only once its dependencies are proven. The same programming agent can perform
-all five in sequence; these are milestones within one project, not separate packages or handoffs.
+D-032 selects Pyrefly as the target checker. Current executable checks still use ty until that
+migration is committed.
 
-## Done means
+## M1 — Domain and authoring
 
-A reproducible synthetic vertical slice has source → storage → release → query → all planned
-views, with fault-injection and historical-replay evidence, plus explicit limitations. Do not
-mark the tool complete because a schema validates or a rendered image looks plausible.
+### Inputs
+`docs/contracts/core.md`; CORE-01..21, CORE-53..65; DATA-03..14, DATA-29..30, DATA-41.
 
-## Checks
+### Required outputs
+- semantic scalar types and discriminated domain/detail/command models;
+- common Diagnostic and cross-record validator layer;
+- generated JSON Schema contracts/snapshots;
+- ruamel YAML authoring profile + SourceMap + source-aware diagnostics;
+- typed immutable compiled records;
+- Pyrefly migration/config/Protocol fixtures per D-032;
+- qualified Ruff profile changes only if useful.
+
+### Hard gates
+- rename preserves identity;
+- forbidden YAML constructs fail deterministically;
+- nested validation resolves to source location;
+- no normal validation bypass APIs;
+- public API typing direction is explicit and clean under the pinned checker.
+
+## M2 — Storage and coherent releases
+
+### Inputs
+M1; `docs/contracts/data.md`; DATA-10..14, DATA-19..25, DATA-34..37, DATA-39..60.
+
+### Required outputs
+- explicit Arrow schemas/mappings;
+- SnapshotProvider interface preserving current materialized fallback;
+- Python deltalake snapshots;
+- immutable ArchitectureRelease manifest;
+- lock, expected-parent, staging/readback and current pointer;
+- commit provenance/idempotency qualification where supported;
+- explicit migration/retention policy.
+
+### Hard gates
+Fault injection after every publication stage never exposes partial state. Stale parent fails.
+Unchanged table versions can be reused. Retained historical releases remain readable.
+
+## M3 — Queries, graph and semantic change
+
+### Inputs
+M2; DATA-15..18, DATA-26..29, DATA-38, CORE-22..31.
+
+### Required outputs
+- one release-scoped DataFusion SessionContext per manifest;
+- versioned parameterized query recipes + expected result schemas;
+- query-plan evidence for representative recipes;
+- private ArchitectureGraph + GraphPolicy facade;
+- explainable bounded path/SCC/DAG analyses;
+- semantic diff and scenario comparison.
+
+### Hard gates
+DataFusion and NetworkX read the same release. Cross-release comparisons use explicit sides.
+Parallel relationship IDs remain distinct. Reachability is never reported as certain failure.
+
+## M4 — Projections and rendering
+
+### Inputs
+M1-M3; `docs/contracts/projections.md`; PROJ-01..34; CORE-32..44.
+
+### Required outputs
+- NotationBinding/ViewDefinition/Layout/Projection/Render/Validation artifact model;
+- ArchiMate mapping/relationship profile + model-level Exchange XML + independent import test;
+- generated Structurizr with explicit IDs/view keys, implied relationships disabled and static perspectives;
+- PlantUML security/validation wrapper;
+- BPMN supported profile, semantic XML, XSD/moddle/lint and qualified layout/render path;
+- selective UML and schema-derived ERD.
+
+### Hard gates
+All notation IDs trace to canonical IDs. A renderer cannot create canonical semantics.
+Semantic and layout changes remain distinguishable. Vendor handwritten fixtures do not count as
+generated-projection acceptance.
+
+## M5 — Portal and release exports
+
+### Inputs
+M4; PROJ-35..41; DATA-25, DATA-37.
+
+### Required outputs
+- exact-version qualified Material dependency if retained;
+- offline strict MkDocs portal;
+- stable generated detail/view/release routes;
+- Structurizr static C4 artifact;
+- local BPMN interactive view if qualified;
+- self-contained milestone export with manifest/schemas/Parquet/permitted sources/outputs/notices.
+
+### Hard gates
+No external runtime assets/network calls are required for the canonical offline bundle. Live stores
+are never synced.
+
+## M6 — Cross-family qualification
+
+### Inputs
+All previous milestones; CORE-45..67, DATA-40..60, PROJ-42.
+
+### Required outputs
+- Hypothesis property strategies and release state machine;
+- pytest requirement-evidence artifact;
+- historical replay + schema migration tests;
+- both-platform qualification;
+- requirement coverage report and explicit remaining gaps.
+
+### Done means
+A synthetic vertical slice runs source -> validated model -> storage -> coherent release ->
+relational/graph queries -> semantic change -> standards projections -> local renders -> offline
+portal/export, with fault-injection and historical-replay evidence.
+
+No schema validation, rendered picture, linter run or type check alone establishes tool completeness
+or real-world model correctness.
+
+## Current checks
+
+Until D-032 is implemented:
 
 ```sh
 uv sync --locked --all-groups
@@ -56,10 +157,14 @@ uv run ruff format --check .
 uv run ty check src
 uv run pytest
 uv run python scripts/check_schema.py
+uv run architecture validate examples/minimal/model.yaml
 uv run --group docs mkdocs build --strict
 uv run python scripts/bootstrap_tools.py
 uv run python scripts/qualify_tools.py
 ```
 
-Dependency upgrades must regenerate the lock and pass interop tests on both target platforms.
-Never enable native Delta/DataFusion FFI based only on an import succeeding.
+After the Pyrefly migration, replace the ty command with the accepted Pyrefly check/coverage commands
+and update CI/toolchain evidence in the same implementation PR.
+
+Dependency/tool upgrades regenerate locks/pins and pass relevant macOS ARM64 + Linux x86-64
+qualification. Never enable native Delta/DataFusion FFI merely because import/registration exists.

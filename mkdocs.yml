@@ -1,9 +1,13 @@
 site_name: Architecture Toolkit
-site_description: Implementation runbooks and qualification status
+site_description: Executable architecture contracts, runbooks and qualification status
 strict: true
 nav:
   - Start: index.md
   - Implementation contract: implementation-contract.md
+  - Contracts:
+      - Core/domain: contracts/core.md
+      - Data/releases: contracts/data.md
+      - Projections/publishing: contracts/projections.md
   - Agent handoff: agent-handoff.md
   - Toolchain: toolchain.md
   - Qualification: qualification.md

@@ -1,92 +1,99 @@
 # Implementation contract
 
-## Target flow
+## Authority
 
-Authored YAML/JSON → strict Pydantic domain objects → explicit Arrow tables → validated
-Delta snapshots → immutable release manifest → DataFusion catalog / NetworkX projection →
-notation-specific outputs → local documentation bundle.
+This repository contains executable architecture contracts. Full rationale, research and decisions
+remain in the authorized Notion workspace. Refer to stable record IDs (for example
+`ARCH-TOOL-DATA-001`, `ARCH-TOOL-PROJ-001`, `ARCH-TOOL-CORE-001`, D-030..D-032)
+without copying private workspace URLs or private content into Git.
 
-All stages share stable model, element, relationship and reference identities. Pydantic owns
-domain validation; Arrow owns column types; Delta owns individual table history; the release
-manifest owns the coherent architecture revision. DataFusion performs relational queries;
-NetworkX MultiDiGraph supplies disposable, typed graph traversals. No engine is a second
-independent source of architectural truth.
+## Global invariants
+
+1. One canonical typed architecture model. Stable IDs are independent of display names.
+2. YAML/JSON, Arrow/Delta, NetworkX, notation files, rendered diagrams and portal pages are
+   representations of that model, not independent semantic sources.
+3. Pydantic owns domain/runtime validation; Arrow owns physical tabular schemas.
+4. Delta table versions are storage history. `ArchitectureRelease` owns coherent multi-table state.
+5. Published releases never resolve an implicit latest table version.
+6. DataFusion and NetworkX are reconstructed from the same selected release.
+7. NetworkX is disposable analytical state; the raw graph is not durable storage.
+8. Domain mutation is command-driven and separate from read/query APIs.
+9. View semantics, notation mapping, layout and rendered bytes are separate concerns.
+10. Generated projections never invent canonical relationships, workflow behavior or data schema.
+11. Unknown/not-applicable/withheld/evidence-gap states remain explicit.
+12. Application implementation is Python-only: one uv project, lock and environment.
+13. Confidential models render locally by default; no public renderer is a default destination.
+14. Notion owns design narrative/state; Git owns executable contracts and evidence mechanisms.
+15. The client/consumer need not adopt this toolkit.
+
+## Contract map
+
+| Concern | Normative contract | Requirements |
+| --- | --- | --- |
+| Domain, authoring, graph, generation, engineering qualification | [core.md](contracts/core.md) | CORE-01..67 |
+| Storage, query, releases, history | [data.md](contracts/data.md) | DATA-01..60 |
+| Standards projection, rendering, publishing | [projections.md](contracts/projections.md) | PROJ-01..42 |
+
+`reference/requirements.json` is the machine-readable acceptance index. Requirement definitions
+are static contracts; test outcomes are generated evidence, not hand-maintained status fields.
 
 ## Package boundaries
 
-| Directory | Responsibility |
+| Path | Responsibility |
 | --- | --- |
-| `src/architecture_toolkit/domain` | Types, identities, relation registry, profiles, status dimensions |
-| `storage` | Explicit Arrow mappings and version-pinned Delta adapters |
-| `queries` | Parameterized relational queries and named graph policies |
-| `releases` | Manifest, semantic diff, staging, lock and atomic publication |
-| `validation` | Structural, cross-record, evidence and notation diagnostics |
-| `projections` | ArchiMate, BPMN XML, Structurizr, UML and schema-derived ERD |
-| `rendering` | Bounded local vendor subprocesses, artifact provenance |
-| `publishing` | Local MkDocs bundle and portable export manifests |
-| `profiles` | Versioned consumer extensions, no embedded client model |
-| `schemas` | Generated authoring JSON Schema and future explicit storage schemas |
-| `examples` | Synthetic source fixture and separate handwritten tool qualification fixtures |
-| `tests` | Unit invariants and real dependency qualification |
-| `reference` | Generic requirement index and public source catalog |
+| `domain` | IDs, typed domain/commands/manifests, registries, profiles |
+| `validation` | diagnostics, record/cross-record rules, validator adapters |
+| `storage` | Arrow schemas/mappings, Delta persistence, SnapshotProvider adapters |
+| `queries` | release-scoped DataFusion recipes and NetworkX graph policies |
+| `releases` | manifest, semantic diff, migration, lock/staging/publication |
+| `projections` | ArchiMate, BPMN, Structurizr, UML/ERD generators |
+| `rendering` | bounded local vendor adapters and render provenance |
+| `publishing` | offline MkDocs bundle and self-contained exports |
+| `profiles` | versioned generic/consumer extensions; no embedded client model |
+| `schemas` | generated authoring schemas and public contract schemas |
+| `tests` | unit/property/integration/interop/qualification evidence |
+| `reference` | acceptance index and public source catalog |
 
-Only the minimal domain model, CLI and materialized snapshot adapter are implemented.
-The remaining package directories are deliberate extension points, not functioning services.
+## Canonical flow
 
-## Required contracts
+```text
+authoring source
+ -> source map + strict Pydantic domain
+ -> cross-record validation
+ -> immutable candidate
+ -> explicit Arrow tables
+ -> version-pinned Delta snapshots
+ -> immutable ArchitectureRelease manifest
+ -> release-scoped DataFusion + disposable NetworkX
+ -> semantic diff / query / impact
+ -> notation projection sources
+ -> local renders + offline portal + milestone export
+```
 
-Persist normalized elements, independently identified typed relationships, references and
-reference links. Add typed interface, deployment, schema/field, behavior, requirement and
-notation detail tables where constraints justify them. Nest owned values; normalize shared
-identities. Represent a multi-party interaction as an object with typed participants.
+## Dependency order
 
-A relationship registry must constrain direction, endpoint kinds, cardinality and traversal
-meaning. Store one canonical direction and derive inverses. Named graph queries declare edge
-kinds, direction, context and stopping rules, returning paths, release and policy versions.
-Reachability alone must not be reported as certain failure propagation.
+1. CORE domain/authoring/diagnostic contracts.
+2. DATA physical schemas, storage and coherent releases.
+3. DATA query/graph/change contracts.
+4. PROJ notation/view/artifact contracts and generators.
+5. PROJ portal/export integration.
+6. Cross-family qualification, historical replay and both-platform evidence.
 
-Use explicit nullable Arrow types, UTC microsecond instants and tested nested structs/lists.
-Keep unknown/not-applicable/withheld distinctions explicit. Namespaced extensions are bounded
-escape hatches. SQL values use scalar bindings, never string formatting. Mutation APIs are
-separate from read queries. The materialized adapter has memory proportional to the table;
-qualify a streaming/native replacement separately before using it on larger models.
+Do not implement a later layer by bypassing an unimplemented earlier contract.
 
-A release pins every table version, schema/profile version, source digest, generator commit,
-change report and output digest. Use one local writer, a lock, an expected-parent comparison,
-staging and readback; expose a completed immutable manifest before atomically replacing the
-current pointer. Delta has no implied cross-table transaction. Failed staging may leave orphan
-versions, but must never change current to an incomplete release. Cloud/distributed publication
-requires a separately qualified protocol.
+## Current versus target state
 
-Diff stable identities and field values, preserving authored sequence order; sort only
-semantically unordered collections when hashing. Keep layout changes separate. Preserve
-rationale, author and decision references. Alternatives have separate scenario/model identity.
-Retain files needed by historical manifests; package milestone exports with Parquet, manifest,
-schemas, permitted source snapshots and outputs. Source Git history, Delta history and
-architectural change history are separate concepts.
+Current executable state is described in [qualification.md](qualification.md). In particular:
+- the current lock uses a materialized explicit-version PyArrow DataFusion adapter;
+- native Delta/DataFusion FFI is not qualified under the current versions;
+- the current repository still uses ty;
+- D-032 selects Pyrefly as the target type checker, but the dependency/config migration is separate.
 
-Keep design disposition, implementation, qualification, client acceptance and evidence review
-separate. Validation reports must distinguish structure, cross-model semantics, notation and
-real-world correctness. Unknown evidence creates visible gaps; broken foreign keys are errors.
+## Non-goals
 
-## Projection contract
+Do not build an enterprise architecture GUI, graph database, event-sourced micro-edit platform,
+custom graph-layout engine, public rendering service, browser editor as a second source of truth,
+or overlapping ORM/dataframe/database stack unless a later accepted decision changes scope.
 
-ArchiMate describes architecture concepts; BPMN needs explicitly modeled events, gateways,
-participants and ordered flows. C4 views come from generated Structurizr DSL/JSON; selective
-UML captures explicitly modeled sequence/state/class semantics. ERD comes from actual storage
-schemas with keys/cardinality, not guesses from labels. Maintain source-to-view traceability.
-Use Jinja2 for bounded text templates and lxml for namespace-aware BPMN XML. Do not infer
-workflow execution semantics from generic graph edges or promise lossless GUI round trips.
-
-Render through local PlantUML/Structurizr and a qualified local BPMN renderer; Kroki is optional.
-Do not send models to public render services by default. No paid GUI or server is required.
-Generated MkDocs is a local artifact first, not automatic GitHub Pages publication.
-
-## Acceptance index
-
-`reference/requirements.json` contains DATA-01 through DATA-42. Its status describes the full
-requirement, so partial scaffold evidence does not mark a requirement completed. Section labels
-are locators into the maintainers' narrative specification, not public document links.
-Each implementation PR should identify requirements, tests, remaining gaps and design decisions.
-SQLite or immutable Parquet plus manifests remain valid simplification alternatives; adopting
-one would be an explicit documented design change, not an accidental dependency substitution.
+SQLite or immutable Parquet + manifests remain deliberate simplification alternatives to the
+selected Delta path; substituting either is an architecture decision, not an incidental refactor.
