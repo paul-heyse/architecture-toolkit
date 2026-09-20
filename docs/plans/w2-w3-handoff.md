@@ -659,7 +659,7 @@ Hand-off to W4: `TableSet`, `table_set_digests`, `canonical_table`,
 
 ## 7. What actually happened
 
-Every work item in §4 and §5 landed. The suite is 561 tests; strict Pyrefly coverage is 100.00%
+Every work item in §4 and §5 landed. The suite is 596 tests; strict Pyrefly coverage is 100.00%
 over `src`; both hard gates hold. Seven commits followed this document:
 
 | Commit | Scope |
@@ -669,9 +669,9 @@ over `src`; both hard gates hold. Seven commits followed this document:
 | `d50303e` | W3 step 1 — `pyarrow-stubs` adopted and qualified |
 | `51305c4` | W3 step 2 — `extensions`, the Arrow capsule Protocols, the provider description |
 | `923494e` | W3 step 3 — the eleven schemas, the metadata policy, the interchange layer |
-| *(step 4)* | the mappings, table sets and digests, with the M2 hard gate |
-| *(step 5)* | the materialized `SnapshotProvider` |
-| *(step 6)* | the compatibility matrix and the decision records |
+| `411abd2` | W3 step 4 — the mappings, table sets and digests, with the M2 hard gate |
+| `496f885` | W3 step 5 — the `SnapshotProvider` boundary and its materialized provider |
+| `3bb76ba` | W3 step 6 — the compatibility matrix, the decision records and the coverage floor |
 
 ### Three departures from this plan
 
