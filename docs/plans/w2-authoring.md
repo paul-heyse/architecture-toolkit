@@ -49,6 +49,56 @@ transitions, schema fields and participants an ordinal for. `Element.aliases` st
 W1 decided. `RelationshipTypeDefinition.ordered_sequence` remains reserved for W5/W6 traversal
 and diff semantics.
 
+**The adapter is a subpackage of `domain/`, and parse failures are typed values.**
+`domain/authoring/` may import ruamel; nothing else may, and `rules/ruamel-only-in-authoring.yml`
+plus an AST scan in `tests/unit/test_layering.py` enforce it. The adapter raises `AuthoringError`
+and `validation/normalize.py` turns it into Diagnostics, exactly as it already does for Pydantic
+errors, so the authoring layer never imports the validation layer and the dependency order in
+`implementation-contract.md` holds. `SourceLocation` moved to `domain/source.py` and
+`validation/diagnostics.py` re-exports it, so the class name, the import path and the generated
+JSON Schema are unchanged.
+
+**Eleven YAML codes, and a parse failure never enters a claim report.** `CORE.YAML.*` carries
+`UNSUPPORTED_VERSION`, `MULTIPLE_DOCUMENTS`, `DEPTH_EXCEEDED`, `ANCHOR`, `ALIAS`, `MERGE_KEY`,
+`DUPLICATE_KEY`, `PYTHON_TAG`, `CUSTOM_TAG`, `NOT_A_MAPPING` and `SYNTAX`, each with a fixture
+proving its own code, line and column. They are diagnostics, not claims: a document that does not
+parse produces no model, so there is nothing for a validation rule to have claimed about it, and
+`pipeline.py` reports them on their own before any rule runs. `!!binary`, `!!set`, `!!omap` and
+`!!timestamp` are reported as `CUSTOM_TAG` with the tag in `context`; a separate
+`UNSUPPORTED_TAG` code for standard-but-non-core tags is an open owner preference.
+
+**Plain data is built from the composed nodes, not from the round-trip loader.** The rt
+constructor resolves beyond the YAML 1.2 core schema: `2024-01-01` becomes a `datetime.date`,
+`0x1F` a `HexCapsInt`, `!!set` a `CommentedSet`. `build_plain` walks the composed node tree and
+converts each scalar by its *resolved tag* against an explicit policy, so a plain `2024-01-01`
+stays the string the core schema says it is and the output types are exactly `str`, `int`,
+`float`, `bool`, `None`, `tuple` and `dict` — asserted by type identity, which is also CORE-17's
+containment guarantee. The same walk produces the SourceMap, so positions and values cannot
+disagree.
+
+**The profile guarantees a fixed point, not byte identity for every input.** `dump(load(x))`
+equals `dump(load(dump(load(x))))` for every document, preserves comments and quote style, and is
+byte-identical for a document already in the profile's own style — `tests/fixtures/authoring/
+round_trip/canonical.yaml` proves that. The shipped example's hand-wrapped flow mappings are
+re-flowed on the first dump at any width, which is a presentation change and not a semantic one.
+
+**Three ruamel round-trip asymmetries are corrected in the adapter, and all three were found by
+the properties rather than by reading the specification.** A plain scalar containing U+0085 is
+emitted as a YAML 1.1 line break and folds to a space on reload; a plain scalar beginning with
+`?` inside a flow sequence reads back as a complex key; `render.scalar()` double-quotes both. And
+ruamel's double-quoted emitter drops the line-continuation backslash on a split it did not make
+at a space, so a scalar wrapped just after an escape sequence gains a space that was never
+authored — `profile._SafeRoundTripEmitter` withholds that split. The last one is reachable
+through `render_model_text` alone at the profile's own width, so it is a defect in what the
+adapter writes rather than an artifact of the test strategy. Authored source cannot reach the
+matching single-quoted case: ruamel's reader rejects a raw C1 control outright and folds a raw
+U+0085 identically on the way in and the way out.
+
+**`record_paths` holds top-level records only.** A participant, a schema field and a behaviour
+node each carry an identity key, but a diagnostic addressed at one of those identities means the
+record that owns it, so the identity index registers only the six top-level collections and the
+semantic grammar reaches everything below.
+
 **Digests are stamped, the model digest is computed.** `stamp_digests` fills every record's
 `content_hash` through `model_validate` (nested details first) and is idempotent because
 `content_hash` is stripped from every preimage. `Model` carries no digest field: `model_digest`
@@ -58,47 +108,50 @@ changes is W6's.
 
 ## Work items
 
-1. **Parser factory** (CORE-14). One configured ruamel.yaml round-trip factory: YAML 1.2, quote and
-   style preservation, explicit indentation, width and output settings, explicit maximum depth, no
-   unsafe type constructors. All authoring reads go through it.
-2. **Duplicate keys are hard errors** (CORE-15). Deterministic diagnostic, not a silent last-wins.
-3. **Forbidden constructs** (CORE-16). Anchors, aliases, merge keys, custom application tags and
-   unsafe Python tags fail with stable codes. Each construct gets a fixture proving the specific
-   code, not a generic parse failure.
-4. **Presentation containment** (CORE-17). ruamel `CommentedMap` and `CommentedSeq` stop at the
-   authoring boundary; domain and storage receive plain data. A guard test asserts no ruamel type
-   crosses into `domain/`, `storage/` or `releases/`.
-5. **SourceMap** (CORE-18). Built before Pydantic conversion. `SourceLocation` carries source/file
-   ID, document ID, semantic path, line, column and optional end position; `SourceMap` carries the
-   source digest, parser/profile version, semantic path to location, and canonical ID plus field
-   path to location after ID resolution. The SourceMap is build metadata, never architecture
-   semantics.
-6. **Source-aware diagnostics** (CORE-19). Resolution order: exact canonical ID and field path;
-   then semantic/Pydantic path; then nearest parent record; then document level. Populate the
-   `source_location` field W1 reserved. Target rendering:
-
-   ```text
-   path/to/model.yaml:87:11
-   ERROR CORE.RELATION.UNRESOLVED_ENDPOINT
-   elements[4].relationships[2].target_element_id
-   "software.system.missing" does not resolve.
-   ```
-
-7. **Round-trip editing** (CORE-20). Locate record and field, map through the SourceMap, edit the
-   round-trip node, preserve comments and style, serialize, reparse, fully revalidate, then compute
-   and present the semantic diff. Text substitution is not the mutation method; typed
-   `ChangeCommand`s from W1 drive it.
-8. **Canonical semantic hash** (CORE-21, DATA-27). `domain/semantics.py` computing a digest over
-   validated normalized records. Excluded: comments, quote style, whitespace, key ordering where
-   the domain is unordered, and build timestamps. Preserved: authored order for ordered sequences
-   such as interaction steps; canonicalize only semantically unordered collections. Carry an
-   explicit `hash_algorithm_version` so any later change is a versioned DATA-56 migration rather
-   than a silent digest shift.
-9. **Presentation-invariance property** (CORE-21). A Hypothesis property using the W1 strategies:
-   reformatting a document — requoting, reindenting, adding comments, reordering unordered keys —
-   leaves the semantic digest unchanged.
-10. **CLI wiring.** `architecture validate` reports source-located diagnostics instead of raw
-    Pydantic text, and keeps the honest scope keys already in its report.
+1. **Parser factory** (CORE-14). *Landed.* `domain/authoring/profile.py` is the only place a
+   `YAML()` is constructed: round-trip mode, YAML 1.2 by default, `preserve_quotes`, explicit
+   indentation, width and output settings, an explicit depth bound and duplicate keys as errors.
+   A fresh instance per load, because the composer's depth counter was measured not resetting.
+   The emitter is subclassed to withhold one unsafe line split; see the decisions above.
+2. **Duplicate keys are hard errors** (CORE-15). *Landed.* Found in the event pre-pass, not by
+   construction: neither `parse()` nor `compose()` detects a duplicate and the loader never
+   constructs a mapping, so the pre-pass owns it and reports the second key's position.
+   `allow_duplicate_keys=False` remains the backstop.
+3. **Forbidden constructs** (CORE-16). *Landed.* Eleven codes, one fixture each under
+   `tests/fixtures/authoring/forbidden/`, headed with the code, line and column the test asserts.
+   Every finding in a document is reported, not only the first: the rest travel in `related`.
+4. **Presentation containment** (CORE-17). *Landed.* The ast-grep rule confines `ruamel` imports
+   to the subpackage, `tests/unit/test_layering.py` proves the exclusion glob the rule test
+   cannot, and the adapter's plain output is checked by type identity against exactly `str`,
+   `int`, `float`, `bool`, `None`, `tuple` and `dict`.
+5. **SourceMap** (CORE-18). *Landed.* `domain/source.py` carries `SourceLocation` (moved from
+   `validation/diagnostics.py`, which re-exports it), `SourceEntry` and a frozen `SourceMap` over
+   `MappingProxyType` with the source digest, the parser and profile versions, the semantic index,
+   the identity index and `record_paths`. Built in the same walk that produces the plain data.
+6. **Source-aware diagnostics** (CORE-19). *Landed.* `validation/locate.py` resolves exact
+   identity and field path, then the semantic or Pydantic path, then the nearest present ancestor,
+   then the document — and records which of the four it used in the diagnostic's `context`, so a
+   fallback is a stated fact rather than a misleading position. The render adds `(nearest: …)`
+   whenever the located path is not the requested one.
+7. **Round-trip editing** (CORE-20). *Landed.* `domain/authoring/editing.py` composes one
+   presentation tree, locates records in the live tree by identity, applies each typed
+   `ChangeCommand` in the shape `build_candidate` would, dumps, reparses through the same adapter
+   and reports a `semantic_delta`. Comments and quote style survive, including the comment block
+   above a removed item. A stale `expected_base_digest` is refused before any edit.
+8. **Canonical semantic hash** (CORE-21, DATA-27). *Landed.* `domain/semantics.py`; SHA-256 over
+   canonical JSON with the version in the preimage, `content_hash` stripped at every depth,
+   `COLLECTION_ORDER` asserted total by reflection, and ordinal-bearing collections canonicalized
+   by ordinal rather than by position.
+9. **Presentation-invariance property** (CORE-21). *Landed.* Requoting, flow and block style,
+   inserted comments, reordered mapping keys, shuffled unordered collections, shuffled
+   ordinal-bearing lists and a different indent and width — one digest, and an empty delta. The
+   negative control renames a single element and asserts it is the only changed identity; it is
+   what found the emitter defect recorded above.
+10. **CLI wiring.** *Landed.* `architecture validate` reads through `validate_source_text` and
+    renders source-located diagnostics: exit 3 for a document that does not parse, 1 for record or
+    hard cross-record errors, 0 otherwise. `cli.py` no longer imports ruamel, and `conftest.py`
+    and `scripts/check_schema.py` read through the adapter too, so no code path in the repository
+    still uses `YAML(typ="safe")`.
 
 ## Hard gate
 

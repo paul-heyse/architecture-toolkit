@@ -38,6 +38,9 @@ appears in the contract it cites.
 
 Total 169: CORE-01..67, DATA-01..60, PROJ-01..42.
 
+[W2/W3 execution handoff](w2-w3-handoff.md) records what W2 has landed on `wave-2/authoring`,
+the uncommitted remainder of W2, and the full W3 work breakdown for the agent that continues.
+
 ## Dependency order
 
 ```text

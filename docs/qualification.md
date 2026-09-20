@@ -7,14 +7,14 @@ This file describes evidence for the **current repository**, not target architec
 | Layer | Proven now | Target | State |
 | --- | --- | --- | --- |
 | CORE domain | minimal strict Pydantic model, unique IDs, endpoint checks | CORE-01..67 | partial |
-| YAML | configured 1.2 round-trip profile, forbidden constructs with stable codes, SourceMap, source-located diagnostics with a stated resolution (W2) | round-trip editing and presentation-invariant hashing | partial |
+| YAML | configured 1.2 round-trip profile, forbidden constructs with stable codes, SourceMap, source-located diagnostics with a stated resolution, command-driven round-trip editing and a presentation-invariance property (W2) | authored-order semantics for W5/W6 traversal | proven for M1 |
 | Static typing | Pyrefly over src/tests/scripts, 0 errors; strict `src` coverage 98.05% | D-032 / Pyrefly CORE-53..62 | migrated; coverage floor 98 |
 | DATA Arrow/Delta | nested interface, nullable scalar, empty table, explicit Arrow schema, Delta history | DATA-01..60 | partial |
 | Snapshot provider | explicit-version materialized PyArrow registration | materialized fallback + qualified Dataset/stream candidates | partial |
 | DataFusion | scalar SQL binding over pinned snapshot | release-scoped catalogs/query recipes/plan evidence | partial |
 | NetworkX | parallel MultiDiGraph edges preserved | private GraphPolicy facade/explainable analyses | partial |
 | Release publication | none | coherent manifest/lock/staging/failure protocol | pending |
-| Semantic diff/migration | none | typed diff, scenarios, historical migrations | pending |
+| Semantic diff/migration | versioned canonical hash and record-level delta over added, removed and changed identities (W2) | typed change classification, scenarios, historical migrations | partial |
 | PlantUML | handwritten ArchiMate fixture renders SVG | generated ArchiMate/UML/ERD with provenance/security | scaffold only |
 | Structurizr | handwritten DSL validates/exports | generated explicit-ID C4 + rich static export | scaffold only |
 | BPMN | handwritten XML validates against local OMG XSD | generated semantic/DI/moddle/lint/layout/bpmn-js pipeline | scaffold only |

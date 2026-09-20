@@ -18,6 +18,7 @@ Notion §12A and `core.md` both name eight strategy groups. Four are built here.
 `DEFERRED_GROUPS` records that rather than leaving the gap for a reader to infer.
 """
 
+from tests.strategies.authoring import reformatted
 from tests.strategies.commands import (
     add_elements,
     change_sets,
@@ -51,6 +52,7 @@ __all__ = [
     "notation_bindings",
     "reference_links",
     "references",
+    "reformatted",
     "relationships",
     "rename_elements",
     "retire_elements",

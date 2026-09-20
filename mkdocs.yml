@@ -15,6 +15,7 @@ nav:
       - W1 Core schemas: plans/w1-core-schemas.md
       - W2 Authoring: plans/w2-authoring.md
       - W3 Arrow fabric: plans/w3-arrow-fabric.md
+      - W2/W3 execution handoff: plans/w2-w3-handoff.md
       - W4 Delta and releases: plans/w4-delta-releases.md
       - W5 Query and graph: plans/w5-query-graph.md
       - W6 Semantic change: plans/w6-semantic-change.md

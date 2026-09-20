@@ -24,6 +24,9 @@ Implemented:
   families, references, five status dimensions and typed change commands (W1);
 - the common Diagnostic, the three classification axes and eight cross-record rule families (W1);
 - generated, versioned JSON Schema contracts with a directory-driven drift check (W1);
+- the configured YAML 1.2 authoring adapter, the SourceMap, source-located diagnostics with a
+  stated resolution, command-driven round-trip editing and the versioned canonical semantic hash
+  with a record-level delta (W2);
 - explicit-version Delta -> PyArrow -> DataFusion materialized adapter;
 - synthetic examples and basic qualification tests;
 - checksummed local Java/vendor bootstrap;
@@ -31,7 +34,7 @@ Implemented:
 - MkDocs documentation scaffold and two-platform CI.
 
 Not implemented:
-- YAML authoring adapter, SourceMap and the canonical semantic hash;
+- explicit Arrow schemas, Pydantic <-> Arrow mappings and the table digest;
 - coherent multi-table release manager;
 - Dataset/stream SnapshotProviders;
 - semantic diff/scenarios/GraphPolicy facade;

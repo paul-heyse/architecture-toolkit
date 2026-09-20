@@ -12,7 +12,8 @@ from architecture_toolkit.domain.authoring import (
 )
 from architecture_toolkit.domain.commands import build_candidate
 from architecture_toolkit.domain.model import Model
-from architecture_toolkit.domain.semantics import model_digest
+from architecture_toolkit.domain.semantics import model_digest, semantic_delta
+from tests.strategies.authoring import reformatted
 from tests.strategies.commands import change_sets
 from tests.strategies.relations import full_models
 
@@ -41,3 +42,49 @@ def test_editing_the_source_equals_applying_the_commands(data: st.DataObject) ->
     assert model_digest(edited.model) == model_digest(expected)
     assert edited.candidate_digest == model_digest(expected)
     assert edited.base_digest == model_digest(baseline)
+
+
+@pytest.mark.property
+@pytest.mark.requirement("CORE-21", "DATA-27", "CORE-45")
+@settings(max_examples=100, deadline=None)
+@given(data=st.data())
+def test_presentation_never_changes_the_semantic_digest(data: st.DataObject) -> None:
+    """CORE-21 as a property: requote, restyle, comment, reindent, reorder — same digest.
+
+    Unordered collections and ordinal-bearing lists are shuffled too, so this is also DATA-27's
+    statement that ordered sequences are preserved through their ordinal, not their position.
+    """
+    model = data.draw(full_models())
+    original = render_model_text(model)
+    rewritten = data.draw(reformatted(original))
+    reloaded = parse_model(parse_source(rewritten, source_id="rewritten.yaml"))
+    assert model_digest(reloaded) == model_digest(model)
+    assert semantic_delta(model, reloaded).is_empty
+
+
+@pytest.mark.property
+@pytest.mark.requirement("CORE-21")
+@settings(max_examples=40, deadline=None)
+@given(data=st.data())
+def test_a_content_change_under_the_same_presentation_is_detected(data: st.DataObject) -> None:
+    """The negative control: one changed name is a different digest, whatever the presentation."""
+    model = data.draw(full_models())
+    victim = data.draw(st.sampled_from(model.elements))
+    changed = model.model_validate(
+        dict(model)
+        | {
+            "elements": tuple(
+                e.model_validate(dict(e) | {"name": e.name + " (changed)"})
+                if e.element_id == victim.element_id
+                else e
+                for e in model.elements
+            )
+        }
+    )
+    rewritten = data.draw(reformatted(render_model_text(changed)))
+    reloaded = parse_model(parse_source(rewritten, source_id="changed.yaml"))
+    assert model_digest(reloaded) != model_digest(model)
+    delta = semantic_delta(model, reloaded)
+    assert [c.changed for c in delta.collections if c.collection == "elements"] == [
+        (victim.element_id,)
+    ]
