@@ -97,7 +97,9 @@ and for why each guard must carry a known-bad case.
 
 ## Status
 
-No wave is complete. Current executable evidence is recorded in
-[qualification](../qualification.md) and is limited to the minimal domain model, the explicit
-version materialized PyArrow adapter and handwritten vendor smoke fixtures. Scheduling a
-requirement here is not evidence that it is satisfied.
+W0 and W1 are complete. Current executable evidence is recorded in
+[qualification](../qualification.md). Scheduling a requirement here is not evidence that it is
+satisfied, and neither is a wave being marked complete: read the wave document's own risks and
+open questions, which record what each wave could not establish.
+
+No wave has yet been verified on the Linux runner.

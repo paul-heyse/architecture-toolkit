@@ -1,7 +1,8 @@
 # Wave 1 — Core domain records, diagnostics and generated schemas
 
-> Milestone: M1 · Requirements: CORE-01..CORE-13, CORE-45; DATA-03..DATA-09, DATA-29..DATA-31,
-> DATA-41 · Depends on: W0
+> Milestone: M1 · Requirements: CORE-01, CORE-02, CORE-03, CORE-04, CORE-05, CORE-06, CORE-07,
+> CORE-08, CORE-09, CORE-10, CORE-11, CORE-12, CORE-13, CORE-45; DATA-03, DATA-04, DATA-05,
+> DATA-06, DATA-07, DATA-08, DATA-09, DATA-29, DATA-30, DATA-31, DATA-41 · Depends on: W0
 
 ## Purpose
 
@@ -12,99 +13,105 @@ references and evidence links, the five independent status dimensions, the commo
 separate cross-record validation layer, and generated JSON Schema contracts. Command-driven
 mutation replaces in-place edits. Nothing is persisted yet.
 
+The difference the wave makes is best stated by what the old model could not refuse. It could say
+an element was a `software.system`. It could not say whether `role-1 --contains--> req-1` was a
+legal statement, which direction a relationship was authored in, what its inverse was called, or
+whether a cycle of containment was an error.
+
 ## Contract references
 
 - [core.md § Pydantic domain](../contracts/core.md) — CORE-01..CORE-13, including the mutation
   pipeline and the bypass prohibition.
-- [core.md § Diagnostics and cross-record validation](../contracts/core.md) — CORE-07, CORE-11.
+- [core.md § Diagnostics and cross-record validation](../contracts/core.md) — CORE-07, CORE-11 and
+  the eight rule families.
 - [core.md § Hypothesis](../contracts/core.md) — CORE-45.
 - [data.md § Relational model](../contracts/data.md) — DATA-03..DATA-09.
-- [data.md § History and semantic diff](../contracts/data.md) — DATA-29, DATA-31.
-- [data.md § Cross-library qualification](../contracts/data.md) — DATA-41.
-- Records `ARCH-TOOL-CORE-001` and `ARCH-TOOL-DATA-001`.
+- [data.md § History and semantic diff](../contracts/data.md) — DATA-29, DATA-30, DATA-31.
+- [projections.md § Common projection model](../contracts/projections.md) — PROJ-07's six
+  validation dimensions, which `ValidationClaim` is defined at.
+- Records `ARCH-TOOL-CORE-001` §3, §4, §6, §7, §12 and `ARCH-TOOL-DATA-001` §2, §6C, §7, §10F.
+
+## Three decisions taken during execution
+
+**The diagnostic taxonomy is three axes, not one enum.** The contracts carry three
+enumerations and they answer three different questions, so collapsing them loses information a
+reader of a report needs. `DiagnosticCategory` (nine, `ARCH-TOOL-CORE-001` §6) says who emitted a
+finding; `ValidationClaim` (six, PROJ-07) says what correctness is claimed; `Disposition` (four,
+core.md line 91) says how to treat it. The single four-value enum this document originally
+proposed contradicted core.md's own nine and could not distinguish an evidence gap from a profile
+expectation. `DATA31_MEANINGS` maps DATA-31's four meanings onto PROJ-07's six claims and a test
+asserts the mapping is a true partition, so defining six is a refinement rather than a divergence.
+
+**The baseline registry ships in `domain/`, and profiles override it.** The reusable core stays
+general, but a registry containing no relationship types does not satisfy DATA-05. A profile is a
+value and `with_overrides` is a pure function over it, so overriding needs no loader, no profile
+schema and no resolution order — none of which this wave scopes.
+
+**The wave models the detail the accepted specification states, not the subset this document
+first listed.** Ten kind identifiers, the relationship types that must stay distinct, eight
+registry properties per type, six detail families, and the `ReferenceTarget` union. Those were
+omissions rather than simplifications.
 
 ## Work items
 
-1. **Semantic scalar aliases** (CORE-03). `domain/identifiers.py` with centralized constrained
-   `Annotated` types: `ModelId`, `ElementId`, `RelationshipId`, `ReferenceId`, `ReleaseId`,
-   `ChangeSetId`, `ViewId`, `ArtifactId`, `Digest`, `SchemaVersion`, `ProfileVersion`,
-   `QualifiedKind`. Constraints live here once and flow into JSON Schema. No repeated raw-string
-   rules.
-2. **Strict base configuration** (CORE-02, CORE-08). Keep `StrictRecord` with
-   `ConfigDict(strict=True, extra="forbid")`; add a frozen `CompiledRecord` base using immutable
-   nested types. Pydantic's `frozen` is not deep immutability — choose immutable field types.
-3. **Kind and relationship registries** (DATA-04, DATA-05, DATA-06). Replace the seven-member `Kind`
-   enum with a controlled registry keyed by qualified kind. The relationship registry declares, per
-   type: permitted source kinds, permitted target kinds, canonical direction, inverse display
-   label, cardinality and traversal meaning. `Relationship.relationship_type_id` is an unconstrained
-   string today. Store one canonical direction and derive inverse views; never persist duplicate
-   inverses. `profiles/default/README.md` reserves this work.
-4. **Elements and relationships** (DATA-03, DATA-04, DATA-05). `elements` carries `element_id`,
-   `model_id`, `kind_id`, `name`, `description`, `lifecycle_state`, `content_hash`. Relationships
-   carry their own stable `relationship_id` plus `context_id`, because evidence and decisions attach
-   to the relationship itself. Stable identity is independent of display name; aliases may coexist.
-5. **Typed detail records** (CORE-04, DATA-07, DATA-30). A field-discriminated `ElementDetail` union
-   covering interface, deployment, information-schema, requirement and behavior details. Add a
-   detail family only where it has real type-specific fields. Behavior, UML ordering and ERD
-   keys/cardinality are modelled explicitly — never inferred from generic edges, because W7b cannot
-   generate BPMN gateways or ERD foreign keys from a `supports` edge.
-6. **Multi-party interactions** (DATA-08). First-class `interaction`/`handoff` elements with typed
-   participant relationships, answering both "which applications participate in this handoff" and
-   "which handoffs move this object between roles".
-7. **References and evidence links** (DATA-09). `references` and `reference_links` with
-   `subject_kind` in element/relationship/field/release, optional `field_path`, and `link_role` in
-   supports/contradicts/justifies/qualifies. This stores links; it is not a second evidence
-   platform.
-8. **Status dimensions** (DATA-29). Promote the five `str` fields to controlled vocabularies:
-   design disposition, implementation state, technical qualification, client acceptance,
-   evidence/review state. Five independent dimensions, never one linear progression.
-9. **Unknown and gap states** (DATA-41). Every dimension and every optional semantic field can
-   express unknown, not-applicable, withheld or evidence-gap explicitly. Missing owner information
-   is not an invalid foreign key; a manual process needs no application. Never invent a value to
-   satisfy a structural rule.
-10. **Semantic and layout digest separation** (DATA-31). Distinct `SemanticDigest` and
-    `LayoutDigest` aliases, plus the `Diagnostic` category enum encoding the four meanings of
-    validation success — structural, cross-model semantic, notation/schema, and real-world
-    correctness. Single-sourced here so PROJ-04 and PROJ-07 consume rather than redefine it.
-11. **Common Diagnostic** (CORE-07, CORE-11). `validation/diagnostics.py` with the full shape from
-    core.md: `diagnostic_id`, `code`, `severity`, `category`, `message`, optional
-    `canonical_object_id`, `relationship_id`, `field_path`, `source_location`, `notation_object_id`,
-    `rule_id`, `context`, `remediation`. **`source_location` must be present and nullable now**,
-    even though W2 populates it — otherwise every diagnostic emitted by W3 and W4 is replumbed
-    later.
-    Normalize raw Pydantic `ValidationError`s into stable codes such as
-    `CORE.DOMAIN.INVALID_ID`.
-12. **Cross-record validators** (CORE-06, CORE-07). Record-local rules stay in Pydantic validators
-    with an explicit `ValidationContext` (schema version, profile version, mode, flags; no I/O).
-    Everything else moves to `validation/` as functions over the candidate returning Diagnostics
-    without mutating. Rule families: ID uniqueness and resolution, endpoint kind/direction/
-    cardinality, containment and acyclicity, reference and evidence links, schema/interface
-    consistency, view membership. Separate hard structural errors from evidence gaps and profile
-    expectations.
-13. **Change commands** (CORE-04, CORE-09, CORE-10). A discriminated `ChangeCommand` union —
-    `AddElement`, `UpdateElement`, `RenameElement`, `RetireElement`, `AddRelationship`,
-    `RemoveRelationship`, `UpdateDetail` — with expected base identity where relevant. Candidate
-    construction runs baseline plus commands through full Pydantic validation and then cross-record
-    validation. The `no-validation-bypass` ast-grep rule already asserts
-    that normal flows use no `model_construct()`, `SkipValidation` or `model_copy(update=...)`;
-    widen its `files:` scope from `src/**` to include `tests/**` once the rename test moves.
-    `tests/unit/test_model.py` currently uses `model_copy(update=...)` to test rename and must
-    move to `RenameElement`.
-14. **TypeAdapter boundaries** (CORE-05). Use `TypeAdapter` for command batches and registry
-    entries. Do not create wrapper models solely to call validation.
-15. **Generated JSON Schema** (CORE-12, CORE-13). Versioned schemas for the authoring model, detail
-    variants, `ChangeCommand`, profile/config and manifests, with descriptions, discriminator
-    mappings and examples. Extend `scripts/check_schema.py` to cover all of them, not just
-    `schemas/model.schema.json`. Validation and serialization modes differ only deliberately, and
-    the difference is documented.
-16. **Hypothesis strategy package** (CORE-45). `tests/strategies/` with `ids.py`, `domain.py`,
-    `relations.py`, `commands.py`. Construct valid data directly rather than filtering; cap
-    recursion; keep shrinking useful; provide invalid-by-one-rule strategies for validator tests.
-    Built here, with the models, so W2 and W5 do not write throwaway strategies.
-17. **Refresh the synthetic example.** `examples/minimal/model.yaml` grows to a slice with a
-    process, requirement, application, component, interface, data schema and references.
-    `test_parallel_relations_and_manual_process_are_preserved` asserts a hard-coded count of 7 and
-    will need updating.
+1. **Semantic scalar aliases** (CORE-03). *Landed.* `domain/identifiers.py` centralizes every
+   constrained `Annotated` alias, plus DATA-31's separate `SemanticDigest` and `LayoutDigest`.
+   Patterns are exported constants because the Hypothesis strategies must restate the rule —
+   Hypothesis cannot read a Pydantic constraint — and restating it from the constant is what stops
+   the two drifting. Every alias uses `StringConstraints`, never `Field`, and a test pins that:
+   measured against the pinned versions, only the first form makes `st.from_type` warn, and the
+   warning is the guard.
+2. **Strict and frozen bases** (CORE-02, CORE-08). *Landed.* `domain/base.py` declares the four
+   model families `ARCH-TOOL-CORE-001` §3A names. Both authoring and compiled records are frozen:
+   W2 edits the ruamel presentation tree and reparses, so nothing needs a mutable domain record.
+   They differ by collection shape, which is load-bearing under `strict=True` — see the risk on
+   JSON versus Python mode below.
+3. **Kind and relationship registries** (DATA-04, DATA-05, DATA-06). *Landed.* `domain/registry.py`
+   carries the ten kinds and the relationship types, each with all eight declared properties
+   including `validation_rule_ids`, which the rule layer now cross-checks. DATA-06 is structural:
+   there is one direction field and one inverse label, so a duplicate inverse has nowhere to live.
+4. **Elements and relationships** (DATA-03, DATA-04). *Landed.* Seven and eight columns
+   respectively, matching `ARCH-TOOL-DATA-001` §2A/§2B. Readable aliases live on the element and
+   are excluded from semantic identity.
+5. **Typed detail records** (CORE-04, DATA-07, DATA-30). *Landed.* Six families; five attach to an
+   element and notation bindings are the sixth, in `domain/notation.py`, because their subject may
+   be a relationship. The three BPMN gateway types, transition guards, ERD key membership and
+   field ordinals are stated explicitly — W7b cannot derive any of them from a generic edge.
+6. **Multi-party interactions** (DATA-08). *Landed.* A first-class `Interaction` with typed
+   participants, answering both questions §2D poses.
+7. **References and evidence links** (DATA-09). *Landed.* Plus the `ReferenceTarget` union, so a
+   link can support an interface's authentication mechanism rather than a whole application.
+8. **Status dimensions** (DATA-29). *Landed.* Five independent `StrEnum`s, asserted disjoint from
+   each other and from the lifecycle state. The disjointness guard found two real collisions on
+   first run and both are fixed.
+9. **Unknown and gap states** (DATA-41). *Landed.* A shared `GapState` in the union of every
+   dimension, so an unknown is a stated value rather than a missing field. `design_disposition`
+   and `implementation_state` default to `unknown` because `proposed` and `not_implemented` would
+   assert things nobody said.
+10. **Semantic and layout digest separation** (DATA-31). *Landed.* Distinct aliases, and the
+    claim axis described above.
+11. **Common Diagnostic** (CORE-07, CORE-11). *Landed.* `validation/diagnostics.py`, exactly the
+    thirteen fields core.md specifies, with `source_location` present and nullable. Claim and
+    disposition are read from the code registry rather than stored, so two occurrences of one code
+    cannot disagree.
+12. **Cross-record validators** (CORE-06, CORE-07). *Landed.* All eight families declared; seven
+    populated and views carrying a recorded deferral to W7a. Thirteen rules, each with a known-bad
+    fixture that must trigger it. `ValidationContext` carries §3G's four fields and reaches nested
+    validators through `info.context`.
+13. **Change commands** (CORE-04, CORE-09, CORE-10). *Landed.* Seven variants plus `ChangeSet`.
+    `RenameElement` is deliberately narrower than `UpdateElement`; retyping is unexpressible.
+    `no-validation-bypass` now covers `tests/` and `scripts/`, which the old rename test blocked.
+14. **TypeAdapter boundaries** (CORE-05). *Landed.* Command batches, registry entries, detail and
+    reference fragments, and reusable schema generation — the four §3E names.
+15. **Generated JSON Schema** (CORE-12, CORE-13). *Landed.* Seven declared families, five emitted
+    and two reserved for W4 and W5, each versioned in `$id`. `scripts/check_schema.py` grew from
+    one hardcoded path to six directory-driven jobs. CORE-13 is mechanical: the two schema modes
+    must be byte-identical while no computed field exists.
+16. **Hypothesis strategy package** (CORE-45). *Landed.* Four of the eight groups core.md names;
+    the other four have no models until W4, W5 and W7a and are recorded in `DEFERRED_GROUPS`
+    rather than left absent. Values are built directly, never filtered.
+17. **Refresh the synthetic example.** *Landed.* Every kind, every relationship type, a handoff,
+    an evidence link addressed at one field, a notation binding, and two deliberate gaps.
 
 ## Hard gate
 
@@ -112,7 +119,9 @@ mutation replaces in-place edits. Nothing is persisted yet.
 > — [agent handoff](../agent-handoff.md), M1 hard gates
 
 A `RenameElement` command changes the display name and nothing else: `element_id` is unchanged, the
-semantic digest changes, and the result is a rename rather than a retire plus an add.
+element is present before and after rather than retired and re-added, and kind, lifecycle, status,
+aliases, detail and every relationship are untouched. Asserted as a Hypothesis property over
+generated models, not as a single example.
 
 Also required, though not the single gate: **no normal validation bypass APIs** (CORE-09).
 
@@ -126,21 +135,31 @@ CORE-09 — enforced by the `no-validation-bypass` structural rule, not a featur
 uv run pytest -m "unit or property"
 uv run python scripts/check_schema.py
 uv run architecture validate examples/minimal/model.yaml
+uv run architecture schema --write   # regenerate; the drift check compares against this
 uv run pyrefly check
 ```
 
 ## Evidence
 
-Requirement markers on every test. CORE-12 additionally produces checked-in schema snapshots; CI
-fails on drift. A schema snapshot is not evidence that runtime semantics are correct.
+Requirement markers on every test. CORE-12 additionally produces checked-in schema snapshots and
+CI fails on drift. A schema snapshot is not evidence that runtime semantics are correct, which is
+why `check_schema.py` also asserts the generated schema and Pydantic agree about the example.
 
 ## Risks and open questions
 
-- **Registry location.** The relationship registry is generic toolkit content, but permitted
-  endpoint matrices are profile-shaped. Decide whether the baseline registry ships in `domain/` with
-  `profiles/` overriding, or lives entirely in `profiles/default/`. This affects DATA-05 acceptance.
-- **Detail-family scope.** data.md warns against a table per concept. Confirm the five families
-  above are the right initial cut before W3 freezes Arrow schemas for them.
-- **Vocabulary values** for the five status dimensions are project policy. The current defaults
-  (`proposed`, `not_implemented`, `not_qualified`, `not_requested`, `unreviewed`) are placeholders
-  and need owner confirmation before W4 makes them durable.
+- **Status vocabulary values are provisional.** `EvidenceReview` is the only one with a source.
+  They are cheap to change until W4 pins them into immutable manifests and expensive afterwards,
+  so they want owner review inside this milestone.
+- **The four gap states are a repo invention**, consistent with `ARCH-TOOL-DATA-001` §3B's
+  "explicit nullable fields, with a separate status where the reason for missingness matters" but
+  not specified there.
+- **Six detail families means six typed detail tables at W3.** data.md warns against a table per
+  concept; confirm the cut before W3 freezes Arrow schemas, not after.
+- **Strict mode treats JSON and Python input differently, and it matters.** A Python `list` handed
+  to a `tuple[...]` field fails with the error location collapsed to the field, discarding every
+  nested error; the same payload through `model_validate_json` reports the full path. The
+  authoring path is therefore JSON until W2 supplies the proper adapter. Pinned by a test.
+- **Status vocabularies cannot be extended by a profile**, because they are closed `StrEnum`s. The
+  registry is profile-overridable; these are not. Revisit if a consumer profile needs its own.
+- **`--public-only` is still unused.** W0 deferred the underscore-prefixed internal-module
+  convention to this wave and it has not been adopted; the coverage gate remains whole-module.

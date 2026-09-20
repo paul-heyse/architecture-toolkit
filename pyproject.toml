@@ -90,8 +90,10 @@ markers = [
 project-includes = ["src", "tests", "scripts"]
 project-excludes = [".tools/**", ".runtime/**", "site/**", ".venv/**"]
 # `scripts/` is a search path because a script run as `python scripts/x.py` gets its own
-# directory on sys.path, which is how `scripts/_common.py` is imported.
-search-path = ["src", "scripts"]
+# directory on sys.path, which is how `scripts/_common.py` is imported. `.` is here so
+# `tests.strategies` resolves the same way pytest's `pythonpath = ["."]` makes it resolve at
+# run time; without it the strategy package type-checks as a missing import.
+search-path = ["src", "scripts", "."]
 python-version = "3.14"
 # CORE-55: a mismatched checker is a fatal configuration error, independent of the lock.
 required-version = ">=1.3.1,<1.4.0"

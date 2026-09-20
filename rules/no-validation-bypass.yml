@@ -6,8 +6,15 @@ note: |
   CORE-09 and CORE-10: mutation is a validated typed ChangeCommand producing a fully revalidated
   candidate. core.md forbids model_construct(), SkipValidation, unvalidated in-place mutation and
   model_copy(update=...) as the architecture mutation mechanism.
+# Widened in W1 from `src/**` only. `tests/unit/test_model.py` used `model_copy(update=...)` to
+# test rename, which meant the suite exercised the mechanism the contract forbids; the rename
+# test now drives a `RenameElement` command, so the wider scope is clean. Tests and scripts are
+# in scope because a bypass there is still a bypass, and a fixture built with `model_construct`
+# would prove something about a shape rather than about a record.
 files:
   - "src/**/*.py"
+  - "tests/**/*.py"
+  - "scripts/**/*.py"
 rule:
   any:
     - pattern: $X.model_construct($$$)

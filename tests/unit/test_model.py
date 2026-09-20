@@ -4,8 +4,6 @@ import json
 from typing import Any
 
 import pytest
-from hypothesis import given
-from hypothesis import strategies as st
 
 from architecture_toolkit.domain.details import BehaviorDetail, DataSchemaDetail
 from architecture_toolkit.domain.model import Model
@@ -35,22 +33,6 @@ def test_reports_a_dangling_endpoint_as_a_diagnostic(
     assert unresolved[0].relationship_id == "rel-1"
     assert unresolved[0].field_path == "relationships.rel-1.target_element_id"
     assert report.hard_errors
-
-
-@pytest.mark.property
-@pytest.mark.requirement("CORE-10", "DATA-04")
-@given(st.text(min_size=1).filter(lambda value: bool(value.strip())))
-def test_rename_preserves_identity(name: str) -> None:
-    """Interim shape. The next change replaces `model_copy(update=...)` with `RenameElement`.
-
-    The bypass is what CORE-09 forbids, and testing rename *through* it proves the weaker claim:
-    that copying preserves a field. The command-driven version proves the real one, and only
-    then can `no-validation-bypass` widen to cover `tests/`.
-    """
-    raw = json.loads(json.dumps(_source()))
-    model = Model.model_validate_json(json.dumps(raw))
-    changed = model.elements[0].model_copy(update={"name": name})
-    assert changed.element_id == model.elements[0].element_id
 
 
 @pytest.mark.unit
@@ -144,13 +126,3 @@ def test_identity_is_independent_of_display_name(minimal_model_source: dict[str,
     process = next(e for e in model.elements if e.element_id == "process-1")
     assert process.name == "Review request"
     assert process.aliases == ("Request review",)
-
-
-def _source() -> dict[str, Any]:
-    from pathlib import Path
-
-    from ruamel.yaml import YAML
-
-    root = Path(__file__).resolve().parents[2]
-    raw = YAML(typ="safe").load((root / "examples/minimal/model.yaml").read_text())
-    return json.loads(json.dumps(raw))

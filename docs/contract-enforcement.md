@@ -82,7 +82,7 @@ behaviour changed.
 | `domain-layer-imports` | Package boundaries; DATA-01 |
 | `storage-no-graph-import` | DATA-01, CORE-22 |
 | `queries-no-direct-delta` | DATA-34, DATA-51 |
-| `no-validation-bypass` | CORE-09, CORE-10 |
+| `no-validation-bypass` | CORE-09, CORE-10 — scope widened in W1 to `tests/` and `scripts/` |
 | `no-shell-invocation` | projections.md rendering security |
 | `secure-xml-parser` | CORE-40, CORE-41 |
 
@@ -101,6 +101,12 @@ ones most likely to be quietly skipped, so each is paired with an executable gua
 | DATA-33 | No overlapping dataframe, database, orchestration or ORM layer | `check_boundaries.py` reads the resolved `uv.lock`, not `pyproject.toml`, so a transitive pull is caught |
 | DATA-35 | One Python project, one lock, one environment; application code is Python-only | tracked-payload check rejects a committed `.venv/`; the lock is the single resolution source |
 | DATA-36 | Notion owns narrative, Git owns executable contracts, Delta stays host-local, Dropbox gets dated exports | private-marker scan over `git ls-files`; tracked-payload check rejects `.runtime/`, `.tools/`, `.context/` |
+| CORE-08 | Published records are deeply immutable, not merely frozen | a static scan over every `CompiledRecord` subclass, plus a hashability check that catches a mutable type nested inside another record. `frozen=True` alone does not stop a `dict` field being mutated through the model, which a test demonstrates |
+| CORE-09 | No normal flow bypasses validation | `no-validation-bypass`, now covering source, tests and scripts |
+| CORE-11 | Every Pydantic failure maps to a stable code | the map is total over all 104 `pydantic_core.ErrorType` members, asserted in both directions, so a library upgrade fails a test rather than degrading a report |
+| CORE-01, CORE-07 | `validation` depends on `domain`, never the reverse | an AST import scan that ignores `TYPE_CHECKING` blocks, with the one permitted type-only edge asserted positively so it cannot be quietly removed |
+| CORE-45 | Strategies build valid data directly | `filterwarnings` promotes the Hypothesis warning to an error, and every alias is pinned to the `StringConstraints` form that triggers it. Pyrefly independently rejects `from_type` on a constrained alias |
+| CORE-07 | Every validation rule catches something | each registered rule has a known-bad fixture that must trigger it, and a totality test makes a rule without one impossible to add |
 
 Type stubs (`types-networkx`, `types-jsonschema`, `types-lxml`) are dev-only typing aids with no
 runtime surface, so they do not constitute an overlapping stack under DATA-32/33. `types-lxml`
@@ -123,6 +129,14 @@ deliberately and re-run `ast-grep test`, because a rule engine upgrade can chang
 `scripts/check_boundaries.py` enumerates tracked files with `git ls-files` rather than walking the
 tree, because the question it asks — "is this committed?" — is one git answers exactly, while a
 directory walk has to reimplement ignore semantics.
+
+Two guards added in W1 are neither ast-grep rules nor text scans, and belong to a fourth informal
+tier worth naming: **the type system and the language itself**. Deep immutability is enforced by
+hashability rather than by inspecting field declarations, because `hash()` answers the real
+question — is anything in this tree mutable — where a declaration scan answers only whether the
+*outermost* field looks immutable. Exhaustiveness over a union is enforced by `assert_never` under
+Pyrefly rather than by a runtime check, because the failure then arrives before the code runs.
+Reach for this tier first where it applies; it is the only one that cannot be forgotten.
 
 **ripgrep is a system tool on the same footing as ast-grep**, and is preinstalled on the hosted
 runner images this project targets. `check_boundaries.py` still uses the standard library, for a

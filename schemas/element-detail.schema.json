@@ -1,17 +1,17 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:architecture-toolkit:authoring-model:v1",
-  "title": "Architecture authoring model",
-  "description": "The canonical typed model a person authors.",
+  "$id": "urn:architecture-toolkit:element-detail:v1",
+  "title": "Element records and typed detail variants",
+  "description": "The reusable record and detail shapes, emitted separately so a consumer can reference one variant without pulling in the whole model.",
   "x-toolkit": {
-    "family": "authoring-model",
+    "family": "element-detail",
     "version": 1,
     "requirements": [
       "CORE-12",
-      "DATA-03"
+      "DATA-07",
+      "DATA-09"
     ]
   },
-  "$ref": "#/$defs/Model",
   "$defs": {
     "Applicability": {
       "enum": [
@@ -812,82 +812,6 @@
       ],
       "title": "LinkRole",
       "type": "string"
-    },
-    "Model": {
-      "additionalProperties": false,
-      "description": "One canonical model. Frozen, hashable, and addressed by `model_id`.\n\nNo cross-record validator lives here. Identity uniqueness and endpoint resolution used to be\na `model_validator` on this class; `ARCH-TOOL-CORE-001` \u00a73F puts foreign-key resolution\noutside record-local validators, and they now live in `validation/rules/structural.py` as\nrules that return diagnostics.\n\nThat is a behaviour change worth stating plainly: an unresolved endpoint no longer raises\n`ValidationError` on construction. It is reported as `CORE.RELATION.UNRESOLVED_ENDPOINT`,\nwith the relationship and the offending side named \u2014 which the exception never managed.",
-      "properties": {
-        "schema_version": {
-          "default": "1.0.0",
-          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
-          "title": "Schema Version",
-          "type": "string"
-        },
-        "profile_version": {
-          "default": "1.0.0",
-          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
-          "title": "Profile Version",
-          "type": "string"
-        },
-        "model_id": {
-          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
-          "title": "Model Id",
-          "type": "string"
-        },
-        "elements": {
-          "default": [],
-          "items": {
-            "$ref": "#/$defs/Element"
-          },
-          "title": "Elements",
-          "type": "array"
-        },
-        "relationships": {
-          "default": [],
-          "items": {
-            "$ref": "#/$defs/Relationship"
-          },
-          "title": "Relationships",
-          "type": "array"
-        },
-        "interactions": {
-          "default": [],
-          "items": {
-            "$ref": "#/$defs/Interaction"
-          },
-          "title": "Interactions",
-          "type": "array"
-        },
-        "references": {
-          "default": [],
-          "items": {
-            "$ref": "#/$defs/Reference"
-          },
-          "title": "References",
-          "type": "array"
-        },
-        "reference_links": {
-          "default": [],
-          "items": {
-            "$ref": "#/$defs/ReferenceLink"
-          },
-          "title": "Reference Links",
-          "type": "array"
-        },
-        "notation_bindings": {
-          "default": [],
-          "items": {
-            "$ref": "#/$defs/NotationBinding"
-          },
-          "title": "Notation Bindings",
-          "type": "array"
-        }
-      },
-      "required": [
-        "model_id"
-      ],
-      "title": "Model",
-      "type": "object"
     },
     "Notation": {
       "description": "The notations `projections.md` schedules. Declared now; generators arrive at W7b.",

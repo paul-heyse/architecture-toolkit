@@ -28,7 +28,7 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pyrefly check
-      - run: uv run pyrefly coverage check --strict --fail-under 97
+      - run: uv run pyrefly coverage check --strict --fail-under 98
       - run: uv run pytest --junitxml=.runtime/junit.xml
       - run: uv run python scripts/check_schema.py
       - run: uv run python scripts/check_plan_coverage.py

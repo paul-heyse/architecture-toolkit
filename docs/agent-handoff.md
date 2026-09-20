@@ -19,8 +19,11 @@ authoritative for the gates.
 
 Implemented:
 - one locked Python 3.14 uv environment;
-- minimal strict Pydantic model and CLI;
-- endpoint/identity checks;
+- Pyrefly, the registered pytest markers and the requirement-evidence report (W0);
+- the typed domain core: semantic aliases, kind and relationship registries, six detail
+  families, references, five status dimensions and typed change commands (W1);
+- the common Diagnostic, the three classification axes and eight cross-record rule families (W1);
+- generated, versioned JSON Schema contracts with a directory-driven drift check (W1);
 - explicit-version Delta -> PyArrow -> DataFusion materialized adapter;
 - synthetic examples and basic qualification tests;
 - checksummed local Java/vendor bootstrap;
@@ -28,17 +31,14 @@ Implemented:
 - MkDocs documentation scaffold and two-platform CI.
 
 Not implemented:
-- CORE domain/authoring/source-map architecture;
+- YAML authoring adapter, SourceMap and the canonical semantic hash;
 - coherent multi-table release manager;
 - Dataset/stream SnapshotProviders;
 - semantic diff/scenarios/GraphPolicy facade;
 - generated ArchiMate/C4/BPMN/UML/ERD projections;
-- interactive/offline portal integration;
-- requirement-evidence plugin;
-- Pyrefly migration.
+- interactive/offline portal integration.
 
-D-032 selects Pyrefly as the target checker. Current executable checks still use ty until that
-migration is committed.
+D-032 selects Pyrefly as the target checker and the migration has landed; the checks below run it.
 
 ## M1 — Domain and authoring
 
@@ -166,7 +166,7 @@ uv sync --locked --all-groups
 uv run ruff check .
 uv run ruff format --check .
 uv run pyrefly check
-uv run pyrefly coverage check --strict --fail-under 97
+uv run pyrefly coverage check --strict --fail-under 98
 uv run pytest
 uv run python scripts/check_schema.py
 uv run python scripts/check_plan_coverage.py
