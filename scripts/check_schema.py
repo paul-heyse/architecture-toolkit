@@ -13,28 +13,25 @@ assert what they accept rather than assuming.
 Where a stronger check than a pattern exists, prefer it: `contract` names a file, so resolve it.
 """
 
-import json
 import re
-from pathlib import Path
 
+from _common import ROOT, load_json, report
 from jsonschema import Draft202012Validator
 
 from architecture_toolkit.domain.model import Model
 
-ROOT = Path(__file__).resolve().parents[1]
-
 
 def check_authoring_snapshot() -> list[str]:
     """Intentional updates use `architecture schema > schemas/model.schema.json`."""
-    snapshot = json.loads((ROOT / "schemas/model.schema.json").read_text())
+    snapshot = load_json("schemas/model.schema.json")
     if snapshot != Model.model_json_schema():
         return ["Authoring schema snapshot is stale"]
     return []
 
 
 def check_requirements_index() -> list[str]:
-    schema = json.loads((ROOT / "schemas/requirements.schema.json").read_text())
-    index = json.loads((ROOT / "reference/requirements.json").read_text())
+    schema = load_json("schemas/requirements.schema.json")
+    index = load_json("reference/requirements.json")
     validator = Draft202012Validator(schema)
     errors = []
     for error in sorted(validator.iter_errors(index), key=lambda error: error.path):
@@ -52,8 +49,8 @@ def check_requirements_index() -> list[str]:
 
 def check_patterns_are_exercised() -> list[str]:
     """Every declared pattern must accept the values it guards and reject a near miss."""
-    schema = json.loads((ROOT / "schemas/requirements.schema.json").read_text())
-    index = json.loads((ROOT / "reference/requirements.json").read_text())
+    schema = load_json("schemas/requirements.schema.json")
+    index = load_json("reference/requirements.json")
     errors: list[str] = []
 
     contract_pattern = schema["$defs"]["family"]["properties"]["contract"]["pattern"]
@@ -78,16 +75,15 @@ def check_patterns_are_exercised() -> list[str]:
 
 
 def main() -> None:
-    errors = (
-        check_authoring_snapshot() + check_requirements_index() + check_patterns_are_exercised()
+    report(
+        "Schema check",
+        check_authoring_snapshot() + check_requirements_index() + check_patterns_are_exercised(),
+        success=[
+            "Authoring schema snapshot matches",
+            "Requirements index validates against its schema",
+            "Declared schema patterns accept the live values and reject near misses",
+        ],
     )
-    if errors:
-        for error in errors:
-            print(f"error: {error}")
-        raise SystemExit(f"Schema check failed with {len(errors)} error(s)")
-    print("Authoring schema snapshot matches")
-    print("Requirements index validates against its schema")
-    print("Declared schema patterns accept the live values and reject near misses")
 
 
 if __name__ == "__main__":

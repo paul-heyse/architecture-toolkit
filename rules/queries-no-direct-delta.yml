@@ -1,0 +1,24 @@
+id: queries-no-direct-delta
+language: python
+severity: error
+message: The queries layer reaches Delta only through a storage SnapshotProvider.
+note: |
+  DATA-34 isolates Delta/DataFusion registration behind an adapter, and DATA-51 requires every
+  version-pinned read to go through a SnapshotProvider so interoperability can change without
+  changing domain or release semantics. A query module importing deltalake directly bypasses
+  both, and the materialized fallback stops being the single place that boundary is enforced.
+
+  Matches the module-name node, so `import x`, `import x as y` and `from x import y` are all
+  covered by one anchored expression.
+files:
+  - "src/architecture_toolkit/queries/**/*.py"
+rule:
+  kind: dotted_name
+  regex: ^deltalake(\..+)?$
+  any:
+    - inside:
+        kind: import_statement
+        stopBy: end
+    - inside:
+        kind: import_from_statement
+        field: module_name

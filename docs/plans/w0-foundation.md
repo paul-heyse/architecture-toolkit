@@ -38,16 +38,18 @@ every package.
 2. **Widen the checked surface** (CORE-57). *Landed.* CI ran `ty check src`; it now runs
    `pyrefly check` over source, tests and scripts. The migration needed no code change —
    Pyrefly reported 0 errors on the wider surface from the first run.
-3. **Protocol registry** (CORE-58). Add `src/architecture_toolkit/domain/protocols.py` declaring all
-   eight boundaries named in core.md: `SourceLoader`, `SnapshotProvider`, `ProjectionGenerator`,
-   `Renderer`, `ValidatorAdapter`, `Publisher`, `QueryExecutor`, `ArtifactStore`. Only
+3. **Protocol registry** (CORE-58). *Landed.* `src/architecture_toolkit/domain/protocols.py`
+   declares all eight boundaries named in core.md: `SourceLoader`, `SnapshotProvider`,
+   `ProjectionGenerator`, `Renderer`, `ValidatorAdapter`, `Publisher`, `QueryExecutor`,
+   `ArtifactStore`. Only
    `SourceLoader` and `ValidatorAdapter` are fully typed here — the rest exchange DTOs that do not
    exist until W1..W4. Add a test asserting the module is exhaustive against the contract list.
-4. **Exhaustive dispatch helper** (CORE-59). Establish the `match` + `assert_never` idiom and a
-   fixture proving a new union member produces a static failure.
-5. **Pydantic and pytest static qualification** (CORE-56). Add `tests/static/` fixtures for the
-   advanced Pydantic patterns core.md relies on — discriminated unions, `Annotated` constrained
-   aliases, frozen models, `TypeAdapter`. Seeded here; W1 and W2 extend it as new patterns appear.
+4. **Exhaustive dispatch helper** (CORE-59). *Landed.* The `match` + `assert_never` idiom, with
+   a `tests/static/` fixture verified to fail when a union gains a variant.
+5. **Pydantic and pytest static qualification** (CORE-56). *Landed.* `tests/static/` covers
+   discriminated unions, constrained `Annotated` aliases, frozen strict models, `TypeAdapter` and
+   `model_validator(mode="after") -> Self`. Seeded here; W1 and W2 must extend it as new patterns
+   appear, or those patterns are unqualified.
 6. **Type coverage ratchet** (CORE-61, CORE-62). *Landed.* `[tool.pyrefly.coverage] includes`
    narrows measurement to `src` while the check surface stays wide; CI enforces
    `--strict --fail-under 85`, the measured floor. `--public-only` is deliberately unused: it keys
@@ -55,37 +57,40 @@ every package.
    adopts that convention. `pyrefly infer` never runs in CI.
 7. **No baseline file** (CORE-60). *Landed.* No `baseline` key is set. Suppressions are narrow
    `# pyrefly: ignore[error-code]` comments; none is needed today.
-8. **Marker taxonomy** (CORE-48). Register `unit`, `property`, `integration`, `interop`, `vendor`,
-   `qualification`, `platform`, `slow` and `requirement` in `[tool.pytest.ini_options]`, and add
-   `--strict-markers`. None are registered today.
-9. **Requirement-evidence plugin** (CORE-49, CORE-50). Add `tests/plugins/requirement_evidence.py`
-   emitting a report conforming to `schemas/qualification-evidence.schema.json`. Validate every
-   `requirement` marker value against `reference/requirements.json` and error on an unknown ID.
-   Keep JUnit as the standard CI channel; the evidence report is separate.
-10. **Reconcile the vendor report** (CORE-49). `scripts/qualify_tools.py` writes a fixed-key
-    `report.json` that does not match the evidence schema. Bring it onto the same schema.
-11. **Fixture discipline** (CORE-51, CORE-52). Add `tests/conftest.py` with typed fixtures at the
-    narrowest practical scope; set `xfail_strict = true`.
-12. **Hypothesis profiles** (CORE-47). Register `dev`, `ci` and `deep` with deliberate
-    `max_examples`, stateful step counts and deadlines. No network in any profile.
+8. **Marker taxonomy** (CORE-48). *Landed.* All nine markers registered, with
+   `--strict-markers` and `xfail_strict`. An unregistered marker is now a collection error.
+9. **Requirement-evidence plugin** (CORE-49, CORE-50). *Landed.* Emits a schema-conforming
+   document under `.runtime/`; an unknown requirement ID fails collection. JUnit stays the
+   standard CI channel and CI archives both per platform.
+10. **Reconcile the vendor report** (CORE-49). *Re-scoped, not done.* The vendor report shares
+    **zero** fields with `qualification-evidence.schema.json` and has no pytest node to name, and
+    its `not_qualified`/`not_implemented` outcomes are absent from that enum. Vendor checks are
+    engineering evidence, so they belong to `EngineeringQualificationArtifact` (CORE-66), whose
+    `CheckResult` keeps those states. Migrating `qualify_tools.py` onto that model is W7b work,
+    when generated projections replace the handwritten fixtures it currently checks.
+11. **Fixture discipline** (CORE-51, CORE-52). *Landed.* `tests/conftest.py` holds typed
+    function-scoped fixtures; all seven test functions now carry return annotations.
+12. **Hypothesis profiles** (CORE-47). *Landed.* `dev`, `ci` and `deep` registered in
+    `conftest.py`; `ci` is loaded by default. No network in any profile.
 13. **Ruff expansion** (CORE-63, CORE-64, CORE-65). *Landed.* `RUF`, `PT`, `PTH`, `S` added to
     `E,F,I,UP,B`. Qualification against this tree found 14 findings in three clusters and nothing
     from `RUF`, `PT` or `PTH`, so the expansion costs exactly two per-file ignores: `S101` in
     `tests/**`, and `S603`/`S607` in `scripts/*.py` for the reviewed argv invocations that
     `rules/no-shell-invocation.yml` already blesses structurally.
-14. **EngineeringQualificationArtifact** (CORE-66). Model it in `domain/` with the fields core.md
-    names. A guard test asserts it shares no type with the architecture `Diagnostic` and that
-    neither module imports the other — engineering evidence never becomes model validation.
-15. **Import-layering guard** (DATA-01, DATA-32). Extend the existing ast-grep rules
-    `domain-layer-imports` and `storage-no-graph-import` to cover `queries` reaching Delta only
-    through the storage adapter. Structural rules, not text patterns: see
-    [contract enforcement](../contract-enforcement.md).
-16. **Dependency guards** (DATA-02, DATA-33, DATA-35). Assert against the resolved `uv.lock`, not
-    `pyproject.toml`, so transitive pulls are caught: no pandas, polars, duckdb, sqlalchemy, spark,
-    a graph or vector database, or an orchestrator. One project, one lock, one environment.
-17. **Workspace boundary guard** (DATA-36). `scripts/check_boundaries.py` already asserts no
-    private workspace URL is tracked and no excluded dependency resolves in `uv.lock`; extend it to
-    reject a tracked `.runtime/` or `.tools/` payload.
+14. **EngineeringQualificationArtifact** (CORE-66). *Landed.* `domain/engineering.py`, guarded
+    against importing model validation. Its `CheckResult` keeps `not_qualified` and
+    `not_implemented` distinct from `failed`: a capability never qualified is not a failure.
+15. **Import-layering guard** (DATA-01, DATA-32). *Landed.* `queries-no-direct-delta` joins
+    `domain-layer-imports` and `storage-no-graph-import`. Structural rules, not text patterns; the
+    guard table is in [contract enforcement](../contract-enforcement.md).
+16. **Dependency guards** (DATA-02, DATA-33, DATA-35). *Landed.* `check_boundaries.py` reads the
+    resolved `uv.lock` so transitive pulls are caught. The DATA-02 constraint — that the stack is
+    justified by typed interchange and coherent snapshots, not by volume, and that SQLite or
+    Parquet-plus-manifests remain credible alternatives — is recorded in the guard table.
+17. **Workspace boundary guard** (DATA-36). *Landed.* Private-marker scan over `git ls-files`
+    plus a tracked-payload check rejecting `.runtime/`, `.tools/`, `.venv/`, `.context/` and
+    `site/`. `check_boundaries.py` is now actually wired into CI — it was documented as running
+    there but was not.
 
 ## Hard gate
 

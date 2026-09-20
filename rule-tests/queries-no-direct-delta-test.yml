@@ -1,0 +1,12 @@
+id: queries-no-direct-delta
+valid:
+  - "from architecture_toolkit.storage import SnapshotProvider"
+  - "from datafusion import SessionContext"
+  # A different package that merely starts with the same characters.
+  - "import deltalake_helpers"
+  - "note = \"import deltalake\""
+invalid:
+  - "import deltalake"
+  - "import deltalake as dl"
+  - "from deltalake import DeltaTable"
+  - "from deltalake.table import DeltaTable"

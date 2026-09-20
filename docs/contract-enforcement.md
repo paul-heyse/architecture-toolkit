@@ -81,11 +81,31 @@ behaviour changed.
 | `no-implicit-latest-delta-version` | invariant 5; DATA-21, DATA-51 |
 | `domain-layer-imports` | Package boundaries; DATA-01 |
 | `storage-no-graph-import` | DATA-01, CORE-22 |
+| `queries-no-direct-delta` | DATA-34, DATA-51 |
 | `no-validation-bypass` | CORE-09, CORE-10 |
 | `no-shell-invocation` | projections.md rendering security |
 | `secure-xml-parser` | CORE-40, CORE-41 |
 
 Each wave adds the rules for the boundaries it introduces; see `docs/plans/`.
+
+## Policy requirements and their guards
+
+Some requirements are satisfied by a documented constraint rather than a feature. They are the
+ones most likely to be quietly skipped, so each is paired with an executable guard.
+
+| Requirement | Constraint | Guard |
+| --- | --- | --- |
+| DATA-01 | Pydantic, Arrow, DataFusion, NetworkX and deltalake hold distinct responsibilities over one logical model | `domain-layer-imports`, `storage-no-graph-import`, `queries-no-direct-delta` |
+| DATA-02 | SQLite, and immutable Parquet plus manifests, remain credible alternatives. The stack is justified by typed interchange, coherent versioned snapshots and queryability — **not** by data volume. Substituting either is an architecture decision, not a refactor. | deny-list in `check_boundaries.py` keeps a competing engine out of the lock |
+| DATA-32 | Each library keeps a bounded role; the standard library covers ordinary utilities | per-package import rules above, plus the lock deny-list |
+| DATA-33 | No overlapping dataframe, database, orchestration or ORM layer | `check_boundaries.py` reads the resolved `uv.lock`, not `pyproject.toml`, so a transitive pull is caught |
+| DATA-35 | One Python project, one lock, one environment; application code is Python-only | tracked-payload check rejects a committed `.venv/`; the lock is the single resolution source |
+| DATA-36 | Notion owns narrative, Git owns executable contracts, Delta stays host-local, Dropbox gets dated exports | private-marker scan over `git ls-files`; tracked-payload check rejects `.runtime/`, `.tools/`, `.context/` |
+
+Type stubs (`types-networkx`, `types-jsonschema`, `types-lxml`) are dev-only typing aids with no
+runtime surface, so they do not constitute an overlapping stack under DATA-32/33. `types-lxml`
+pulls `soupsieve`, `types-html5lib` and `types-webencodings` transitively; all are stub or parsing
+support, none is a data-processing engine.
 
 ### Installation
 
@@ -126,12 +146,17 @@ Prefer `rg -F` for literals, and reach for `--pcre2` only when a lookaround is g
 ```sh
 uv run python scripts/check_schema.py          # tier 1: schemas and index
 uv run python scripts/check_plan_coverage.py   # tier 1: wave partition
+uv run python scripts/check_boundaries.py      # tier 3: private content, payloads, dependencies
 ast-grep scan                                  # tier 2: source structure
 ast-grep test                                  # tier 2: the rules themselves
-uv run python scripts/check_boundaries.py      # tier 3: private content, dependency exclusions
 ```
 
 All five run in CI on macOS ARM64 and Linux x86-64.
+
+The three Python checkers share `scripts/_common.py`: one `ROOT`, one `load_json`, one argv-only
+`run` with a mandatory timeout, and one failure epilogue. They previously disagreed about the
+output stream — two wrote errors to stderr and one to stdout — so a log filter that worked for one
+silently missed the other.
 
 ## What this does not establish
 

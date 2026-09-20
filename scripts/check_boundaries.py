@@ -15,12 +15,9 @@ checks ask is "is this committed?", and git is the authority on that.
 """
 
 import re
-import subprocess
-import sys
-import tomllib
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+from _common import ROOT, load_toml, report, run
 
 # DATA-36: Notion owns narrative and decisions; Git owns executable contracts. Private workspace
 # URLs, sync-folder paths and developer home paths must never be committed.
@@ -56,12 +53,14 @@ FORBIDDEN_PACKAGES = frozenset(
 
 SCANNABLE = {".md", ".py", ".json", ".yml", ".yaml", ".toml", ".dsl", ".puml", ".bpmn", ".cfg"}
 
+# DATA-35/36: host-local runtime state and vendor binaries stay out of Git. These are gitignored,
+# so a tracked path under them means someone forced it in.
+UNTRACKABLE_PREFIXES = (".runtime/", ".tools/", ".venv/", ".context/", "site/")
+
 
 def tracked_files() -> list[Path]:
-    listing = subprocess.run(
-        ["git", "ls-files", "-z"], cwd=ROOT, capture_output=True, text=True, check=True
-    )
-    return [ROOT / name for name in listing.stdout.split("\0") if name]
+    listing = run("git", "ls-files", "-z", capture=True)
+    return [ROOT / name for name in listing.split("\0") if name]
 
 
 def scan_text(text: str) -> list[str]:
@@ -83,8 +82,19 @@ def check_private_content(files: list[Path]) -> list[str]:
     return errors
 
 
+def check_untracked_payloads(files: list[Path]) -> list[str]:
+    """Host-local runtime state and vendor binaries must never be committed (DATA-35, DATA-36)."""
+    errors = []
+    for path in files:
+        relative = path.relative_to(ROOT).as_posix()
+        for prefix in UNTRACKABLE_PREFIXES:
+            if relative.startswith(prefix):
+                errors.append(f"{relative}: tracked path under ignored {prefix}")
+    return errors
+
+
 def check_forbidden_dependencies() -> list[str]:
-    lock = tomllib.loads((ROOT / "uv.lock").read_text())
+    lock = load_toml("uv.lock")
     resolved = {package["name"].lower() for package in lock["package"]}
     return [
         f"uv.lock resolves {name}, excluded by DATA-33"
@@ -109,20 +119,28 @@ def self_test() -> list[str]:
             errors.append(f"private-content scan wrongly flags {benign!r}")
     if "pandas" not in FORBIDDEN_PACKAGES:
         errors.append("dependency deny-list lost its anchor entry")
+    planted = [ROOT / ".runtime" / "compiled" / "elements.parquet"]
+    if not check_untracked_payloads(planted):
+        errors.append("payload scan fails to catch a tracked .runtime/ path")
+    if check_untracked_payloads([ROOT / "src" / "architecture_toolkit" / "cli.py"]):
+        errors.append("payload scan wrongly flags a normal source path")
     return errors
 
 
-def main() -> int:
+def main() -> None:
     files = tracked_files()
-    errors = self_test() + check_private_content(files) + check_forbidden_dependencies()
-    print(f"scanned {len(files)} tracked files and {len(FORBIDDEN_PACKAGES)} excluded packages")
-    if errors:
-        for error in errors:
-            print(f"error: {error}", file=sys.stderr)
-        raise SystemExit(f"Boundary check failed with {len(errors)} error(s)")
-    print("no private workspace content committed; no excluded dependency resolved")
-    return 0
+    report(
+        "Boundary check",
+        self_test()
+        + check_private_content(files)
+        + check_untracked_payloads(files)
+        + check_forbidden_dependencies(),
+        success=[
+            f"scanned {len(files)} tracked files and {len(FORBIDDEN_PACKAGES)} excluded packages",
+            "no private workspace content committed; no excluded dependency resolved",
+        ],
+    )
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
