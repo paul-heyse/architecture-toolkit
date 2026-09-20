@@ -1,10 +1,17 @@
-"""Materialized, explicitly version-pinned baseline; native FFI is deliberately disabled."""
+"""Materialized, explicitly version-pinned baseline; native FFI is deliberately disabled.
+
+The implementation moved to `storage/snapshot.py` at W3, where it became a
+`SnapshotProvider`. This function keeps its signature, its behaviour and its callers: it is what
+`tests/qualification/test_data_stack.py` qualified, and a qualified entry point is not renamed
+because a better-factored one now exists behind it.
+"""
 
 from pathlib import Path
 
 import pyarrow as pa
 from datafusion import SessionContext
-from deltalake import DeltaTable
+
+from architecture_toolkit.storage.snapshot import MaterializedPyArrowSnapshotProvider
 
 
 def register_snapshot(
@@ -16,15 +23,5 @@ def register_snapshot(
     models, not an unbounded analytics source. Callers must choose the version from
     a release manifest; there is intentionally no latest-version default.
     """
-    if type(version) is not int or version < 0:
-        raise ValueError("an explicit nonnegative table version is required")
-    table = DeltaTable(location, version=version).to_pyarrow_table()
-    batches = table.to_batches()
-    if not batches:
-        batches = [
-            pa.RecordBatch.from_arrays(
-                [pa.array([], type=field.type) for field in table.schema], schema=table.schema
-            )
-        ]
-    context.register_record_batches(name, [batches])
-    return table.schema
+    provider = MaterializedPyArrowSnapshotProvider({name: location})
+    return provider.register(context, name, name, version=version)

@@ -20,6 +20,7 @@ from architecture_toolkit.domain.capsules import (
 from architecture_toolkit.domain.model import Model
 from architecture_toolkit.domain.protocols import SnapshotProvider, SourceLoader, ValidatorAdapter
 from architecture_toolkit.domain.providers import Materialization, SnapshotProviderDescription
+from architecture_toolkit.storage.snapshot import MaterializedPyArrowSnapshotProvider
 from architecture_toolkit.validation.context import ValidationContext
 from architecture_toolkit.validation.diagnostics import Diagnostic
 from architecture_toolkit.validation.pipeline import CrossRecordValidator
@@ -71,6 +72,10 @@ _loader: SourceLoader = YamlSourceLoader(root=Path())
 # The capsule Protocols are structural descriptions of foreign objects, so the assertion that
 # matters is that real ones satisfy them. arro3 objects are asserted in
 # `tests/qualification/test_arrow_interchange.py`, where obtaining one needs a Delta table.
+# The one that matters: the shipped provider against the boundary it claims to implement, not
+# only the fixture written to match it.
+_real_provider: SnapshotProvider = MaterializedPyArrowSnapshotProvider({})
+
 _pa_schema: ArrowSchemaExportable = pa.schema([])
 _pa_field: ArrowSchemaExportable = pa.field("x", pa.string())
 _pa_table: ArrowStreamExportable = pa.table({})
