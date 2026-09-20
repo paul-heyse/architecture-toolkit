@@ -30,6 +30,9 @@ UNORDERED_COLLECTIONS = (
     "references",
     "reference_links",
     "notation_bindings",
+    # DATA-13: an extension is identified by `(namespace, key)`, so the order they were written
+    # in is presentation like any other unordered collection.
+    "extensions",
 )
 # Ordered by their `ordinal`, so shuffling the items is presentation.
 ORDINAL_LISTS = ("participants", "fields", "nodes", "transitions")

@@ -9,6 +9,8 @@ from typing import assert_never
 import pytest
 
 from architecture_toolkit.domain import protocols
+from architecture_toolkit.domain.capsules import ArrowSchemaExportable, ArrowStreamExportable
+from architecture_toolkit.domain.providers import Materialization, SnapshotProviderDescription
 
 ROOT = Path(__file__).resolve().parents[2]
 CONTRACT = ROOT / "docs" / "contracts" / "core.md"
@@ -52,12 +54,40 @@ def test_contract_still_names_these_boundaries() -> None:
 def test_conformance_is_structural_not_nominal() -> None:
     """A class satisfies a Protocol without inheriting from it."""
 
+    class Capsule:
+        """Satisfies both Arrow capsule Protocols without being any Arrow library's type.
+
+        That is the whole claim `domain/capsules.py` makes: the storage boundary is typed by the
+        interface a foreign object exports, not by which library produced it.
+        """
+
+        def __arrow_c_schema__(self) -> object:
+            return object()
+
+        def __arrow_c_stream__(self, requested_schema: object = None) -> object:
+            del requested_schema
+            return object()
+
     class Conforming:
-        def schema_for(self, table: str, *, version: int) -> object:
-            return (table, version)
+        def describe(self) -> SnapshotProviderDescription:
+            return SnapshotProviderDescription(
+                provider_type="conforming",
+                materialization=Materialization.MATERIALIZED,
+                preserves_typed_empties=True,
+            )
+
+        def schema_for(self, table_id: str, *, version: int) -> ArrowSchemaExportable:
+            del table_id, version
+            return Capsule()
+
+        def open(self, table_id: str, *, version: int) -> ArrowStreamExportable:
+            del table_id, version
+            return Capsule()
 
     assert isinstance(Conforming(), protocols.SnapshotProvider)
     assert not isinstance(object(), protocols.SnapshotProvider)
+    assert isinstance(Capsule(), ArrowSchemaExportable)
+    assert isinstance(Capsule(), ArrowStreamExportable)
 
 
 @pytest.mark.unit
@@ -72,8 +102,14 @@ def test_runtime_isinstance_is_only_a_partial_guard() -> None:
     """
 
     class WrongSignature:
-        def schema_for(self, table: str) -> object:  # no keyword-only version
-            return table
+        def describe(self) -> object:
+            return None
+
+        def schema_for(self, table_id: str) -> object:  # no keyword-only version
+            return table_id
+
+        def open(self, table_id: str) -> object:  # no keyword-only version
+            return table_id
 
     # pyrefly: ignore[unsafe-overlap]
     # The suppression is the point: Pyrefly flags this isinstance call as an unsafe overlap

@@ -23,6 +23,11 @@ from architecture_toolkit.domain.details import (
     SchemaField,
     VerificationMethod,
 )
+from architecture_toolkit.domain.extensions import (
+    MAX_EXTENSION_KEY_LENGTH,
+    MAX_EXTENSION_VALUE_LENGTH,
+    Extension,
+)
 from architecture_toolkit.domain.model import Element
 from architecture_toolkit.domain.references import Reference, ReferenceKind
 from architecture_toolkit.domain.registry import BASELINE_PROFILE
@@ -36,9 +41,9 @@ from architecture_toolkit.domain.status import (
     StatusDimensions,
     TechnicalQualification,
 )
-from tests.strategies.ids import element_ids, model_ids
+from tests.strategies.ids import element_ids, extension_namespaces, model_ids
 
-__all__ = ["element_details", "elements", "references", "status_dimensions"]
+__all__ = ["element_details", "elements", "extensions", "references", "status_dimensions"]
 
 names = st.text(min_size=1, max_size=40).filter(lambda value: bool(value.strip()))
 descriptions = st.none() | st.text(max_size=120)
@@ -47,6 +52,24 @@ descriptions = st.none() | st.text(max_size=120)
 # is drawn from the members rather than from text. JSON mode would accept the string; these
 # strategies build records in process.
 BASELINE_KIND_IDS = st.sampled_from(sorted(BASELINE_PROFILE.kinds_by_id))
+
+
+def extensions() -> st.SearchStrategy[tuple[Extension, ...]]:
+    """DATA-13 annotations with unique `(namespace, key)` pairs.
+
+    Uniqueness is built rather than filtered — `unique_by` on the pair — because the record-local
+    validator rejects a duplicate and a filtered strategy would thrash against it.
+    """
+    return st.lists(
+        st.builds(
+            Extension,
+            namespace=extension_namespaces,
+            key=st.text(min_size=1, max_size=MAX_EXTENSION_KEY_LENGTH),
+            value=st.text(max_size=min(MAX_EXTENSION_VALUE_LENGTH, 40)),
+        ),
+        max_size=3,
+        unique_by=lambda extension: (extension.namespace, extension.key),
+    ).map(tuple)
 
 
 def _dimension[T](values: type[T]) -> st.SearchStrategy[object]:
@@ -169,6 +192,7 @@ def elements(draw: st.DrawFn, *, model_id: str | None = None) -> Element:
         aliases=tuple(draw(st.lists(names, max_size=2))),
         status=draw(status_dimensions),
         detail=draw(st.none() | element_details(identity)),
+        extensions=draw(extensions()),
     )
 
 

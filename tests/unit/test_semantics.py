@@ -40,9 +40,13 @@ from architecture_toolkit.domain.semantics import (
 from tests.strategies.commands import rename_elements
 from tests.strategies.relations import full_models
 
-# The digest of `examples/minimal/model.yaml` under hash version 1. A change here means the
-# algorithm changed, which is a DATA-56 migration and a version bump, never a silent edit.
-EXAMPLE_DIGEST = "sha256:7568f2851f96150eaccf048d54106a067af422aeed80e999b8878dba9444283a"
+# The digest of `examples/minimal/model.yaml` under hash version 1. A change here means either
+# the algorithm changed — a DATA-56 migration and a version bump, never a silent edit — or a
+# record gained a field, which changes what the preimage covers and must be stated in the commit
+# that does it. It moved once, at W3, when `Element` and `Relationship` gained DATA-13's
+# `extensions`; nothing had been published, so no migration was owed. The first release is what
+# makes a digest durable.
+EXAMPLE_DIGEST = "sha256:4a5bf6aeba8733864500ba1619e6717799d8053cc66494216f22b4401ed8ee46"
 
 
 def _model(source: dict[str, Any]) -> Model:

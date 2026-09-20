@@ -28,7 +28,7 @@ from architecture_toolkit.domain.references import (
     ReleaseReference,
 )
 from architecture_toolkit.domain.registry import BASELINE_PROFILE
-from tests.strategies.domain import descriptions, elements, names, references
+from tests.strategies.domain import descriptions, elements, extensions, names, references
 from tests.strategies.ids import element_ids, model_ids, versions
 
 __all__ = [
@@ -58,6 +58,7 @@ def relationships(draw: st.DrawFn, *, pool: list[Element], model_id: str) -> Rel
         relationship_type_id=draw(BASELINE_TYPE_IDS),
         source_element_id=draw(endpoints),
         target_element_id=draw(endpoints),
+        extensions=draw(extensions()),
     )
 
 

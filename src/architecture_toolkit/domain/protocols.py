@@ -36,6 +36,10 @@ if TYPE_CHECKING:
     from architecture_toolkit.validation.context import ValidationContext
     from architecture_toolkit.validation.diagnostics import Diagnostic
 
+from architecture_toolkit.domain.capsules import ArrowSchemaExportable, ArrowStreamExportable
+from architecture_toolkit.domain.identifiers import TableId
+from architecture_toolkit.domain.providers import SnapshotProviderDescription
+
 __all__ = [
     "ArtifactStore",
     "ProjectionGenerator",
@@ -75,13 +79,27 @@ class ValidatorAdapter(Protocol):
 
 @runtime_checkable
 class SnapshotProvider(Protocol):
-    """Opens one table at the exact version a manifest names (W3, DATA-51).
+    """Opens one table at the exact version a manifest names (W3, DATA-34, DATA-51).
 
     Never resolves an implicit latest version; `rules/no-implicit-latest-delta-version.yml`
-    enforces that structurally at every call site.
+    enforces that structurally at every call site, and `version` is keyword-only with no default
+    so a caller cannot omit it by accident.
+
+    Typed at W3 against `domain/capsules.py` rather than pyarrow: a provider may hand back a
+    pyarrow object, an arro3 object or anything else that exports the Arrow C data interface, and
+    `domain/` may not import pyarrow at all. `storage/interchange.py` is where a capsule becomes
+    a concrete pyarrow value.
+
+    The remaining §11B obligations are behavioural and are expressed as tests rather than as
+    signatures: an empty table keeps its schema, nested nullability survives, rows do not depend
+    on batch boundaries, and `describe().native_ffi_enabled` is `False` under the current lock.
     """
 
-    def schema_for(self, table: str, *, version: int) -> object: ...
+    def describe(self) -> SnapshotProviderDescription: ...
+
+    def schema_for(self, table_id: TableId, *, version: int) -> ArrowSchemaExportable: ...
+
+    def open(self, table_id: TableId, *, version: int) -> ArrowStreamExportable: ...
 
 
 @runtime_checkable

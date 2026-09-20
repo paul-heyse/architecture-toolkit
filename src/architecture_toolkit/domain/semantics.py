@@ -107,6 +107,10 @@ COLLECTION_ORDER: Final[Mapping[tuple[type[BaseModel], str], CollectionOrder]] =
         (Model, "notation_bindings"): CollectionOrder(_UNORDERED, ("binding_id",)),
         # DATA-04: readable aliases coexist with the stable identity and are not part of it.
         (Element, "aliases"): CollectionOrder(CollectionPolicy.EXCLUDED),
+        # DATA-13: extensions are part of identity — a consumer annotation is content the author
+        # wrote — but their order is not, because nothing reads them positionally.
+        (Element, "extensions"): CollectionOrder(_UNORDERED, ("namespace", "key")),
+        (Relationship, "extensions"): CollectionOrder(_UNORDERED, ("namespace", "key")),
         (Interaction, "participants"): CollectionOrder(
             _BY_ORDINAL, ("ordinal", "element_id", "participant_role")
         ),

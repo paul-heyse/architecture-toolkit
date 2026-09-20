@@ -22,8 +22,10 @@ from pydantic import StringConstraints
 
 __all__ = [
     "DIGEST_PATTERN",
+    "EXTENSION_NAMESPACE_PATTERN",
     "IDENTIFIER_PATTERN",
     "QUALIFIED_KIND_PATTERN",
+    "TABLE_ID_PATTERN",
     "VERSION_PATTERN",
     "ArtifactId",
     "BindingId",
@@ -31,6 +33,7 @@ __all__ = [
     "ContextId",
     "Digest",
     "ElementId",
+    "ExtensionNamespace",
     "InteractionId",
     "LayoutDigest",
     "LinkId",
@@ -45,6 +48,7 @@ __all__ = [
     "RuleId",
     "SchemaVersion",
     "SemanticDigest",
+    "TableId",
     "ViewId",
 ]
 
@@ -62,6 +66,17 @@ QUALIFIED_KIND_PATTERN = r"^[a-z][a-z0-9]*\.[a-z][a-z0-9_]*$"
 DIGEST_PATTERN = r"^sha256:[0-9a-f]{64}$"
 
 VERSION_PATTERN = r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$"
+
+# A physical table name. Narrower than `IDENTIFIER_PATTERN` on purpose: dots and dashes are legal
+# in an architecture identifier and are not legal in a SQL identifier, and W5 registers these
+# names in a DataFusion catalog where a dotted name would read as a schema qualifier.
+TABLE_ID_PATTERN = r"^[a-z][a-z0-9_]{2,63}$"
+
+# An extension namespace is at least two dotted segments, so `acme.finance` is expressible and a
+# bare `acme` is not. DATA-13's point is that an extension is somebody else's vocabulary; a
+# single-segment namespace would collide with the toolkit's own `architecture_toolkit` keys the
+# moment two consumers picked the same word.
+EXTENSION_NAMESPACE_PATTERN = r"^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)+$"
 
 _Identifier = StringConstraints(pattern=IDENTIFIER_PATTERN, strict=True)
 _Digest = StringConstraints(pattern=DIGEST_PATTERN, strict=True)
@@ -87,6 +102,11 @@ ArtifactId = Annotated[str, _Identifier]
 RuleId = Annotated[str, _Identifier]
 
 QualifiedKind = Annotated[str, StringConstraints(pattern=QUALIFIED_KIND_PATTERN, strict=True)]
+
+TableId = Annotated[str, StringConstraints(pattern=TABLE_ID_PATTERN, strict=True)]
+ExtensionNamespace = Annotated[
+    str, StringConstraints(pattern=EXTENSION_NAMESPACE_PATTERN, strict=True)
+]
 
 # An identifier inside a foreign notation — a BPMN `Task_1`, an ArchiMate element id. Deliberately
 # looser than `IDENTIFIER_PATTERN`: the notation owns that namespace and the toolkit does not get

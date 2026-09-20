@@ -210,3 +210,54 @@ class RecordCarryingError(ValueError):
     def identity(self) -> str:
         assert_type(self.record, CompiledModel)
         return self.record.model_id
+
+
+# -- W3 patterns --------------------------------------------------------------------------------
+
+
+class BoundedAnnotation(CompiledModel):
+    """DATA-13: a bounded tuple field. `max_length` on `Field`, not on the annotation.
+
+    The distinction matters to the generated JSON Schema: `Field(max_length=...)` on a tuple
+    emits `maxItems`, which is the keyword a consumer validating authored YAML against
+    `schemas/model.schema.json` actually reads.
+    """
+
+    entries: tuple[str, ...] = Field(default=(), max_length=16)
+
+
+def bounded(record: BoundedAnnotation) -> int:
+    assert_type(record.entries, tuple[str, ...])
+    return len(record.entries)
+
+
+class _Alpha(BaseModel):
+    model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
+    family: Literal["alpha"] = "alpha"
+    a: str
+
+
+class _Beta(BaseModel):
+    model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
+    family: Literal["beta"] = "beta"
+    b: str
+
+
+_Member = Annotated[_Alpha | _Beta, Field(discriminator="family")]
+
+
+def route(member: _Member) -> str:
+    """CORE-59 over a discriminated union, which is how `compile_tables` routes element detail.
+
+    The point is what happens when a variant is added: `assert_never` stops type-checking and
+    every router that does not handle the new family fails `pyrefly check`. That makes W3's
+    "five detail tables, one per element-attachable family" a structural fact rather than a
+    comment — a sixth family cannot be added without the storage layer being told about it.
+    """
+    match member:
+        case _Alpha():
+            return member.a
+        case _Beta():
+            return member.b
+        case _ as unreachable:
+            assert_never(unreachable)

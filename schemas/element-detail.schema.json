@@ -421,6 +421,15 @@
           "default": null,
           "title": "Detail"
         },
+        "extensions": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Extension"
+          },
+          "maxItems": 16,
+          "title": "Extensions",
+          "type": "array"
+        },
         "content_hash": {
           "anyOf": [
             {
@@ -477,6 +486,35 @@
       ],
       "title": "EvidenceReview",
       "type": "string"
+    },
+    "Extension": {
+      "additionalProperties": false,
+      "description": "One namespaced annotation. The value is always a string.\n\nNot `object`, not a JSON blob: a typed union would be a schema the toolkit has to maintain\nfor data it has promised not to interpret, and an untyped blob would not survive an explicit\nArrow schema (DATA-10 forbids union and extension types). A consumer that needs structure\nencodes it and owns the decoding, which is the honest division.",
+      "properties": {
+        "namespace": {
+          "pattern": "^[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)+$",
+          "title": "Namespace",
+          "type": "string"
+        },
+        "key": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Key",
+          "type": "string"
+        },
+        "value": {
+          "maxLength": 1024,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "key",
+        "value"
+      ],
+      "title": "Extension",
+      "type": "object"
     },
     "FieldCardinality": {
       "enum": [
@@ -1187,6 +1225,15 @@
           ],
           "default": null,
           "title": "Description"
+        },
+        "extensions": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Extension"
+          },
+          "maxItems": 16,
+          "title": "Extensions",
+          "type": "array"
         },
         "content_hash": {
           "anyOf": [

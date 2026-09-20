@@ -26,6 +26,11 @@ from pydantic import Field, model_validator
 
 from architecture_toolkit.domain.base import CompiledRecord
 from architecture_toolkit.domain.details import ElementDetail
+from architecture_toolkit.domain.extensions import (
+    MAX_EXTENSIONS_PER_RECORD,
+    Extension,
+    duplicate_extension_key,
+)
 from architecture_toolkit.domain.identifiers import (
     ContextId,
     Digest,
@@ -88,7 +93,20 @@ class Element(CompiledRecord):
     aliases: tuple[str, ...] = ()
     status: StatusDimensions = StatusDimensions()
     detail: ElementDetail | None = None
+    # DATA-13: a bounded namespaced annotation nobody queries. See `domain/extensions.py` for
+    # why reading one anywhere in `queries/`, `projections/` or `validation/rules/` is the
+    # signal that it should have been a typed field instead.
+    extensions: tuple[Extension, ...] = Field(default=(), max_length=MAX_EXTENSIONS_PER_RECORD)
     content_hash: Digest | None = None
+
+    @model_validator(mode="after")
+    def extension_keys_are_unique(self) -> Self:
+        duplicate = duplicate_extension_key(self.extensions)
+        if duplicate is not None:
+            namespace, key = duplicate
+            message = f"element {self.element_id!r} repeats extension {namespace}.{key}"
+            raise ValueError(message)
+        return self
 
     @model_validator(mode="after")
     def detail_describes_this_element(self) -> Self:
@@ -119,7 +137,17 @@ class Relationship(CompiledRecord):
     target_element_id: ElementId
     context_id: ContextId | None = None
     description: str | None = None
+    extensions: tuple[Extension, ...] = Field(default=(), max_length=MAX_EXTENSIONS_PER_RECORD)
     content_hash: Digest | None = None
+
+    @model_validator(mode="after")
+    def extension_keys_are_unique(self) -> Self:
+        duplicate = duplicate_extension_key(self.extensions)
+        if duplicate is not None:
+            namespace, key = duplicate
+            message = f"relationship {self.relationship_id!r} repeats extension {namespace}.{key}"
+            raise ValueError(message)
+        return self
 
 
 class InteractionParticipant(CompiledRecord):
