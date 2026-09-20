@@ -6,15 +6,11 @@ checks that every one of them is scheduled, not that any of them passes.
 
 from __future__ import annotations
 
-import json
 import re
-import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-INDEX = ROOT / "reference" / "requirements.json"
-WAVES = ROOT / "reference" / "plan-waves.json"
-SCHEMA = ROOT / "schemas" / "requirements.schema.json"
+from _common import ROOT, load_json, report
+
 HANDOFF = ROOT / "docs" / "agent-handoff.md"
 
 WAVE_ID = re.compile(r"^W\d+[a-z]?$")
@@ -67,13 +63,13 @@ def normalize(text: str) -> str:
     return " ".join(text.split())
 
 
-def main() -> int:
+def main() -> None:
     errors: list[str] = []
     warnings: list[str] = []
 
-    index = json.loads(INDEX.read_text())
-    plan = json.loads(WAVES.read_text())
-    schema = json.loads(SCHEMA.read_text())
+    index = load_json("reference/requirements.json")
+    plan = load_json("reference/plan-waves.json")
+    schema = load_json("schemas/requirements.schema.json")
 
     known = {entry["id"] for entry in index["requirements"]}
     waves = plan["waves"]
@@ -231,14 +227,8 @@ def main() -> int:
         print(f"{wid:>4}  {milestone}  {len(wave['requirements']):>3}  {wave['title']}")
     print(f"{'':>4}  --  {len(owner):>3}  requirements assigned across {len(waves)} waves")
 
-    for warning in warnings:
-        print(f"warning: {warning}", file=sys.stderr)
-    if errors:
-        for error in errors:
-            print(f"error: {error}", file=sys.stderr)
-        raise SystemExit(f"Plan coverage failed with {len(errors)} error(s)")
-    return 0
+    report("Plan coverage", errors, warnings)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

@@ -32,6 +32,7 @@ jobs:
       - run: uv run pytest --junitxml=.runtime/junit.xml
       - run: uv run python scripts/check_schema.py
       - run: uv run python scripts/check_plan_coverage.py
+      - run: uv run python scripts/check_boundaries.py
       - name: Install ast-grep
         run: |
           curl -fsSL --proto '=https' -o ast-grep.zip \
