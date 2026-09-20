@@ -10,6 +10,11 @@ content.
 The same capable programming agent can execute the milestones below. They are dependency gates,
 not separate team handoffs.
 
+Milestone `### Inputs` are **read scope**: an identifier may appear in several. Delivery scope is
+one wave, recorded in `reference/plan-waves.json` and enforced by `scripts/check_plan_coverage.py`.
+`docs/plans/` decomposes these milestones into individually reviewable waves; this file remains
+authoritative for the gates.
+
 ## Current executable state
 
 Implemented:
@@ -38,7 +43,8 @@ migration is committed.
 ## M1 — Domain and authoring
 
 ### Inputs
-`docs/contracts/core.md`; CORE-01..21, CORE-53..65; DATA-03..14, DATA-29..30, DATA-41.
+`docs/contracts/core.md`; CORE-01..21, CORE-53..65; DATA-03..14, DATA-29..33, DATA-35..36,
+DATA-41; DATA-01..02.
 
 ### Required outputs
 - semantic scalar types and discriminated domain/detail/command models;
@@ -46,8 +52,15 @@ migration is committed.
 - generated JSON Schema contracts/snapshots;
 - ruamel YAML authoring profile + SourceMap + source-aware diagnostics;
 - typed immutable compiled records;
+- versioned canonical semantic hash and record-level semantic diff (DATA-27);
+- Hypothesis strategy library and dev/ci/deep profiles (CORE-45, CORE-47);
+- registered pytest markers and the requirement-evidence report (CORE-48..52);
+- EngineeringQualificationArtifact for static/engineering evidence (CORE-66);
 - Pyrefly migration/config/Protocol fixtures per D-032;
 - qualified Ruff profile changes only if useful.
+
+The evidence substrate is listed here, not in M6, because it is the instrument every later
+milestone gate is measured with. M6 retains CORE-46 and CORE-67 and the both-platform execution.
 
 ### Hard gates
 - rename preserves identity;
@@ -77,7 +90,7 @@ Unchanged table versions can be reused. Retained historical releases remain read
 ## M3 — Queries, graph and semantic change
 
 ### Inputs
-M2; DATA-15..18, DATA-26..29, DATA-38, CORE-22..31.
+M2; DATA-15..18, DATA-26..29, DATA-38, DATA-46..50, CORE-22..31.
 
 ### Required outputs
 - one release-scoped DataFusion SessionContext per manifest;
@@ -157,6 +170,7 @@ uv run ruff format --check .
 uv run ty check src
 uv run pytest
 uv run python scripts/check_schema.py
+uv run python scripts/check_plan_coverage.py
 uv run architecture validate examples/minimal/model.yaml
 uv run --group docs mkdocs build --strict
 uv run python scripts/bootstrap_tools.py
