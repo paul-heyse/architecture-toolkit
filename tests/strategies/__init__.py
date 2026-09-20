@@ -26,7 +26,14 @@ from tests.strategies.commands import (
 )
 from tests.strategies.domain import element_details, elements, references, status_dimensions
 from tests.strategies.ids import STRATEGY_BY_ALIAS, digests, element_ids, model_ids
-from tests.strategies.relations import coherent_models, relationships
+from tests.strategies.relations import (
+    coherent_models,
+    full_models,
+    interactions,
+    notation_bindings,
+    reference_links,
+    relationships,
+)
 
 __all__ = [
     "DEFERRED_GROUPS",
@@ -38,7 +45,11 @@ __all__ = [
     "element_details",
     "element_ids",
     "elements",
+    "full_models",
+    "interactions",
     "model_ids",
+    "notation_bindings",
+    "reference_links",
     "references",
     "relationships",
     "rename_elements",

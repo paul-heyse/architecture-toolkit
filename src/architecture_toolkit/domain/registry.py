@@ -217,7 +217,7 @@ def with_overrides(
     )
 
 
-PROFILE_ADAPTER = TypeAdapter(Profile)
+PROFILE_ADAPTER: TypeAdapter[Profile] = TypeAdapter(Profile)
 """CORE-05: a natural type boundary. Profiles arrive as data from W2 onward."""
 
 
@@ -426,7 +426,7 @@ _BASELINE_RELATIONSHIP_TYPES: tuple[RelationshipTypeDefinition, ...] = (
     ),
 )
 
-BASELINE_PROFILE = Profile(
+BASELINE_PROFILE: Profile = Profile(
     profile_id="default",
     profile_version=BASELINE_PROFILE_VERSION,
     kinds=_BASELINE_KINDS,

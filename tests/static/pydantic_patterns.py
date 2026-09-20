@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 from functools import cached_property
-from typing import Annotated, Literal, Self, assert_never, assert_type
+from typing import Annotated, Any, Literal, Self, assert_never, assert_type, get_origin
 
 from pydantic import (
     BaseModel,
@@ -165,3 +165,48 @@ def read_cached(registry: CachedRegistry) -> int | None:
 
 DETAIL_UNION = TypeAdapter(list[ElementDetail])
 """CORE-05 over a collection boundary; no wrapper model is created to call validation."""
+
+
+# -- patterns introduced by W2 ------------------------------------------------------------------
+
+
+def derive(record: CompiledModel, **changes: object) -> CompiledModel:
+    """CORE-09: a frozen record is derived through full validation, never `model_copy(update=)`.
+
+    `dict(record)` keeps nested records as instances, and calling `model_validate` through the
+    instance types the result as `Self`, which is what lets `domain/semantics.py` stamp digests
+    generically over every record family.
+    """
+    derived = record.model_validate(dict(record) | changes)
+    assert_type(derived, CompiledModel)
+    return derived
+
+
+def json_ready(record: CompiledModel) -> dict[str, Any]:
+    """JSON-mode dump is the canonical-form input and the round-trip renderer's source."""
+    payload = record.model_dump(mode="json", exclude_defaults=True, exclude_none=True)
+    assert_type(payload, dict[str, Any])
+    return payload
+
+
+def literal_fields(cls: type[BaseModel]) -> set[str]:
+    """Discriminators are `Literal` fields with defaults, so `exclude_defaults` drops them.
+
+    A renderer that writes authoring YAML from a record has to put them back, which means it must
+    be able to find them from the annotations rather than from a dump.
+    """
+    return {
+        name for name, field in cls.model_fields.items() if get_origin(field.annotation) is Literal
+    }
+
+
+class RecordCarryingError(ValueError):
+    """An exception that carries a frozen record: the authoring adapter's error shape."""
+
+    def __init__(self, record: CompiledModel, message: str) -> None:
+        super().__init__(message)
+        self.record = record
+
+    def identity(self) -> str:
+        assert_type(self.record, CompiledModel)
+        return self.record.model_id

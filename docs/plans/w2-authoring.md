@@ -31,6 +31,31 @@ not a release concern. Diff computation and change classification stay in `relea
 it in `releases/` would make the authoring layer import the release layer and invert the dependency
 order in `implementation-contract.md`.
 
+## Decisions taken during execution
+
+**The hash is versioned in its preimage, and the version is `1`.** `domain/semantics.py`
+folds `SEMANTIC_HASH_VERSION` into every digest through a domain-separation prefix, so a later
+change to normalization or algorithm is a DATA-56 migration with a new version rather than a
+digest that silently disagrees with the manifests W4 will pin. SHA-256 over canonical JSON
+(sorted keys, no whitespace, UTF-8, no Unicode normalization) of the validated record; only the
+standard library, per `ARCH-TOOL-DATA-001` §8B.
+
+**Collection order is a per-field table, not a global rule.** `COLLECTION_ORDER` names every
+tuple-typed field reachable from `Model` and a test asserts the table is total, so a new
+collection cannot be hashed until it says whether it is unordered, ordered by its `ordinal`, or
+excluded. Ordinal-bearing collections are canonicalized by ordinal: the tuple order in YAML is
+presentation and the ordinal is the semantic order, which is what W1 gave behaviour nodes,
+transitions, schema fields and participants an ordinal for. `Element.aliases` stays excluded, as
+W1 decided. `RelationshipTypeDefinition.ordered_sequence` remains reserved for W5/W6 traversal
+and diff semantics.
+
+**Digests are stamped, the model digest is computed.** `stamp_digests` fills every record's
+`content_hash` through `model_validate` (nested details first) and is idempotent because
+`content_hash` is stripped from every preimage. `Model` carries no digest field: `model_digest`
+is computed and W4's manifest records it. The record-level `semantic_delta` (added, removed and
+changed identities per collection) is what CORE-20 presents after an edit; classifying those
+changes is W6's.
+
 ## Work items
 
 1. **Parser factory** (CORE-14). One configured ruamel.yaml round-trip factory: YAML 1.2, quote and
