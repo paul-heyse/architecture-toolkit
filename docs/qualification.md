@@ -8,7 +8,7 @@ This file describes evidence for the **current repository**, not target architec
 | --- | --- | --- | --- |
 | CORE domain | minimal strict Pydantic model, unique IDs, endpoint checks | CORE-01..67 | partial |
 | YAML | safe load in minimal CLI/tests; no SourceMap | controlled round-trip authoring/source diagnostics | pending |
-| Static typing | Pyrefly over src/tests/scripts, 0 errors; strict `src` coverage 92.86% | D-032 / Pyrefly CORE-53..62 | migrated; coverage floor 92 |
+| Static typing | Pyrefly over src/tests/scripts, 0 errors; strict `src` coverage 97.87% | D-032 / Pyrefly CORE-53..62 | migrated; coverage floor 97 |
 | DATA Arrow/Delta | nested interface, nullable scalar, empty table, explicit Arrow schema, Delta history | DATA-01..60 | partial |
 | Snapshot provider | explicit-version materialized PyArrow registration | materialized fallback + qualified Dataset/stream candidates | partial |
 | DataFusion | scalar SQL binding over pinned snapshot | release-scoped catalogs/query recipes/plan evidence | partial |

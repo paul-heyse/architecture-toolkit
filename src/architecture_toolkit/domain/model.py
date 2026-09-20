@@ -148,7 +148,17 @@ class Interaction(CompiledRecord):
 
 
 class Model(CompiledRecord):
-    """One canonical model. Frozen, hashable, and addressed by `model_id`."""
+    """One canonical model. Frozen, hashable, and addressed by `model_id`.
+
+    No cross-record validator lives here. Identity uniqueness and endpoint resolution used to be
+    a `model_validator` on this class; `ARCH-TOOL-CORE-001` §3F puts foreign-key resolution
+    outside record-local validators, and they now live in `validation/rules/structural.py` as
+    rules that return diagnostics.
+
+    That is a behaviour change worth stating plainly: an unresolved endpoint no longer raises
+    `ValidationError` on construction. It is reported as `CORE.RELATION.UNRESOLVED_ENDPOINT`,
+    with the relationship and the offending side named — which the exception never managed.
+    """
 
     schema_version: SchemaVersion = CURRENT_SCHEMA_VERSION
     profile_version: ProfileVersion = BASELINE_PROFILE_VERSION
@@ -159,24 +169,3 @@ class Model(CompiledRecord):
     references: tuple[Reference, ...] = ()
     reference_links: tuple[ReferenceLink, ...] = ()
     notation_bindings: tuple[NotationBinding, ...] = ()
-
-    @model_validator(mode="after")
-    def structural_invariants(self) -> Self:
-        """Interim. `ARCH-TOOL-CORE-001` §3F puts foreign-key resolution outside record validators.
-
-        These checks are cross-record and move to `validation/` as Diagnostic-returning rules in
-        the next change. They stay here until then so the tree never loses the guarantee: an
-        unresolved endpoint must fail somewhere at every commit, and deleting this before the
-        replacement exists would open a window where it fails nowhere.
-        """
-        element_ids = [element.element_id for element in self.elements]
-        if len(element_ids) != len(set(element_ids)):
-            raise ValueError("duplicate element identity")
-        relationship_ids = [relation.relationship_id for relation in self.relationships]
-        if len(relationship_ids) != len(set(relationship_ids)):
-            raise ValueError("duplicate relationship identity")
-        known = set(element_ids)
-        for relation in self.relationships:
-            if relation.source_element_id not in known or relation.target_element_id not in known:
-                raise ValueError(f"unresolved endpoint: {relation.relationship_id}")
-        return self

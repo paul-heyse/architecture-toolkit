@@ -34,8 +34,9 @@ def _imported_modules(path: Path) -> set[str]:
 def test_engineering_evidence_does_not_touch_model_validation() -> None:
     """Engineering evidence must not reach into the architecture diagnostic model.
 
-    The reverse direction is guarded when W1 adds `validation/diagnostics.py`; until it exists
-    there is nothing for it to import.
+    The reverse direction is now guarded too, in `tests/unit/test_layering.py`, which asserts
+    no module under `validation/` imports engineering evidence. That test could not exist until
+    `validation/` did.
     """
     imported = _imported_modules(ENGINEERING)
     leaked = {m for m in imported if "validation" in m or "diagnostic" in m}
