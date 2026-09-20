@@ -22,6 +22,8 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pytest
 
+from architecture_toolkit.storage.interchange import as_schema
+
 STUB_ROOT = Path(pa.__file__).resolve().parent.parent / "pyarrow-stubs"
 
 
@@ -57,6 +59,24 @@ def test_dictionary_decode_exists_although_the_stub_omits_it() -> None:
     assert hasattr(pc, "dictionary_decode")
     column = pa.chunked_array([pa.array(["a", "b", "a"], type=pa.string())])
     assert pc.dictionary_decode(pc.dictionary_encode(column)).to_pylist() == ["a", "b", "a"]
+
+
+@pytest.mark.qualification
+@pytest.mark.interop
+@pytest.mark.requirement("CORE-53", "DATA-43")
+def test_pa_schema_accepts_a_capsule_exporter_although_the_stub_omits_that_overload() -> None:
+    """Known divergence 3. This is how an arro3 `Schema` becomes a `pa.Schema`.
+
+    `storage.interchange.as_schema` carries the one narrow suppression for it, guarded by an
+    `isinstance` against `ArrowSchemaExportable` so a non-Arrow object gets a real error.
+    """
+    declared = pa.schema([pa.field("x", pa.string(), nullable=False)])
+
+    class Exporter:
+        def __arrow_c_schema__(self) -> object:
+            return declared.__arrow_c_schema__()
+
+    assert as_schema(Exporter()).equals(declared)
 
 
 def _declared_names(path: Path) -> set[str]:

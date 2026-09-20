@@ -78,6 +78,9 @@ _reader_schema: pa.Schema = _reader.schema
 _read_all: pa.Table = _reader.read_all()
 _from_stream: pa.RecordBatchReader = pa.RecordBatchReader.from_stream(_table)
 _table_from_object: pa.Table = pa.table(_table)
+# **Stub defect 3 of 3.** pyarrow 25's `schema()` accepts any capsule exporter; the stub's
+# overloads cover only the iterable and mapping forms. `storage.interchange.as_schema` carries
+# the suppression, narrowed by an `isinstance` check against the capsule Protocol.
 _schema_from_object: pa.Schema = pa.schema(_schema)
 
 # The PyCapsule dunders `storage/interchange.py` normalizes foreign objects through.

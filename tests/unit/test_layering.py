@@ -133,3 +133,57 @@ def test_ruamel_is_confined_to_the_authoring_adapter() -> None:
         module.split(".")[0] for path in allowed.rglob("*.py") for module in runtime_imports(path)
     }
     assert "ruamel" in adapter_imports
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("DATA-01", "DATA-34")
+def test_the_domain_imports_no_arrow_library() -> None:
+    """`domain/` is typed against the Arrow C data interface, never against an implementation.
+
+    `domain/capsules.py` types the storage boundary with Protocols precisely so `SnapshotProvider`
+    can be fully typed without pyarrow, arro3 or deltalake reaching the domain layer.
+    `rules/domain-layer-imports.yml` covers the first three by name; `arro3` is added here because
+    it arrived with W3 and the AST scan is what makes the statement total rather than a list.
+    """
+    banned = {"pyarrow", "arro3", "deltalake", "datafusion", "networkx"}
+    leaked = {
+        path.relative_to(SRC).as_posix(): sorted(
+            {module.split(".")[0] for module in runtime_imports(path)} & banned
+        )
+        for path in (SRC / "domain").rglob("*.py")
+    }
+    assert not {path: modules for path, modules in leaked.items() if modules}
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("DATA-43")
+def test_arro3_is_named_in_no_source_module() -> None:
+    """arro3 objects arrive from deltalake and DataFusion; none is ever constructed here.
+
+    `storage/interchange.py` normalizes them through the capsule interface, which works whatever
+    produced them. An `import arro3` anywhere would mean the toolkit had taken a second Arrow
+    implementation as a dependency without saying so in the lock.
+    """
+    leaked = [
+        path.relative_to(SRC).as_posix()
+        for path in SRC.rglob("*.py")
+        if any(module.split(".")[0] == "arro3" for module in runtime_imports(path))
+    ]
+    assert not leaked, f"arro3 imported in src: {leaked}"
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("DATA-43")
+def test_the_capsule_dunders_are_spelled_in_exactly_two_modules() -> None:
+    """One module declares the interface and one module uses it.
+
+    Anywhere else would be a third place that has to know how a foreign Arrow object is
+    unwrapped, which is what `storage/interchange.py` exists to prevent.
+    """
+    allowed = {"domain/capsules.py", "storage/interchange.py"}
+    spelled = {
+        path.relative_to(SRC).as_posix()
+        for path in SRC.rglob("*.py")
+        if "__arrow_c_" in path.read_text()
+    }
+    assert spelled == allowed, f"capsule dunders spelled in {spelled}"
