@@ -1,10 +1,12 @@
 """Small, truthful scaffold CLI. Commands never imply unimplemented qualification."""
 
-import argparse
 import json
+from enum import StrEnum
 from importlib.metadata import version
 from pathlib import Path
+from typing import Annotated, Final
 
+import typer
 from pydantic import ValidationError
 
 from architecture_toolkit.changes.alternatives import compare_alternative
@@ -19,6 +21,19 @@ from architecture_toolkit.changes.record import (
 )
 from architecture_toolkit.changes.records import ModelChanges
 from architecture_toolkit.changes.releases import diff_releases, identity_disagreements
+from architecture_toolkit.cli_errors import (
+    ERR_CONSOLE,
+    EXIT_DIAGNOSTICS,
+    EXIT_OK,
+    EXIT_UNREADABLE,
+    EXIT_USAGE,
+    CommandRefused,
+    DiagnosticsFound,
+    OperationRefused,
+    SourceUnreadable,
+    UnknownName,
+    UsageRefusal,
+)
 from architecture_toolkit.contracts import SCHEMA_FAMILIES, emit, emittable
 from architecture_toolkit.domain.commands import CHANGE_SET_ADAPTER, CommandError
 from architecture_toolkit.domain.semantics import MODEL_COLLECTIONS
@@ -47,8 +62,24 @@ from architecture_toolkit.releases.errors import (
 )
 from architecture_toolkit.releases.manifest import ArchitectureRelease
 from architecture_toolkit.releases.provenance import source_bundle, source_revision
-from architecture_toolkit.releases.publication import PublicationRequest, persist, publish
-from architecture_toolkit.releases.recovery import discard, orphans, resume
+from architecture_toolkit.releases.publication import (
+    PublicationRequest,
+)
+from architecture_toolkit.releases.publication import (
+    persist as persist_release,
+)
+from architecture_toolkit.releases.publication import (
+    publish as publish_release,
+)
+from architecture_toolkit.releases.recovery import (
+    discard as discard_release,
+)
+from architecture_toolkit.releases.recovery import (
+    orphans,
+)
+from architecture_toolkit.releases.recovery import (
+    resume as resume_release,
+)
 from architecture_toolkit.releases.retention import probe_readability, vacuum_table
 from architecture_toolkit.releases.store import DEFAULT_STORE_ROOT, ReleaseStore
 from architecture_toolkit.storage import delta
@@ -58,17 +89,8 @@ from architecture_toolkit.validation.authoring import validate_source_text
 from architecture_toolkit.validation.release import alternative_line_breaks, chain_breaks
 from architecture_toolkit.validation.render import render_diagnostics, render_report
 
-# Exit codes are part of the interface. Four, and no more:
-#   0  nothing at or above the failure threshold
-#   1  a hard structural error
-#   2  usage, or a command that is not implemented
-#   3  the source could not be read or parsed, so no rule could run
-# 3 exists because "that file is not YAML" and "this model has four unresolved endpoints" are
-# different operational outcomes and CI wants to branch on them.
-EXIT_OK = 0
-EXIT_DIAGNOSTICS = 1
-EXIT_USAGE = 2
-EXIT_UNREADABLE = 3
+# The four exit codes and the refusal hierarchy live in `cli_errors.py` and are re-exported here,
+# because `EXIT_OK` and its siblings are what the CLI tests import and have been since W1.
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -78,379 +100,495 @@ STRUCTURAL_POLICY = "containment.descendants"
 """The `graph` default. The only baseline policy that declares cycle reporting, so it is the one
 under which every analysis below is defined; the others refuse what they were not declared for."""
 
-ANALYSES = ("cycles", "generations", "components", "condensation", "closure", "reduction")
+
+class Analysis(StrEnum):
+    """The six structural analyses `graph` runs, as a type rather than a `choices` tuple."""
+
+    CYCLES = "cycles"
+    GENERATIONS = "generations"
+    COMPONENTS = "components"
+    CONDENSATION = "condensation"
+    CLOSURE = "closure"
+    REDUCTION = "reduction"
+
+
+ANALYSES: Final[tuple[str, ...]] = tuple(item.value for item in Analysis)
+
+_STACK: Final[tuple[str, ...]] = (
+    "pydantic",
+    "ruamel.yaml",
+    "pyarrow",
+    "datafusion",
+    "deltalake",
+    "networkx",
+)
+"""What `doctor` reports. Named so the list is one thing rather than a literal inside a print."""
 """The policy `find_unverified_dependencies` traverses; named here so `--unverified` can refuse to
 silently replace a policy the operator asked for."""
 
 
+app: typer.Typer = typer.Typer(
+    name="architecture",
+    help="Typed architecture models, coherent releases and standards projections.",
+    no_args_is_help=True,
+    # `--install-completion` writes into the user's shell rc files. A tool whose own contracts
+    # forbid reaching outside the project should not offer that by default, and the two options it
+    # adds would appear in the generated reference as though they were part of the surface.
+    add_completion=False,
+    # Deterministic tracebacks. Typer's pretty handler is installed process-globally on every
+    # invocation, and this package is imported as a library as well as run as a command.
+    pretty_exceptions_enable=False,
+)
+
+
+class Format(StrEnum):
+    """How a command answers. Two words, and the same two everywhere.
+
+    Before this there were three vocabularies — `human|json`, `table|json`, `summary|json` — for
+    one concept, so a script had to know which of three spellings each verb took. Typer validates
+    the enum at parse time and lists it in `--help`, which makes "one word means one thing" a
+    property of the type rather than of review.
+    """
+
+    HUMAN = "human"
+    JSON = "json"
+
+
+# Shared parameter declarations. `--store` was copy-pasted into 18 parsers and `--release` into
+# seven, which is how their help strings drifted apart.
+StoreOption = Annotated[Path, typer.Option("--store", help="Release store root.")]
+ReleaseOption = Annotated[
+    str | None, typer.Option("--release", help="Defaults to the current release.")
+]
+FormatOption = Annotated[Format, typer.Option("--format", help="How to render the answer.")]
+ParamOption = Annotated[
+    list[str] | None,
+    typer.Option("--param", metavar="NAME=VALUE", help="Bind one declared parameter. Repeatable."),
+]
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Architecture toolkit foundation")
-    sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("doctor", help="Report installed Python stack")
-    check = sub.add_parser("validate", help="Validate a source model and report what was checked")
-    check.add_argument("source", type=Path)
-    check.add_argument("--format", choices=("human", "json"), default="human")
-    schema = sub.add_parser("schema", help="Print or write the generated JSON Schema contracts")
-    schema.add_argument("--family", help="Emit one family to stdout")
-    schema.add_argument(
-        "--write", action="store_true", help="Write every emittable family to its declared path"
-    )
-    release = sub.add_parser("publish", help="Publish a source model as a coherent release")
-    release.add_argument("source", type=Path)
-    release.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
-    release.add_argument(
-        "--expect-parent",
-        default=_UNSET,
-        help="The release the candidate was built against; omit only for the first release.",
-    )
-    release.add_argument("--release-id", help="Defaults to the next rel-NNNN in the store.")
-    release.add_argument(
-        "--no-source-snapshot",
-        action="store_true",
-        help="Do not copy the source into the release; pin only its revision and digest.",
-    )
+    """Run one command and answer with its exit code.
 
-    listing = sub.add_parser("releases", help="List published releases and whether they resolve")
-    listing.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
-    listing.add_argument("--verify", action="store_true", help="Read every pinned version back")
+    Every refusal reaches here as a `CommandRefused`, which knows its own code and stream. That is
+    the whole of the error contract: one place writes, and nothing below has to remember whether a
+    given failure belongs on stdout or stderr.
 
-    show = sub.add_parser("show", help="Print one release manifest")
-    show.add_argument("release_id")
-    show.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
+    `standalone_mode=False` is what keeps `main` returning an integer rather than exiting, which is
+    what `[project.scripts]` declares and what every CLI test asserts against.
+    """
+    try:
+        # With `standalone_mode=False` a `typer.Exit` is *returned* as its code rather than
+        # exiting, which is exactly the contract `[project.scripts]` and every CLI test expect.
+        return int(app(standalone_mode=False) or EXIT_OK)
+    except CommandRefused as refused:
+        return refused.report()
+    except typer.Exit as exiting:
+        return exiting.exit_code
+    except typer.Abort:
+        ERR_CONSOLE.print("Aborted.", highlight=False, markup=False)
+        return EXIT_USAGE
+    except typer.TyperException as bad:
+        # Typer's own parse failures: an unknown flag, a value outside an enum, a path that is not
+        # there. It already carries the right code — 2 for a usage error — and rendering it through
+        # the same console our refusals use means every error the tool emits wraps the same way.
+        ERR_CONSOLE.print(bad.format_message(), highlight=False, markup=False)
+        return bad.exit_code
 
-    archive = sub.add_parser("archive", help="Write a self-contained milestone archive")
-    archive.add_argument("release_id")
-    archive.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
-    archive.add_argument("--into", type=Path, default=None)
 
-    resume_parser = sub.add_parser(
-        "resume", help="Finish a publication that wrote its manifest but not the pointer"
-    )
-    resume_parser.add_argument("release_id")
-    resume_parser.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
-
-    discard_parser = sub.add_parser("discard", help="Remove an orphan manifest")
-    discard_parser.add_argument("release_id")
-    discard_parser.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
-
-    constraints = sub.add_parser(
-        "constraints", help="Report or apply the row-local Delta check constraints"
-    )
-    constraints.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
-    constraints.add_argument(
-        "--apply", action="store_true", help="Actually add them; the default reports."
+@app.command()
+def doctor() -> None:
+    """Report the installed Python stack."""
+    print(
+        json.dumps(
+            {name: version(name) for name in _STACK},
+            indent=2,
+        )
     )
 
-    vacuum = sub.add_parser("vacuum", help="Remove files no retained release needs")
-    vacuum.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
-    vacuum.add_argument(
-        "--apply", action="store_true", help="Actually delete; the default is a dry run."
-    )
 
-    recipes = sub.add_parser("recipes", help="List the versioned query recipes, or describe one")
-    recipes.add_argument("recipe_id", nargs="?", help="Describe this recipe instead of listing all")
+@app.command()
+def validate(
+    source: Annotated[Path, typer.Argument(help="A YAML model to validate.")],
+    output: FormatOption = Format.HUMAN,
+) -> None:
+    """Validate a source model and report what was checked."""
+    raise typer.Exit(code=_validate(source, output=output.value))
 
-    query = sub.add_parser("query", help="Run one query recipe against a release")
-    query.add_argument("recipe_id")
-    query.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
-    query.add_argument("--release", help="Defaults to the current release.")
-    query.add_argument("--base", help="For a comparison recipe: the release to compare against.")
-    query.add_argument("--candidate", help="For a comparison recipe: the release to compare.")
-    query.add_argument(
-        "--param",
-        action="append",
-        default=[],
-        metavar="NAME=VALUE",
-        help="Bind one declared parameter. Values are typed by the recipe, never interpolated.",
-    )
-    query.add_argument("--format", choices=("table", "json"), default="table")
 
-    plan = sub.add_parser("plan", help="Show what the engine plans for one recipe")
-    plan.add_argument("recipe_id")
-    plan.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
-    plan.add_argument("--release", help="Defaults to the current release.")
-    plan.add_argument("--param", action="append", default=[], metavar="NAME=VALUE")
+@app.command()
+def schema(
+    family: Annotated[str | None, typer.Option(help="Emit one family to stdout.")] = None,
+    write: Annotated[
+        bool, typer.Option("--write", help="Write every emittable family to its declared path.")
+    ] = False,
+) -> None:
+    """Print or write the generated JSON Schema contracts."""
+    raise typer.Exit(code=_schema(family_id=family, write=write))
 
-    impact = sub.add_parser("impact", help="Bounded, explainable traversal from one object")
-    impact.add_argument("element_id")
-    impact.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
-    impact.add_argument("--release", help="Defaults to the current release.")
-    impact.add_argument(
-        "--policy",
-        default=None,
-        help=f"A named policy; `--policy list` shows them. Defaults to {DEFAULT_POLICY}.",
-    )
-    impact.add_argument(
-        "--unverified",
-        action="store_true",
-        help=(
-            "Keep only dependencies whose qualification is not established. Uses the "
-            "dependencies.direct policy, so it cannot be combined with another --policy."
+
+@app.command()
+def publish(
+    source: Annotated[Path, typer.Argument(help="A YAML model to publish.")],
+    store: StoreOption = DEFAULT_STORE_ROOT,
+    expect_parent: Annotated[
+        str | None,
+        typer.Option(
+            "--expect-parent",
+            help="The release the candidate was built against; pass an empty value for the first.",
         ),
-    )
-    impact.add_argument("--format", choices=("human", "json"), default="human")
-
-    analysis = sub.add_parser(
-        "graph", help="Structural analyses of one release under one named policy"
-    )
-    analysis.add_argument("analysis", choices=sorted(ANALYSES))
-    analysis.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
-    analysis.add_argument("--release", help="Defaults to the current release.")
-    analysis.add_argument(
-        "--policy",
-        default=STRUCTURAL_POLICY,
-        help=f"A named policy; `impact --policy list` shows them. Defaults to {STRUCTURAL_POLICY}.",
-    )
-    analysis.add_argument("--format", choices=("human", "json"), default="human")
-
-    # -- DATA-38: the lifecycle verbs -------------------------------------------------------------
-    # `validate` and `publish` are already registered above; these are the other six. Flat, like
-    # every other command here, because a lifecycle whose steps sit at two different levels of the
-    # command tree is harder to read than one extra name at the top.
-    baseline = sub.add_parser("baseline", help="Print the model a release holds, as authored YAML")
-    baseline.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
-    baseline.add_argument("--release", help="Defaults to the current release")
-    baseline.add_argument("--format", choices=("summary", "json"), default="summary")
-
-    apply_change = sub.add_parser(
-        "change", help="Apply a typed change set to a release and report what it would do"
-    )
-    apply_change.add_argument("change_set", type=Path, help="A JSON change set (CORE-10)")
-    apply_change.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
-    apply_change.add_argument("--release", help="Defaults to the current release")
-    apply_change.add_argument("--format", choices=("human", "json"), default="human")
-
-    difference = sub.add_parser("diff", help="Explain what changed between two releases")
-    difference.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
-    difference.add_argument("--base", required=True)
-    difference.add_argument("--candidate", required=True)
-    difference.add_argument(
-        "--include-presentation",
-        action="store_true",
-        help="Also print layout and display changes, which are never part of the narrative.",
-    )
-    difference.add_argument(
-        "--cross-check",
-        action="store_true",
-        help=(
-            "Also check the narrative against DataFusion and the Delta change feed (DATA-57). "
-            "Storage is never the narrative; disagreeing with it means one of them is wrong."
+    ] = None,
+    release_id: Annotated[
+        str | None, typer.Option("--release-id", help="Defaults to the next rel-NNNN in the store.")
+    ] = None,
+    no_source_snapshot: Annotated[
+        bool,
+        typer.Option(
+            "--no-source-snapshot",
+            help="Pin only the source revision and digest; do not copy it into the release.",
         ),
+    ] = False,
+    scenario: Annotated[
+        str | None, typer.Option(help="Publish as a design alternative under this scenario id.")
+    ] = None,
+    baseline: Annotated[
+        str | None, typer.Option(help="The release this alternative is derived from.")
+    ] = None,
+) -> None:
+    """Publish a source model as a coherent release."""
+    raise typer.Exit(
+        code=_stage_or_publish(
+            source,
+            store_root=store,
+            expected_parent=expect_parent,
+            release_id=release_id,
+            preserve_source=not no_source_snapshot,
+            scenario_id=scenario,
+            baseline_release_id=baseline,
+            expose=True,
+        )
     )
-    difference.add_argument("--format", choices=("human", "json"), default="human")
 
-    comparison = sub.add_parser(
-        "compare", help="Compare a design alternative with the baseline it declares"
-    )
-    comparison.add_argument("--baseline", required=True, help="A release on the baseline line")
-    comparison.add_argument("--alternative", required=True, help="A release on a scenario line")
-    comparison.add_argument(
-        "--store", type=Path, default=DEFAULT_STORE_ROOT, help="Where the alternative lives"
-    )
-    comparison.add_argument(
-        "--baseline-store",
-        type=Path,
-        help=(
-            "Where the baseline lives. Defaults to --store; an alternative is usually published "
-            "into its own store root, because one store has one current pointer."
+
+@app.command()
+def persist(
+    source: Annotated[Path, typer.Argument(help="A YAML model to stage.")],
+    store: StoreOption = DEFAULT_STORE_ROOT,
+    expect_parent: Annotated[
+        str | None,
+        typer.Option(
+            "--expect-parent",
+            help="The release the candidate was built against; pass an empty value for the first.",
         ),
+    ] = None,
+    release_id: Annotated[
+        str | None, typer.Option("--release-id", help="Defaults to the next rel-NNNN in the store.")
+    ] = None,
+    scenario: Annotated[
+        str | None, typer.Option(help="Publish as a design alternative under this scenario id.")
+    ] = None,
+    baseline: Annotated[
+        str | None, typer.Option(help="The release this alternative is derived from.")
+    ] = None,
+) -> None:
+    """Stage a release and write its manifest without exposing it."""
+    raise typer.Exit(
+        code=_persist(
+            source,
+            store_root=store,
+            expected_parent=expect_parent,
+            release_id=release_id,
+            scenario_id=scenario,
+            baseline_release_id=baseline,
+        )
     )
-    comparison.add_argument("--format", choices=("human", "json"), default="human")
 
-    reviewing = sub.add_parser("review", help="Record a decision on a change report")
-    reviewing.add_argument("change_report", type=Path, help="A change report written by `diff`")
-    reviewing.add_argument(
-        "--decision", choices=tuple(item.value for item in ReviewDecision), required=True
+
+@app.command()
+def releases(
+    store: StoreOption = DEFAULT_STORE_ROOT,
+    verify: Annotated[
+        bool, typer.Option("--verify", help="Read every pinned version back.")
+    ] = False,
+) -> None:
+    """List published releases and whether they resolve."""
+    raise typer.Exit(code=_releases(store_root=store, verify=verify))
+
+
+@app.command()
+def show(
+    release_id: Annotated[str, typer.Argument(help="The release to print.")],
+    store: StoreOption = DEFAULT_STORE_ROOT,
+) -> None:
+    """Print one release manifest."""
+    raise typer.Exit(code=_show(release_id, store_root=store))
+
+
+@app.command()
+def archive(
+    release_id: Annotated[str, typer.Argument(help="The release to archive.")],
+    store: StoreOption = DEFAULT_STORE_ROOT,
+    into: Annotated[Path | None, typer.Option(help="Where to write the archive.")] = None,
+) -> None:
+    """Write a self-contained milestone archive."""
+    raise typer.Exit(code=_archive(release_id, store_root=store, into=into))
+
+
+@app.command()
+def resume(
+    release_id: Annotated[str, typer.Argument(help="The persisted release to expose.")],
+    store: StoreOption = DEFAULT_STORE_ROOT,
+) -> None:
+    """Finish a publication whose manifest exists but never became current."""
+    raise typer.Exit(code=_resume(release_id, store_root=store))
+
+
+@app.command()
+def discard(
+    release_id: Annotated[str, typer.Argument(help="The orphan manifest to remove.")],
+    store: StoreOption = DEFAULT_STORE_ROOT,
+) -> None:
+    """Remove an orphan manifest."""
+    raise typer.Exit(code=_discard(release_id, store_root=store))
+
+
+@app.command()
+def constraints(
+    store: StoreOption = DEFAULT_STORE_ROOT,
+    apply: Annotated[bool, typer.Option("--apply", help="Write the declared constraints.")] = False,
+) -> None:
+    """Report or apply the declared Delta table constraints."""
+    raise typer.Exit(code=_constraints(store_root=store, apply=apply))
+
+
+@app.command()
+def vacuum(
+    store: StoreOption = DEFAULT_STORE_ROOT,
+    apply: Annotated[bool, typer.Option("--apply", help="Actually remove the files.")] = False,
+) -> None:
+    """Remove files no retained release needs."""
+    raise typer.Exit(code=_vacuum(store_root=store, apply=apply))
+
+
+@app.command()
+def recipes(
+    recipe_id: Annotated[str | None, typer.Argument(help="Describe one recipe.")] = None,
+) -> None:
+    """List the versioned query recipes, or describe one."""
+    raise typer.Exit(code=_recipes(recipe_id))
+
+
+@app.command()
+def query(
+    recipe_id: Annotated[str, typer.Argument(help="The recipe to run.")],
+    store: StoreOption = DEFAULT_STORE_ROOT,
+    release: ReleaseOption = None,
+    base: Annotated[str | None, typer.Option(help="The base side of a comparison.")] = None,
+    candidate: Annotated[
+        str | None, typer.Option(help="The candidate side of a comparison.")
+    ] = None,
+    param: ParamOption = None,
+    output: FormatOption = Format.HUMAN,
+) -> None:
+    """Run one query recipe against a release."""
+    raise typer.Exit(
+        code=_query(
+            recipe_id,
+            store_root=store,
+            release_id=release,
+            base=base,
+            candidate=candidate,
+            params=list(param or ()),
+            output=output.value,
+        )
     )
-    reviewing.add_argument("--reviewer", required=True)
-    reviewing.add_argument("--note")
-    reviewing.add_argument("--into", type=Path, help="Where to write the reviewed report")
 
-    staging = sub.add_parser(
-        "persist", help="Stage a release and write its manifest without exposing it"
+
+@app.command()
+def plan(
+    recipe_id: Annotated[str, typer.Argument(help="The recipe to plan.")],
+    store: StoreOption = DEFAULT_STORE_ROOT,
+    release: ReleaseOption = None,
+    param: ParamOption = None,
+) -> None:
+    """Show what the engine plans for one recipe."""
+    raise typer.Exit(
+        code=_plan(recipe_id, store_root=store, release_id=release, params=list(param or ()))
     )
-    staging.add_argument("source", type=Path)
-    staging.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
-    staging.add_argument(
-        "--expect-parent",
-        default=_UNSET,
-        help="The release the candidate was built against; omit only for the first release.",
+
+
+@app.command()
+def impact(
+    element_id: Annotated[str, typer.Argument(help="Where the traversal starts.")],
+    store: StoreOption = DEFAULT_STORE_ROOT,
+    release: ReleaseOption = None,
+    policy: Annotated[
+        str | None,
+        typer.Option(
+            help=f"A named policy; `impact --policy list` shows them. Default {DEFAULT_POLICY}."
+        ),
+    ] = None,
+    unverified: Annotated[
+        bool, typer.Option("--unverified", help="Report only dependencies that are not qualified.")
+    ] = False,
+    output: FormatOption = Format.HUMAN,
+) -> None:
+    """Bounded, explainable traversal from one object."""
+    raise typer.Exit(
+        code=_impact(
+            element_id,
+            store_root=store,
+            release_id=release,
+            policy_id=policy,
+            unverified=unverified,
+            output=output.value,
+        )
     )
-    staging.add_argument("--release-id", help="Defaults to the next rel-NNNN in the store.")
-    staging.add_argument("--scenario", help="Publish as a design alternative under this id")
-    staging.add_argument("--baseline", help="The release this alternative is derived from")
 
-    outputting = sub.add_parser("output", help="Reserved: distribute a release's outputs (W8)")
-    outputting.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
-    outputting.add_argument("--release", help="Defaults to the current release")
-    outputting.add_argument("--format", choices=("human", "json"), default="human")
 
-    sub.add_parser("build", help="Reserved: full projection pipeline is not implemented")
-    args = parser.parse_args()
-
-    if args.command == "doctor":
-        print(
-            json.dumps(
-                {
-                    n: version(n)
-                    for n in [
-                        "pydantic",
-                        "ruamel.yaml",
-                        "pyarrow",
-                        "datafusion",
-                        "deltalake",
-                        "networkx",
-                    ]
-                },
-                indent=2,
-            )
+@app.command()
+def graph(
+    analysis: Annotated[Analysis, typer.Argument(help="Which structural analysis to run.")],
+    store: StoreOption = DEFAULT_STORE_ROOT,
+    release: ReleaseOption = None,
+    policy: Annotated[
+        str, typer.Option(help=f"A named policy. Defaults to {STRUCTURAL_POLICY}.")
+    ] = STRUCTURAL_POLICY,
+    output: FormatOption = Format.HUMAN,
+) -> None:
+    """Structural analyses over one release's graph."""
+    raise typer.Exit(
+        code=_graph(
+            analysis.value,
+            store_root=store,
+            release_id=release,
+            policy_id=policy,
+            output=output.value,
         )
-        return EXIT_OK
+    )
 
-    if args.command == "schema":
-        return _schema(parser, family_id=args.family, write=args.write)
 
-    if args.command == "validate":
-        return _validate(args.source, output=args.format)
+@app.command()
+def baseline(
+    store: StoreOption = DEFAULT_STORE_ROOT,
+    release: ReleaseOption = None,
+    output: FormatOption = Format.HUMAN,
+) -> None:
+    """Print the model a release holds."""
+    raise typer.Exit(code=_baseline(store_root=store, release_id=release, output=output.value))
 
-    if args.command == "publish":
-        return _publish(
-            parser,
-            args.source,
-            store_root=args.store,
-            expected_parent=args.expect_parent,
-            release_id=args.release_id,
-            preserve_source=not args.no_source_snapshot,
+
+@app.command()
+def change(
+    change_set: Annotated[Path, typer.Argument(help="A JSON change set (CORE-10).")],
+    store: StoreOption = DEFAULT_STORE_ROOT,
+    release: ReleaseOption = None,
+    output: FormatOption = Format.HUMAN,
+) -> None:
+    """Apply a typed change set to a release and report what it would do."""
+    raise typer.Exit(
+        code=_change(change_set, store_root=store, release_id=release, output=output.value)
+    )
+
+
+@app.command()
+def diff(
+    base: Annotated[str, typer.Option(help="The baseline release.")],
+    candidate: Annotated[str, typer.Option(help="The candidate release.")],
+    store: StoreOption = DEFAULT_STORE_ROOT,
+    include_presentation: Annotated[
+        bool,
+        typer.Option(
+            "--include-presentation",
+            help="Also print layout and display changes, which are never part of the narrative.",
+        ),
+    ] = False,
+    cross_check: Annotated[
+        bool,
+        typer.Option(
+            "--cross-check",
+            help="Check the narrative against DataFusion and the Delta change feed (DATA-57).",
+        ),
+    ] = False,
+    output: FormatOption = Format.HUMAN,
+) -> None:
+    """Explain what changed between two releases."""
+    raise typer.Exit(
+        code=_diff(
+            store_root=store,
+            base=base,
+            candidate=candidate,
+            include_presentation=include_presentation,
+            cross_check=cross_check,
+            output=output.value,
         )
+    )
 
-    if args.command == "releases":
-        return _releases(store_root=args.store, verify=args.verify)
 
-    if args.command == "show":
-        return _show(parser, args.release_id, store_root=args.store)
-
-    if args.command == "archive":
-        return _archive(parser, args.release_id, store_root=args.store, into=args.into)
-
-    if args.command == "resume":
-        return _resume(parser, args.release_id, store_root=args.store)
-
-    if args.command == "discard":
-        return _discard(parser, args.release_id, store_root=args.store)
-
-    if args.command == "constraints":
-        return _constraints(store_root=args.store, apply=args.apply)
-
-    if args.command == "vacuum":
-        return _vacuum(store_root=args.store, apply=args.apply)
-
-    if args.command == "recipes":
-        return _recipes(parser, args.recipe_id)
-
-    if args.command == "query":
-        return _query(
-            parser,
-            args.recipe_id,
-            store_root=args.store,
-            release_id=args.release,
-            base=args.base,
-            candidate=args.candidate,
-            params=args.param,
-            output=args.format,
+@app.command()
+def compare(
+    baseline: Annotated[str, typer.Option("--baseline", help="A release on the baseline line.")],
+    alternative: Annotated[str, typer.Option(help="A release on a scenario line.")],
+    store: StoreOption = DEFAULT_STORE_ROOT,
+    baseline_store: Annotated[
+        Path | None,
+        typer.Option(help="Where the baseline lives. Defaults to --store."),
+    ] = None,
+    output: FormatOption = Format.HUMAN,
+) -> None:
+    """Compare a design alternative with the baseline it declares."""
+    raise typer.Exit(
+        code=_compare(
+            baseline_id=baseline,
+            alternative_id=alternative,
+            store_root=store,
+            baseline_store_root=baseline_store or store,
+            output=output.value,
         )
+    )
 
-    if args.command == "plan":
-        return _plan(
-            parser,
-            args.recipe_id,
-            store_root=args.store,
-            release_id=args.release,
-            params=args.param,
+
+@app.command()
+def review(
+    change_report: Annotated[
+        Path, typer.Argument(help="A change report written by `change --format json`.")
+    ],
+    decision: Annotated[ReviewDecision, typer.Option(help="The reviewer's conclusion.")],
+    reviewer: Annotated[str, typer.Option(help="Who reviewed it.")],
+    note: Annotated[str | None, typer.Option(help="Why.")] = None,
+    into: Annotated[Path | None, typer.Option(help="Where to write the reviewed report.")] = None,
+    store: StoreOption = DEFAULT_STORE_ROOT,
+) -> None:
+    """Record a decision on a change report."""
+    raise typer.Exit(
+        code=_review(
+            change_report,
+            decision=decision.value,
+            reviewer=reviewer,
+            note=note,
+            into=into,
+            store_root=store,
         )
-
-    if args.command == "graph":
-        return _graph(
-            parser,
-            args.analysis,
-            store_root=args.store,
-            release_id=args.release,
-            policy_id=args.policy,
-            output=args.format,
-        )
-
-    if args.command == "impact":
-        return _impact(
-            parser,
-            args.element_id,
-            store_root=args.store,
-            release_id=args.release,
-            policy_id=args.policy,
-            unverified=args.unverified,
-            output=args.format,
-        )
-
-    if args.command == "baseline":
-        return _baseline(parser, store_root=args.store, release_id=args.release, output=args.format)
-
-    if args.command == "change":
-        return _change(
-            parser,
-            args.change_set,
-            store_root=args.store,
-            release_id=args.release,
-            output=args.format,
-        )
-
-    if args.command == "diff":
-        return _diff(
-            parser,
-            store_root=args.store,
-            base=args.base,
-            candidate=args.candidate,
-            include_presentation=args.include_presentation,
-            cross_check=args.cross_check,
-            output=args.format,
-        )
-
-    if args.command == "compare":
-        return _compare(
-            parser,
-            baseline_id=args.baseline,
-            alternative_id=args.alternative,
-            store_root=args.store,
-            baseline_store_root=args.baseline_store or args.store,
-            output=args.format,
-        )
-
-    if args.command == "review":
-        return _review(
-            parser,
-            args.change_report,
-            decision=args.decision,
-            reviewer=args.reviewer,
-            note=args.note,
-            into=args.into,
-        )
-
-    if args.command == "persist":
-        return _persist(
-            parser,
-            args.source,
-            store_root=args.store,
-            expected_parent=args.expect_parent,
-            release_id=args.release_id,
-            scenario_id=args.scenario,
-            baseline_release_id=args.baseline,
-        )
-
-    if args.command == "output":
-        return _output(parser, store_root=args.store, release_id=args.release, output=args.format)
-
-    parser.exit(EXIT_USAGE, "Not implemented: follow docs/implementation-contract.md.\n")
-    return EXIT_USAGE
+    )
 
 
-def _schema(parser: argparse.ArgumentParser, *, family_id: str | None, write: bool) -> int:
+@app.command()
+def output(
+    store: StoreOption = DEFAULT_STORE_ROOT,
+    release: ReleaseOption = None,
+    format: FormatOption = Format.HUMAN,
+) -> None:
+    """Reserved: distribute a release's outputs (W8)."""
+    raise typer.Exit(code=_output(store_root=store, release_id=release, output=format.value))
+
+
+@app.command()
+def build() -> None:
+    """Reserved: the full projection pipeline is not implemented."""
+    raise UsageRefusal("Not implemented: follow docs/implementation-contract.md.")
+
+
+def _schema(*, family_id: str | None, write: bool) -> int:
     """List, print or write. Listing is the bare behaviour because it cannot surprise anyone."""
     if write:
         for family in emittable():
@@ -461,8 +599,7 @@ def _schema(parser: argparse.ArgumentParser, *, family_id: str | None, write: bo
     if family_id is not None:
         found = next((f for f in SCHEMA_FAMILIES if f.family_id == family_id), None)
         if found is None or found not in emittable():
-            parser.exit(EXIT_USAGE, f"No emittable schema family named {family_id!r}.\n")
-            return EXIT_USAGE
+            raise UnknownName(f"No emittable schema family named {family_id!r}.")
         print(json.dumps(emit(found), indent=2))
         return EXIT_OK
     for family in SCHEMA_FAMILIES:
@@ -500,46 +637,15 @@ def _validate(source: Path, *, output: str) -> int:
     return EXIT_DIAGNOSTICS if result.report.hard_errors else EXIT_OK
 
 
-# `--expect-parent` has three states, not two: given a value, given empty for "no parent", and
-# absent. Absent is a usage error for anything but the first release, because DATA-23 asks a
-# publication to *say* what it was built against — and a flag that silently defaulted to the
-# current release would turn the stale-parent check into a formality.
-_UNSET = object()
-
-
 def _store_at(root: Path) -> ReleaseStore:
     return ReleaseStore.at(root)
 
 
-def _publish(
-    parser: argparse.ArgumentParser,
-    source: Path,
-    *,
-    store_root: Path,
-    expected_parent: object,
-    release_id: str | None,
-    preserve_source: bool = True,
-) -> int:
-    """Validate a source, then publish it as the next release of its model."""
-    return _stage_or_publish(
-        parser,
-        source,
-        store_root=store_root,
-        expected_parent=expected_parent,
-        release_id=release_id,
-        preserve_source=preserve_source,
-        scenario_id=None,
-        baseline_release_id=None,
-        expose=True,
-    )
-
-
 def _stage_or_publish(
-    parser: argparse.ArgumentParser,
     source: Path,
     *,
     store_root: Path,
-    expected_parent: object,
+    expected_parent: str | None,
     release_id: str | None,
     preserve_source: bool,
     scenario_id: str | None,
@@ -568,16 +674,16 @@ def _stage_or_publish(
 
     store = _store_at(store_root).initialize()
     current = store.current_id()
-    if expected_parent is _UNSET:
+    # Three states, carried by the type rather than by a sentinel object: absent is `None`,
+    # "there is no parent" is the empty string, and anything else names one. The sentinel existed
+    # only because argparse could not tell absent from `None`, and `str(None)` is the literal
+    # `"None"` — which is the parent id a publication would then claim to have been built against.
+    if expected_parent is None:
         if current is not None:
-            parser.exit(
-                EXIT_USAGE,
-                f"--expect-parent is required: the current release is {current!r}.\n",
-            )
-            return EXIT_USAGE
+            raise UsageRefusal(f"--expect-parent is required: the current release is {current!r}.")
         parent: str | None = None
     else:
-        parent = str(expected_parent) or None
+        parent = expected_parent or None
 
     candidate = ReleaseCandidate(
         release_id=release_id or next_release_id(store.release_ids()),
@@ -596,10 +702,9 @@ def _stage_or_publish(
         preserve_source=preserve_source,
     )
     try:
-        manifest = publish(request) if expose else persist(request)
+        manifest = publish_release(request) if expose else persist_release(request)
     except (ReleaseError, ValidationError) as refused:
-        print(f"{type(refused).__name__}: {refused}")
-        return EXIT_DIAGNOSTICS
+        raise OperationRefused(f"{type(refused).__name__}: {refused}") from refused
 
     reused = sum(1 for ref in manifest.tables if _reused(store, manifest, ref.table_id))
     verb = "published" if expose else "persisted"
@@ -657,36 +762,30 @@ def _releases(*, store_root: Path, verify: bool) -> int:
         )
     )
     if findings:
-        print(render_diagnostics(findings, source=str(store_root)))
-        return EXIT_DIAGNOSTICS
+        raise DiagnosticsFound(render_diagnostics(findings, source=str(store_root)))
     print(f"every pinned version of {len(ids)} release(s) reads back, and the chain is navigable")
     return EXIT_OK
 
 
-def _show(parser: argparse.ArgumentParser, release_id: str, *, store_root: Path) -> int:
+def _show(release_id: str, *, store_root: Path) -> int:
     try:
         manifest = _store_at(store_root).read_manifest(release_id)
-    except UnknownReleaseError:
-        parser.exit(EXIT_USAGE, f"No release {release_id!r} in {store_root}.\n")
-        return EXIT_USAGE
+    except UnknownReleaseError as unknown:
+        raise UnknownName(f"No release {release_id!r} in {store_root}.") from unknown
     print(manifest.model_dump_json(indent=2))
     return EXIT_OK
 
 
-def _archive(
-    parser: argparse.ArgumentParser, release_id: str, *, store_root: Path, into: Path | None
-) -> int:
+def _archive(release_id: str, *, store_root: Path, into: Path | None) -> int:
     store = _store_at(store_root)
     try:
         manifest = store.read_manifest(release_id)
-    except UnknownReleaseError:
-        parser.exit(EXIT_USAGE, f"No release {release_id!r} in {store_root}.\n")
-        return EXIT_USAGE
+    except UnknownReleaseError as unknown:
+        raise UnknownName(f"No release {release_id!r} in {store_root}.") from unknown
     try:
         result = write_archive(store, manifest, into)
     except ArchiveError as refused:
-        print(f"ArchiveError: {refused}")
-        return EXIT_DIAGNOSTICS
+        raise OperationRefused(f"ArchiveError: {refused}") from refused
     print(f"archived {release_id} to {result.root} ({len(result.contents)} files)")
     return EXIT_OK
 
@@ -699,8 +798,7 @@ def _vacuum(*, store_root: Path, apply: bool) -> int:
         try:
             plan = vacuum_table(store, table_id, apply=apply)
         except (RetentionSafetyError, ReleaseError) as refused:
-            print(f"{table_id}: refused - {refused}")
-            return EXIT_DIAGNOSTICS
+            raise OperationRefused(f"{table_id}: refused - {refused}") from refused
         total += len(plan.removable_files)
         if plan.removable_files:
             verb = "removed" if apply else "would remove"
@@ -713,7 +811,7 @@ def _vacuum(*, store_root: Path, apply: bool) -> int:
     return EXIT_OK
 
 
-def _resume(parser: argparse.ArgumentParser, release_id: str, *, store_root: Path) -> int:
+def _resume(release_id: str, *, store_root: Path) -> int:
     """Finish a publication that got as far as writing its manifest.
 
     No re-staging: by the time a manifest exists its versions have been read back and verified,
@@ -721,27 +819,23 @@ def _resume(parser: argparse.ArgumentParser, release_id: str, *, store_root: Pat
     """
     store = _store_at(store_root)
     try:
-        manifest = resume(store, release_id)
-    except UnknownReleaseError:
-        parser.exit(EXIT_USAGE, f"No release {release_id!r} in {store_root}.\n")
-        return EXIT_USAGE
+        manifest = resume_release(store, release_id)
+    except UnknownReleaseError as unknown:
+        raise UnknownName(f"No release {release_id!r} in {store_root}.") from unknown
     except ReleaseError as refused:
-        print(f"{type(refused).__name__}: {refused}")
-        return EXIT_DIAGNOSTICS
+        raise OperationRefused(f"{type(refused).__name__}: {refused}") from refused
     print(f"resumed {manifest.release_id}; it is now the current release")
     return EXIT_OK
 
 
-def _discard(parser: argparse.ArgumentParser, release_id: str, *, store_root: Path) -> int:
+def _discard(release_id: str, *, store_root: Path) -> int:
     store = _store_at(store_root)
     try:
-        discard(store, release_id)
-    except UnknownReleaseError:
-        parser.exit(EXIT_USAGE, f"No release {release_id!r} in {store_root}.\n")
-        return EXIT_USAGE
+        discard_release(store, release_id)
+    except UnknownReleaseError as unknown:
+        raise UnknownName(f"No release {release_id!r} in {store_root}.") from unknown
     except ReleaseError as refused:
-        print(f"{type(refused).__name__}: {refused}")
-        return EXIT_DIAGNOSTICS
+        raise OperationRefused(f"{type(refused).__name__}: {refused}") from refused
     print(f"discarded {release_id}; its Delta versions are left for `vacuum` to judge")
     return EXIT_OK
 
@@ -781,7 +875,7 @@ def _constraints(*, store_root: Path, apply: bool) -> int:
     return EXIT_OK
 
 
-def _recipes(parser: argparse.ArgumentParser, recipe_id: str | None) -> int:
+def _recipes(recipe_id: str | None) -> int:
     """List the recipes, or print one recipe's whole declared contract."""
     if recipe_id is None:
         for recipe in RECIPES.values():
@@ -794,8 +888,7 @@ def _recipes(parser: argparse.ArgumentParser, recipe_id: str | None) -> int:
     try:
         recipe = recipe_for(recipe_id)
     except KeyError as unknown:
-        parser.exit(EXIT_USAGE, f"{unknown.args[0]}\n")
-        return EXIT_USAGE
+        raise UnknownName(unknown.args[0]) from unknown
     print(f"{recipe.query_recipe_id} v{recipe.query_recipe_version}")
     print(f"  purpose         {recipe.purpose}")
     print(f"  release context {recipe.release_context}")
@@ -820,9 +913,7 @@ def _input_name(item: object) -> str:
     return f"{side}.{table_id}" if side else str(table_id)
 
 
-def _executor(
-    parser: argparse.ArgumentParser, store_root: Path, release_id: str | None
-) -> tuple[ReleaseQueryExecutor, str] | None:
+def _executor(store_root: Path, release_id: str | None) -> tuple[ReleaseQueryExecutor, str]:
     """One executor and the release it will read, or a usage error naming what is missing.
 
     Every query command needs the same two things, and each of them used to resolve them inline.
@@ -834,17 +925,13 @@ def _executor(
         chosen = release_id if release_id is not None else executor.current()
         executor.context_for(chosen)
     except QueryError as missing:
-        parser.exit(EXIT_USAGE, f"{missing.args[0]}.\n")
-        return None
+        raise UsageRefusal(f"{missing.args[0]}.") from missing
     except UnknownReleaseError as unknown:
-        parser.exit(EXIT_USAGE, f"{unknown.args[0]}\n")
-        return None
+        raise UnknownName(unknown.args[0]) from unknown
     return executor, chosen
 
 
-def _bound(
-    parser: argparse.ArgumentParser, recipe: QueryRecipe, pairs: list[str]
-) -> dict[str, object] | None:
+def _bound(recipe: QueryRecipe, pairs: list[str]) -> dict[str, object]:
     """Type each `NAME=VALUE` by the recipe's own declaration, never by guessing.
 
     The command line has only strings, so something has to decide that `--param max_depth=5` is an
@@ -856,43 +943,33 @@ def _bound(
     for pair in pairs:
         name, separator, raw = pair.partition("=")
         if not separator:
-            parser.exit(EXIT_USAGE, f"--param expects NAME=VALUE, got {pair!r}.\n")
-            return None
+            raise UsageRefusal(f"--param expects NAME=VALUE, got {pair!r}.")
         spec = declared.get(name)
         if spec is None:
-            parser.exit(
-                EXIT_USAGE,
+            raise UsageRefusal(
                 f"{recipe.query_recipe_id} declares no parameter {name!r}; "
-                f"it takes {sorted(declared) or 'none'}.\n",
+                f"it takes {sorted(declared) or 'none'}."
             )
-            return None
-        value = _typed(parser, spec, raw)
-        if value is None:
-            return None
-        bound[name] = value
+        bound[name] = _typed(spec, raw)
     return bound
 
 
-def _typed(parser: argparse.ArgumentParser, spec: ParameterSpec, raw: str) -> object | None:
+def _typed(spec: ParameterSpec, raw: str) -> object:
     if spec.data_type == "string":
         return raw
     if spec.data_type == "integer":
         try:
             return int(raw)
-        except ValueError:
-            parser.exit(EXIT_USAGE, f"${spec.name} is an integer; got {raw!r}.\n")
-            return None
+        except ValueError as not_an_integer:
+            raise UsageRefusal(f"${spec.name} is an integer; got {raw!r}.") from not_an_integer
     if spec.data_type == "boolean":
         if raw.lower() not in {"true", "false"}:
-            parser.exit(EXIT_USAGE, f"${spec.name} is a boolean; got {raw!r}.\n")
-            return None
+            raise UsageRefusal(f"${spec.name} is a boolean; got {raw!r}.")
         return raw.lower() == "true"
-    parser.exit(EXIT_USAGE, f"${spec.name} is a {spec.data_type}, which --param cannot supply.\n")
-    return None
+    raise UsageRefusal(f"${spec.name} is a {spec.data_type}, which --param cannot supply.")
 
 
 def _query(
-    parser: argparse.ArgumentParser,
     recipe_id: str,
     *,
     store_root: Path,
@@ -911,19 +988,14 @@ def _query(
     try:
         recipe = recipe_for(recipe_id)
     except KeyError as unknown:
-        parser.exit(EXIT_USAGE, f"{unknown.args[0]}\n")
-        return EXIT_USAGE
+        raise UnknownName(unknown.args[0]) from unknown
     sides = (base, candidate)
     if any(sides) and release_id is not None:
-        parser.exit(EXIT_USAGE, "Give --release or both of --base and --candidate, not both.\n")
-        return EXIT_USAGE
+        raise UsageRefusal("Give --release or both of --base and --candidate, not both.")
     if any(sides) and not all(sides):
-        parser.exit(EXIT_USAGE, "A comparison needs both --base and --candidate.\n")
-        return EXIT_USAGE
+        raise UsageRefusal("A comparison needs both --base and --candidate.")
     executor = ReleaseQueryExecutor(_store_at(store_root))
-    bound = _bound(parser, recipe, params)
-    if bound is None:
-        return EXIT_USAGE
+    bound = _bound(recipe, params)
     try:
         result = (
             executor.compare(
@@ -940,8 +1012,7 @@ def _query(
             )
         )
     except (QueryError, UnknownReleaseError) as refused:
-        parser.exit(EXIT_USAGE, f"{refused.args[0]}\n")
-        return EXIT_USAGE
+        raise UsageRefusal(refused.args[0]) from refused
     rows = result.table.to_pylist()
     if output == "json":
         print(json.dumps(rows, indent=2, default=str))
@@ -955,7 +1026,6 @@ def _query(
 
 
 def _graph(
-    parser: argparse.ArgumentParser,
     analysis: str,
     *,
     store_root: Path,
@@ -971,18 +1041,13 @@ def _graph(
     try:
         policy = policy_for(policy_id)
     except KeyError as unknown:
-        parser.exit(EXIT_USAGE, f"{unknown.args[0]}\n")
-        return EXIT_USAGE
-    opened = _executor(parser, store_root, release_id)
-    if opened is None:
-        return EXIT_USAGE
-    executor, chosen = opened
+        raise UnknownName(unknown.args[0]) from unknown
+    executor, chosen = _executor(store_root, release_id)
     graph = executor.graph_for(chosen)
     try:
         answer = _analyse(analysis, graph, policy)
     except QueryError as refused:
-        parser.exit(EXIT_USAGE, f"{refused.args[0]}\n")
-        return EXIT_USAGE
+        raise UsageRefusal(refused.args[0]) from refused
     if output == "json":
         print(json.dumps(answer, indent=2, default=str))
         return EXIT_OK
@@ -1022,7 +1087,6 @@ def _print_table(columns: list[str], rows: list[dict[str, object]]) -> None:
 
 
 def _plan(
-    parser: argparse.ArgumentParser,
     recipe_id: str,
     *,
     store_root: Path,
@@ -1033,23 +1097,15 @@ def _plan(
     try:
         recipe = recipe_for(recipe_id)
     except KeyError as unknown:
-        parser.exit(EXIT_USAGE, f"{unknown.args[0]}\n")
-        return EXIT_USAGE
+        raise UnknownName(unknown.args[0]) from unknown
     if recipe.release_context != "single":
-        parser.exit(EXIT_USAGE, f"{recipe_id} compares two releases; the CLI plans one.\n")
-        return EXIT_USAGE
-    opened = _executor(parser, store_root, release_id)
-    if opened is None:
-        return EXIT_USAGE
-    executor, chosen = opened
-    bound = _bound(parser, recipe, params)
-    if bound is None:
-        return EXIT_USAGE
+        raise UsageRefusal(f"{recipe_id} compares two releases; the CLI plans one.")
+    executor, chosen = _executor(store_root, release_id)
+    bound = _bound(recipe, params)
     try:
         evidence = capture(recipe, executor.context_for(chosen), bound)
     except QueryError as refused:
-        parser.exit(EXIT_USAGE, f"{refused.args[0]}\n")
-        return EXIT_USAGE
+        raise UsageRefusal(refused.args[0]) from refused
     print(
         f"{evidence.query_recipe_id} v{evidence.query_recipe_version} on "
         f"{', '.join(evidence.release_ids)} | datafusion {evidence.datafusion_version} | "
@@ -1067,7 +1123,6 @@ def _plan(
 
 
 def _impact(
-    parser: argparse.ArgumentParser,
     element_id: str,
     *,
     store_root: Path,
@@ -1084,21 +1139,16 @@ def _impact(
     if unverified and policy_id is not None and policy_id != UNVERIFIED_POLICY:
         # A flag that silently overrode another flag would be the quiet kind of wrong this
         # command exists to avoid: the answer would not be the policy the operator named.
-        parser.exit(
-            EXIT_USAGE,
-            f"--unverified traverses {UNVERIFIED_POLICY}; drop --policy {policy_id} or the flag.\n",
+        raise UsageRefusal(
+            f"--unverified traverses {UNVERIFIED_POLICY}; drop --policy {policy_id} or the flag."
         )
         return EXIT_USAGE
     chosen_policy = policy_id or (UNVERIFIED_POLICY if unverified else DEFAULT_POLICY)
     try:
         policy = policy_for(chosen_policy)
     except KeyError as unknown:
-        parser.exit(EXIT_USAGE, f"{unknown.args[0]}\n")
-        return EXIT_USAGE
-    opened = _executor(parser, store_root, release_id)
-    if opened is None:
-        return EXIT_USAGE
-    executor, chosen = opened
+        raise UnknownName(unknown.args[0]) from unknown
+    executor, chosen = _executor(store_root, release_id)
     try:
         graph = executor.graph_for(chosen)
         result = (
@@ -1107,8 +1157,7 @@ def _impact(
             else graph.traverse(policy, element_id)
         )
     except QueryError as refused:
-        parser.exit(EXIT_USAGE, f"{refused.args[0]}\n")
-        return EXIT_USAGE
+        raise UsageRefusal(refused.args[0]) from refused
     if output == "json":
         # Validates against `schemas/query-contract.schema.json`, which
         # `tests/integration/test_query_cli.py` holds it to.
@@ -1152,15 +1201,12 @@ def _operations(store_root: Path) -> ArchitectureOperations:
     return ArchitectureOperations(store=_store_at(store_root))
 
 
-def _baseline(
-    parser: argparse.ArgumentParser, *, store_root: Path, release_id: str | None, output: str
-) -> int:
+def _baseline(*, store_root: Path, release_id: str | None, output: str) -> int:
     """`load baseline`. What an operator is about to change, read back from the release itself."""
     try:
         model = _operations(store_root).baseline(release_id)
     except (ChangeError, UnknownReleaseError) as refused:
-        parser.exit(EXIT_USAGE, f"{refused.args[0]}\n")
-        return EXIT_USAGE
+        raise UsageRefusal(refused.args[0]) from refused
     if output == "json":
         print(model.model_dump_json(indent=2))
         return EXIT_OK
@@ -1171,7 +1217,6 @@ def _baseline(
 
 
 def _change(
-    parser: argparse.ArgumentParser,
     change_set_path: Path,
     *,
     store_root: Path,
@@ -1187,14 +1232,12 @@ def _change(
     try:
         change_set = CHANGE_SET_ADAPTER.validate_json(change_set_path.read_text())
     except (OSError, ValidationError) as refused:
-        parser.exit(EXIT_USAGE, f"{change_set_path}: {refused}\n")
-        return EXIT_USAGE
+        raise SourceUnreadable(f"{change_set_path}: {refused}") from refused
     try:
         baseline = operations.baseline(release_id)
         candidate = operations.change(baseline, change_set)
     except (ChangeError, CommandError, UnknownReleaseError) as refused:
-        parser.exit(EXIT_USAGE, f"{refused.args[0]}\n")
-        return EXIT_USAGE
+        raise UsageRefusal(refused.args[0]) from refused
 
     report = operations.validate(candidate)
     changes = operations.diff(baseline, candidate)
@@ -1254,7 +1297,6 @@ def _print_impact(record: ArchitectureChangeSet) -> None:
 
 
 def _diff(
-    parser: argparse.ArgumentParser,
     *,
     store_root: Path,
     base: str,
@@ -1270,8 +1312,7 @@ def _diff(
         candidate_manifest = store.read_manifest(candidate)
         changes = diff_releases(store, base_manifest, candidate_manifest)
     except (ChangeError, ReleaseError, UnknownReleaseError) as refused:
-        parser.exit(EXIT_USAGE, f"{refused.args[0]}\n")
-        return EXIT_USAGE
+        raise UsageRefusal(refused.args[0]) from refused
     if output == "json":
         print(changes.model_dump_json(indent=2))
         return EXIT_OK
@@ -1332,7 +1373,6 @@ def _print_changes(changes: ModelChanges, *, include_presentation: bool) -> None
 
 
 def _compare(
-    parser: argparse.ArgumentParser,
     *,
     baseline_id: str,
     alternative_id: str,
@@ -1357,8 +1397,7 @@ def _compare(
             alternative_store=alternative_store,
         )
     except (ChangeError, ReleaseError, UnknownReleaseError) as refused:
-        parser.exit(EXIT_USAGE, f"{refused.args[0]}\n")
-        return EXIT_USAGE
+        raise UsageRefusal(refused.args[0]) from refused
     if output == "json":
         print(comparison.model_dump_json(indent=2))
         return EXIT_OK
@@ -1379,35 +1418,41 @@ def _compare(
 
 
 def _review(
-    parser: argparse.ArgumentParser,
     report_path: Path,
     *,
     decision: str,
     reviewer: str,
     note: str | None,
     into: Path | None,
+    store_root: Path,
 ) -> int:
-    """`obtain required review`. Records a decision on a change report and writes it back."""
+    """`obtain required review`. Records a decision on a change report and writes it back.
+
+    Takes `--store` like every sibling verb. It previously bound `DEFAULT_STORE_ROOT` purely to
+    reach the operations clock, which is a store binding with no reason and the only lifecycle verb
+    missing the flag.
+    """
     try:
         change_set = ArchitectureChangeSet.model_validate_json(report_path.read_text())
     except (OSError, ValidationError) as refused:
-        parser.exit(EXIT_USAGE, f"{report_path}: {refused}\n")
-        return EXIT_USAGE
-    reviewed = ArchitectureOperations(store=_store_at(DEFAULT_STORE_ROOT)).review(
+        raise SourceUnreadable(f"{report_path}: {refused}") from refused
+    reviewed = _operations(store_root).review(
         change_set,
         reviewer=Authorship(author_id=reviewer, author_kind=AuthorKind.PERSON),
         decision=ReviewDecision(decision),
         note=note,
     )
     destination = into or report_path
-    destination.write_text(reviewed.model_dump_json(indent=2))
+    try:
+        destination.write_text(reviewed.model_dump_json(indent=2))
+    except OSError as unwritable:
+        raise UsageRefusal(f"cannot write {destination}: {unwritable}") from unwritable
     _print_provenance(reviewed)
     print(f"  written to {destination}")
     return EXIT_OK
 
 
 def _persist(
-    parser: argparse.ArgumentParser,
     source: Path,
     *,
     store_root: Path,
@@ -1422,14 +1467,11 @@ def _persist(
     abandons it, and `releases` marks it as an orphan until one of those happens.
     """
     if (scenario_id is None) is not (baseline_release_id is None):
-        parser.exit(
-            EXIT_USAGE,
+        raise UsageRefusal(
             "--scenario and --baseline are set together: an alternative needs both, and a "
-            "release on the baseline line needs neither.\n",
+            "release on the baseline line needs neither."
         )
-        return EXIT_USAGE
     return _stage_or_publish(
-        parser,
         source,
         store_root=store_root,
         expected_parent=expected_parent,
@@ -1441,15 +1483,12 @@ def _persist(
     )
 
 
-def _output(
-    parser: argparse.ArgumentParser, *, store_root: Path, release_id: str | None, output: str
-) -> int:
+def _output(*, store_root: Path, release_id: str | None, output: str) -> int:
     """`generate outputs`. Typed and truthful until W8 implements it (PROJ-35)."""
     try:
         pending = _operations(store_root).output(release_id)
     except (ChangeError, UnknownReleaseError) as refused:
-        parser.exit(EXIT_USAGE, f"{refused.args[0]}\n")
-        return EXIT_USAGE
+        raise UsageRefusal(refused.args[0]) from refused
     if output == "json":
         print(json.dumps({"release_id": pending.release_id, "reason": pending.reason}, indent=2))
     else:

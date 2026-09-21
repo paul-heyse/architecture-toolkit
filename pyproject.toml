@@ -13,6 +13,9 @@ dependencies = [
     "pyarrow>=25.0.1",
     "pydantic>=2.13.5",
     "ruamel-yaml>=0.19.1",
+    # 0.26.0-0.26.7 were a four-day run of fix releases after Click was vendored, and 0.27.0
+    # changed how help renders types and choices. Pinned below 0.28 so that shape is a decision.
+    "typer>=0.27.2,<0.28",
 ]
 
 [project.scripts]

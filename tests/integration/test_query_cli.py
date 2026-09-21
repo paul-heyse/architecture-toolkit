@@ -53,10 +53,7 @@ def test_recipes_lists_every_recipe_and_describes_one(
 def test_an_unknown_recipe_is_a_usage_error_that_lists_the_real_ones(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    with pytest.raises(SystemExit) as exit_code:
-        run(monkeypatch, "recipes", "no_such_recipe")
-
-    assert exit_code.value.code == EXIT_USAGE
+    assert run(monkeypatch, "recipes", "no_such_recipe") == EXIT_USAGE
     assert "unknown query recipe" in capsys.readouterr().err
 
 
@@ -111,7 +108,7 @@ def test_query_types_each_parameter_by_the_recipes_own_declaration(
 def test_a_parameter_of_the_wrong_type_is_refused_before_the_engine(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], published: Path
 ) -> None:
-    with pytest.raises(SystemExit) as exit_code:
+    assert (
         run(
             monkeypatch,
             "query",
@@ -123,8 +120,8 @@ def test_a_parameter_of_the_wrong_type_is_refused_before_the_engine(
             "--param",
             "max_depth=deep",
         )
-
-    assert exit_code.value.code == EXIT_USAGE
+        == EXIT_USAGE
+    )
     assert "$max_depth is an integer" in capsys.readouterr().err
 
 
@@ -133,7 +130,7 @@ def test_a_parameter_of_the_wrong_type_is_refused_before_the_engine(
 def test_an_undeclared_parameter_is_refused_and_says_what_the_recipe_takes(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], published: Path
 ) -> None:
-    with pytest.raises(SystemExit) as exit_code:
+    assert (
         run(
             monkeypatch,
             "query",
@@ -143,8 +140,8 @@ def test_an_undeclared_parameter_is_refused_and_says_what_the_recipe_takes(
             "--param",
             "sneaky=1",
         )
-
-    assert exit_code.value.code == EXIT_USAGE
+        == EXIT_USAGE
+    )
     assert "declares no parameter 'sneaky'" in capsys.readouterr().err
 
 
@@ -154,7 +151,7 @@ def test_a_comparison_recipe_is_refused_on_the_single_release_command(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], published: Path
 ) -> None:
     """Better than letting it fail in the planner with `failed to resolve schema: base`."""
-    with pytest.raises(SystemExit) as exit_code:
+    assert (
         run(
             monkeypatch,
             "query",
@@ -162,8 +159,8 @@ def test_a_comparison_recipe_is_refused_on_the_single_release_command(
             "--store",
             str(published),
         )
-
-    assert exit_code.value.code == EXIT_USAGE
+        == EXIT_USAGE
+    )
     assert "name them with --base and --candidate" in capsys.readouterr().err
 
 
@@ -216,10 +213,10 @@ def test_impact_can_list_the_policies_it_will_accept(
 def test_an_unknown_policy_is_a_usage_error(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], published: Path
 ) -> None:
-    with pytest.raises(SystemExit) as exit_code:
+    assert (
         run(monkeypatch, "impact", "system-1", "--store", str(published), "--policy", "no.such")
-
-    assert exit_code.value.code == EXIT_USAGE
+        == EXIT_USAGE
+    )
     assert "unknown graph policy" in capsys.readouterr().err
 
 
@@ -230,10 +227,10 @@ def test_a_store_with_no_current_release_is_a_usage_error(
 ) -> None:
     ReleaseStore.at(tmp_path).initialize()
 
-    with pytest.raises(SystemExit) as exit_code:
+    assert (
         run(monkeypatch, "query", "capability_coverage_matrix", "--store", str(tmp_path))
-
-    assert exit_code.value.code == EXIT_USAGE
+        == EXIT_USAGE
+    )
     assert "no current release" in capsys.readouterr().err
 
 
@@ -318,7 +315,7 @@ def test_unverified_refuses_to_silently_replace_the_policy_it_was_given(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], published: Path
 ) -> None:
     """A flag that overrode another flag would answer a question nobody asked."""
-    with pytest.raises(SystemExit) as exit_code:
+    assert (
         run(
             monkeypatch,
             "impact",
@@ -329,8 +326,8 @@ def test_unverified_refuses_to_silently_replace_the_policy_it_was_given(
             "--policy",
             "impact.structural",
         )
-
-    assert exit_code.value.code == EXIT_USAGE
+        == EXIT_USAGE
+    )
     assert "drop --policy impact.structural or the flag" in capsys.readouterr().err
 
 
@@ -388,7 +385,7 @@ def test_a_comparison_never_leaves_a_side_implicit(
     published: Path,
 ) -> None:
     """DATA-47's point is that neither side is ever inferred, including from a missing flag."""
-    with pytest.raises(SystemExit) as exit_code:
+    assert (
         run(
             monkeypatch,
             "query",
@@ -397,8 +394,8 @@ def test_a_comparison_never_leaves_a_side_implicit(
             str(published),
             *argv,
         )
-
-    assert exit_code.value.code == EXIT_USAGE
+        == EXIT_USAGE
+    )
     assert expected in capsys.readouterr().err
 
 
@@ -440,7 +437,7 @@ def test_a_reduction_names_the_relationships_that_back_each_edge(
 def test_asking_for_cycles_under_a_policy_that_does_not_report_them_is_refused(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], published: Path
 ) -> None:
-    with pytest.raises(SystemExit) as exit_code:
+    assert (
         run(
             monkeypatch,
             "graph",
@@ -450,6 +447,6 @@ def test_asking_for_cycles_under_a_policy_that_does_not_report_them_is_refused(
             "--policy",
             "impact.structural",
         )
-
-    assert exit_code.value.code == EXIT_USAGE
+        == EXIT_USAGE
+    )
     assert "cycle_handling=skip" in capsys.readouterr().err

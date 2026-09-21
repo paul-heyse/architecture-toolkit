@@ -12,7 +12,13 @@ from pathlib import Path
 import jsonschema
 import pytest
 
-from architecture_toolkit.cli import EXIT_DIAGNOSTICS, EXIT_OK, EXIT_USAGE, main
+from architecture_toolkit.cli import (
+    EXIT_DIAGNOSTICS,
+    EXIT_OK,
+    EXIT_UNREADABLE,
+    EXIT_USAGE,
+    main,
+)
 from architecture_toolkit.domain.model import Model
 from architecture_toolkit.releases.recovery import is_orphan
 from architecture_toolkit.releases.store import ReleaseStore
@@ -83,8 +89,7 @@ def test_baseline_summarises_the_current_release(
 def test_baseline_refuses_a_store_with_nothing_published(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
-    with pytest.raises(SystemExit):
-        run(monkeypatch, "baseline", "--store", str(tmp_path / "empty"))
+    assert run(monkeypatch, "baseline", "--store", str(tmp_path / "empty")) == EXIT_USAGE
 
     assert "no current release" in capsys.readouterr().err
 
@@ -170,10 +175,15 @@ def test_change_refuses_a_change_set_that_will_not_parse(
     broken = tmp_path / "broken.json"
     broken.write_text('{"change_set_id": "cs-0001"}')
 
-    with pytest.raises(SystemExit):
-        run(monkeypatch, "change", str(broken), "--store", str(published))
+    # Exit 3, not 2: "that file will not parse" is the same operational outcome `validate` has
+    # always reported as 3, and the two used to disagree for no reason anybody had decided.
+    assert run(monkeypatch, "change", str(broken), "--store", str(published)) == EXIT_UNREADABLE
 
-    assert "broken.json" in capsys.readouterr().err
+    printed = capsys.readouterr().out
+    assert "broken.json" in printed
+    # Naming the file is what *any* failure would print. The branch under test is the one where
+    # the JSON parsed and the record did not validate, so the missing field is what pins it.
+    assert "commands" in printed
 
 
 # -- diff --------------------------------------------------------------------------------------
@@ -290,7 +300,7 @@ def test_diff_refuses_a_baseline_against_an_alternative(
         ).model_dump_json(indent=2)
     )
 
-    with pytest.raises(SystemExit):
+    assert (
         run(
             monkeypatch,
             "diff",
@@ -301,6 +311,8 @@ def test_diff_refuses_a_baseline_against_an_alternative(
             "--store",
             str(store.root),
         )
+        == EXIT_USAGE
+    )
 
     assert "not a later revision of its baseline" in capsys.readouterr().err
 
@@ -408,7 +420,7 @@ def test_persist_refuses_half_an_alternative(
 ) -> None:
     source = ROOT / "examples" / "minimal" / "model.yaml"
 
-    with pytest.raises(SystemExit):
+    assert (
         run(
             monkeypatch,
             "persist",
@@ -420,6 +432,8 @@ def test_persist_refuses_half_an_alternative(
             "--scenario",
             "alt-a",
         )
+        == EXIT_USAGE
+    )
 
     assert "--scenario and --baseline are set together" in capsys.readouterr().err
 
@@ -614,7 +628,7 @@ def test_compare_refuses_two_releases_on_the_baseline_line(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], two_releases: Path
 ) -> None:
     """The inverse of `diff` refusing a cross-line pair; both directions or neither."""
-    with pytest.raises(SystemExit):
+    assert (
         run(
             monkeypatch,
             "compare",
@@ -625,5 +639,7 @@ def test_compare_refuses_two_releases_on_the_baseline_line(
             "--store",
             str(two_releases),
         )
+        == EXIT_USAGE
+    )
 
     assert "is not an alternative" in capsys.readouterr().err

@@ -172,9 +172,7 @@ def test_publishing_without_saying_the_parent_is_a_usage_error(
     assert run(monkeypatch, "publish", str(EXAMPLE), "--store", root) == 0
     capsys.readouterr()
 
-    with pytest.raises(SystemExit) as exited:
-        run(monkeypatch, "publish", str(EXAMPLE), "--store", root)
-    assert exited.value.code == 2
+    assert run(monkeypatch, "publish", str(EXAMPLE), "--store", root) == 2
     assert "--expect-parent is required" in capsys.readouterr().err
 
 
@@ -221,9 +219,7 @@ def test_listing_an_empty_store_is_not_an_error(
 def test_showing_a_release_that_does_not_exist_is_a_usage_error(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    with pytest.raises(SystemExit) as exited:
-        run(monkeypatch, "show", "rel-9999", "--store", str(tmp_path))
-    assert exited.value.code == 2
+    assert run(monkeypatch, "show", "rel-9999", "--store", str(tmp_path)) == 2
     assert "No release" in capsys.readouterr().err
 
 
