@@ -1,0 +1,12 @@
+id: queries-builtins-first
+valid:
+  - "context.sql_with_options(text, options, param_values=values)"
+  - "context.register_record_batches(name, batches)"
+  # Deregistration is maintenance, not extension.
+  - "context.deregister_udf(name)"
+invalid:
+  - "context.register_udf(my_function)"
+  - "session.register_udaf(my_aggregate)"
+  - "self.session.register_udwf(my_window)"
+  - "ctx.register_udtf(my_table_function)"
+  - "register_udf(my_function)"

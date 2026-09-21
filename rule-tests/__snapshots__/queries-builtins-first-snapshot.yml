@@ -1,0 +1,68 @@
+id: queries-builtins-first
+snapshots:
+  context.register_udf(my_function):
+    labels:
+    - source: register_udf
+      style: primary
+      start: 8
+      end: 20
+    - source: context.register_udf(my_function)
+      style: secondary
+      start: 0
+      end: 33
+    - source: context.register_udf
+      style: secondary
+      start: 0
+      end: 20
+  ctx.register_udtf(my_table_function):
+    labels:
+    - source: register_udtf
+      style: primary
+      start: 4
+      end: 17
+    - source: ctx.register_udtf(my_table_function)
+      style: secondary
+      start: 0
+      end: 36
+    - source: ctx.register_udtf
+      style: secondary
+      start: 0
+      end: 17
+  register_udf(my_function):
+    labels:
+    - source: register_udf
+      style: primary
+      start: 0
+      end: 12
+    - source: register_udf(my_function)
+      style: secondary
+      start: 0
+      end: 25
+  self.session.register_udwf(my_window):
+    labels:
+    - source: register_udwf
+      style: primary
+      start: 13
+      end: 26
+    - source: self.session.register_udwf(my_window)
+      style: secondary
+      start: 0
+      end: 37
+    - source: self.session.register_udwf
+      style: secondary
+      start: 0
+      end: 26
+  session.register_udaf(my_aggregate):
+    labels:
+    - source: register_udaf
+      style: primary
+      start: 8
+      end: 21
+    - source: session.register_udaf(my_aggregate)
+      style: secondary
+      start: 0
+      end: 35
+    - source: session.register_udaf
+      style: secondary
+      start: 0
+      end: 21

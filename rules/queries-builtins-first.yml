@@ -1,0 +1,34 @@
+id: queries-builtins-first
+language: python
+severity: error
+message: Use DataFusion built-ins; a UDF needs a demonstrated capability gap first.
+note: |
+  DATA-50: "Prefer DataFusion built-ins; UDF/UDAF/UDWF/UDTF require a demonstrated capability gap."
+  DataFusion 54 ships roughly three hundred scalar functions, forty aggregates and eleven window
+  functions, and every recipe this toolkit needs is expressible in them. A custom function added
+  without a recorded gap is a query that cannot be read by anybody who knows SQL, and one more
+  thing to qualify on every upgrade.
+
+  Matches the called name itself rather than the whole attribute expression, so `ctx.register_udf`
+  and a bare imported `register_udf` are both caught and `deregister_udf` — maintenance, not
+  extension — is not.
+
+  This is the structural half. `tests/integration/test_builtins_first.py` is the other: it asks a
+  real release context which functions it has registered and compares that against a bare
+  `SessionContext`, so a UDF registered by any path at all — not only by a call this rule can see —
+  fails.
+files:
+  - src/architecture_toolkit/queries/**/*.py
+rule:
+  kind: identifier
+  regex: ^(register_udf|register_udaf|register_udwf|register_udtf)$
+  any:
+    - inside:
+        kind: attribute
+        field: attribute
+        inside:
+          kind: call
+          field: function
+    - inside:
+        kind: call
+        field: function
