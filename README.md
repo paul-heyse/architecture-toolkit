@@ -59,7 +59,7 @@ Consumer-specific models/evidence live outside this public repository.
 
 Implemented today: one locked Python 3.14 environment; the strict Pydantic domain model with typed
 detail records, change commands and generated JSON Schema contracts; ruamel round-trip authoring
-with source-located diagnostics; the eleven-table Arrow fabric and its `SnapshotProvider` ladder;
+with source-located diagnostics; the twelve-table Arrow fabric and its `SnapshotProvider` ladder;
 coherent Delta-backed releases with an immutable manifest, the eight-step publication protocol,
 retention and milestone archives; release-scoped DataFusion query recipes and the private NetworkX
 graph facade with versioned policies; semantic change records with a total classification table,

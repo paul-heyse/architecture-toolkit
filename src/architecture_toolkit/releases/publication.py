@@ -17,8 +17,8 @@ exist, because a release exists when `CURRENT` names it. That is what makes a cr
 orphan Delta versions and an orphan manifest are permitted by DATA-24, and the previous release
 keeps resolving exactly as it did.
 
-**Delta gives no cross-table atomicity and this does not pretend otherwise.** Eleven tables means
-eleven commits. The lock makes them sequential, the expected-parent check makes them purposeful,
+**Delta gives no cross-table atomicity and this does not pretend otherwise.** One table means
+one commit. The lock makes them sequential, the expected-parent check makes them purposeful,
 the read-back makes them verified, and the pointer makes them visible — all at the application
 layer, which is what DATA-20 insists this is.
 """
@@ -243,7 +243,7 @@ def read_back_staged_versions(state: PublicationState) -> PublicationState:
     """`read back exact staged versions` — from storage, at the versions just recorded.
 
     Not a formality. This is the step that turns "the write returned without raising" into "the
-    bytes are there and they are the right bytes", and it is cheap: the whole eleven-table read
+    bytes are there and they are the right bytes", and it is cheap: the whole table-set read
     and verify was measured at 0.15 s for the example model.
     """
     store = state.store

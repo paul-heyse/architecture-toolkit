@@ -22,7 +22,7 @@ from architecture_toolkit.releases.store import ReleaseStore
 from architecture_toolkit.storage import delta
 from architecture_toolkit.storage.digests import table_semantic_digest, table_set_digests
 from architecture_toolkit.storage.mappings import compile_tables
-from architecture_toolkit.storage.schemas import TABLE_IDS
+from architecture_toolkit.storage.schemas import STORAGE_SCHEMA_VERSION, TABLE_IDS
 
 ROOT = Path(__file__).resolve().parents[2]
 EXAMPLE = ROOT / "examples" / "minimal" / "model.yaml"
@@ -152,7 +152,7 @@ def test_every_staged_commit_carries_its_publication_provenance(tmp_path: Path) 
     assert entry["model_id"] == "sample-service"
     assert entry["generator_commit"] == "abc1234"
     assert entry["source_bundle_digest"] == DIGEST
-    assert entry["storage_schema_version"] == "1.0.0"
+    assert entry["storage_schema_version"] == STORAGE_SCHEMA_VERSION
     # A first release genuinely has no parent, so the key is absent rather than "None".
     assert "expected_parent_release_id" not in entry
 

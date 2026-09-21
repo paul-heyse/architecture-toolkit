@@ -60,6 +60,8 @@ __all__ = [
     "TABLE_IDS",
     "TABLE_SCHEMAS",
     "TEXT",
+    "VIEWS",
+    "VIEW_FILTER_STRUCT",
     "VOCABULARY",
     "FieldRole",
     "TableRole",
@@ -69,7 +71,7 @@ __all__ = [
     "schema_for",
 ]
 
-STORAGE_SCHEMA_VERSION: Final[str] = "1.0.0"
+STORAGE_SCHEMA_VERSION: Final[str] = "1.1.0"
 """The migration anchor. A change to any schema below is a change to this value and a migration."""
 
 ROLE_KEY: Final[bytes] = b"architecture_toolkit.role"
@@ -176,7 +178,7 @@ class TableSchema:
     """One declared table. Not a `CompiledRecord`: it holds a `pa.Schema`, which is not Pydantic.
 
     `key_fields` is the sort key that puts a table in canonical order and the identity a reader
-    joins on. It is a tuple because two of the eleven tables are keyed on a pair.
+    joins on. It is a tuple because several tables are keyed on a pair.
     """
 
     table_id: TableId
@@ -316,6 +318,54 @@ NOTATION_BINDINGS: Final[TableSchema] = _table(
     ],
 )
 
+VIEW_FILTER_STRUCT: Final[pa.DataType] = pa.struct(
+    [
+        _child("filter_mode", VOCABULARY),
+        _child("dimension", VOCABULARY),
+        _child("values", list_of(TEXT)),
+    ]
+)
+"""One selection rule inside a view. A struct in a list, like `extensions`.
+
+Every scalar in it is a string, so `BASELINE_TYPES` holds at every depth and the nested
+`list_of(TEXT)` is the shape `SCHEMA_FIELD_STRUCT.key_membership` already proves works.
+"""
+
+VIEWS: Final[TableSchema] = _table(
+    "views",
+    TableRole.ENTITY,
+    ("model_id", "view_id"),
+    [
+        field("view_id", IDENTIFIER, role=FieldRole.IDENTITY),
+        field("model_id", IDENTIFIER, role=FieldRole.IDENTITY),
+        field("view_type", VOCABULARY, role=FieldRole.VOCABULARY),
+        field("notation", VOCABULARY, role=FieldRole.VOCABULARY),
+        field("scope", IDENTIFIER, role=FieldRole.FOREIGN_KEY, nullable=True),
+        field("audience", TEXT, role=FieldRole.OWNED, nullable=True),
+        field("title", TEXT, role=FieldRole.OWNED),
+        field("description", TEXT, role=FieldRole.OWNED, nullable=True),
+        field("membership_policy", VOCABULARY, role=FieldRole.VOCABULARY),
+        # Non-nullable lists: an empty view is `[]`, never null, for the reason `list_of` states.
+        field("included_element_ids", list_of(IDENTIFIER), role=FieldRole.FOREIGN_KEY),
+        field("included_relationship_ids", list_of(IDENTIFIER), role=FieldRole.FOREIGN_KEY),
+        field("perspective", TEXT, role=FieldRole.OWNED, nullable=True),
+        field("filter", list_of(VIEW_FILTER_STRUCT), role=FieldRole.OWNED),
+        field("layout_profile_id", IDENTIFIER, role=FieldRole.FOREIGN_KEY, nullable=True),
+        field("publication_state", VOCABULARY, role=FieldRole.VOCABULARY),
+        _CONTENT_HASH,
+    ],
+)
+"""View definitions (PROJ-03). `ENTITY`, not `LINK`.
+
+`reference_links` and `notation_bindings` are links because their whole content is an association
+— a subject and a role. A view has a title, an audience and a publication state; it is a thing
+that exists in its own right and happens to name members.
+
+Nullable exactly where "not stated" is a fact DATA-41 wants preserved: a landscape view has no
+`scope`, and no `layout_profile_id` is what automatic layout looks like. Everything else has a
+domain default, so a null there would be a lie.
+"""
+
 TRANSPORT_STRUCT: Final[pa.DataType] = pa.struct(
     [
         _child("protocol", TEXT),
@@ -436,6 +486,7 @@ TABLE_IDS: Final[tuple[TableId, ...]] = (
     "references",
     "reference_links",
     "notation_bindings",
+    "views",
     "interface_details",
     "deployment_details",
     "data_schema_details",
@@ -454,6 +505,7 @@ TABLE_SCHEMAS: Final[Mapping[TableId, TableSchema]] = MappingProxyType(
             REFERENCES,
             REFERENCE_LINKS,
             NOTATION_BINDINGS,
+            VIEWS,
             INTERFACE_DETAILS,
             DEPLOYMENT_DETAILS,
             DATA_SCHEMA_DETAILS,

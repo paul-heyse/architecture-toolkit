@@ -55,6 +55,7 @@ from architecture_toolkit.domain.references import (
 )
 from architecture_toolkit.domain.registry import DetailFamily
 from architecture_toolkit.domain.semantics import stamp_digests
+from architecture_toolkit.domain.views import ViewDefinition, ViewFilter
 from architecture_toolkit.storage.errors import (
     SchemaViolation,
     TableSetIntegrityError,
@@ -270,6 +271,38 @@ def _notation_binding_to_row(binding: NotationBinding) -> Row:
     )
 
 
+def _view_filter_to_row(rule: ViewFilter) -> Row:
+    return {
+        "filter_mode": _text(rule.filter_mode),
+        "dimension": _text(rule.dimension),
+        "values": list(rule.values),
+    }
+
+
+def _view_to_row(view: ViewDefinition) -> Row:
+    return _require_digest(
+        {
+            "view_id": view.view_id,
+            "model_id": view.model_id,
+            "view_type": _text(view.view_type),
+            "notation": _text(view.notation),
+            "scope": view.scope,
+            "audience": view.audience,
+            "title": view.title,
+            "description": view.description,
+            "membership_policy": _text(view.membership_policy),
+            "included_element_ids": list(view.included_element_ids),
+            "included_relationship_ids": list(view.included_relationship_ids),
+            "perspective": view.perspective,
+            "filter": [_view_filter_to_row(rule) for rule in view.filter],
+            "layout_profile_id": view.layout_profile_id,
+            "publication_state": _text(view.publication_state),
+            "content_hash": view.content_hash,
+        },
+        "views",
+    )
+
+
 def _interface_detail_to_row(detail: InterfaceDetail) -> Row:
     return _require_digest(
         {
@@ -442,7 +475,7 @@ def check_nullability(table: pa.Table, expected: TableSchema) -> None:
 class ErasedMapping(Protocol):
     """A `TableMapping` with its record type forgotten.
 
-    The registry is heterogeneous — eleven mappings over eleven record types — and
+    The registry is heterogeneous — one mapping per declared table, over as many record types — and
     `TableMapping[R]` is invariant, because `to_row` puts `R` in a parameter position. So the
     registry cannot be typed as a mapping of any single instantiation, and `Any` would give up
     more than necessary: every record type in it is a `CompiledRecord`, which is exactly what a
@@ -518,6 +551,11 @@ NOTATION_BINDINGS: Final[TableMapping[NotationBinding]] = _mapping(
     _notation_binding_to_row,
     _with_subject,
 )
+VIEWS: Final[TableMapping[ViewDefinition]] = _mapping(
+    "views",
+    TypeAdapter(tuple[ViewDefinition, ...]),
+    _view_to_row,
+)
 INTERFACE_DETAILS: Final[TableMapping[InterfaceDetail]] = _mapping(
     "interface_details",
     TypeAdapter(tuple[InterfaceDetail, ...]),
@@ -557,6 +595,7 @@ MAPPINGS: Final[Mapping[TableId, ErasedMapping]] = MappingProxyType(
         "references": REFERENCES,
         "reference_links": REFERENCE_LINKS,
         "notation_bindings": NOTATION_BINDINGS,
+        "views": VIEWS,
         "interface_details": INTERFACE_DETAILS,
         "deployment_details": DEPLOYMENT_DETAILS,
         "data_schema_details": DATA_SCHEMA_DETAILS,
@@ -578,7 +617,7 @@ def mapping_for(table_id: str) -> ErasedMapping:
 
 @dataclass(frozen=True, slots=True)
 class TableSet:
-    """The eleven tables of one model, plus the versions that say how to read them."""
+    """Every declared table of one model, plus the versions that say how to read them."""
 
     model_id: str
     schema_version: str
@@ -628,7 +667,7 @@ def _detail_table_of(detail: ElementDetail) -> TableId:
 
 
 def compile_tables(model: Model) -> TableSet:
-    """A validated model as eleven Arrow tables, digests stamped first.
+    """A validated model as twelve Arrow tables, digests stamped first.
 
     Stamping is not optional: `content_hash` is non-nullable in every schema, so an unstamped
     model cannot be written at all — and the error says which call is missing rather than
@@ -649,6 +688,9 @@ def compile_tables(model: Model) -> TableSet:
         "references": REFERENCES.to_arrow(stamped.references),
         "reference_links": REFERENCE_LINKS.to_arrow(stamped.reference_links),
         "notation_bindings": NOTATION_BINDINGS.to_arrow(stamped.notation_bindings),
+        # Always written, empty or not: `TABLE_IDS` is what a manifest pins, so a release
+        # with no views still pins a `views` table with the declared schema and zero rows.
+        "views": VIEWS.to_arrow(()),
     }
     for table_id, records in details.items():
         tables[table_id] = mapping_for(table_id).to_arrow(records)
@@ -689,7 +731,7 @@ def _details_by_element(table_set: TableSet) -> dict[str, Row]:
 
 
 def assemble_model(table_set: TableSet) -> Model:
-    """The inverse of `compile_tables`: eleven tables back into one validated model.
+    """The inverse of `compile_tables`: every declared table back into one validated model.
 
     The five detail tables are joined onto the element rows here rather than being carried as
     records, because the model is validated once at the end — one `model_validate_json` over the
@@ -749,6 +791,7 @@ _COLLECTION_BY_TABLE: Final[Mapping[TableId, str]] = MappingProxyType(
         "references": "references",
         "reference_links": "reference_links",
         "notation_bindings": "notation_bindings",
+        "views": "views",
     }
 )
 

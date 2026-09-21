@@ -4,7 +4,7 @@
 module exists. Delta's transaction boundary is a single table, so writing `elements`,
 `relationships` and `interface_details` is three commits, not one atomic architecture update. The
 manifest is the coherent multi-table revision layered above them: it names an exact Delta version
-per table, and a reader opens exactly those versions rather than assembling a model from eleven
+per table, and a reader opens exactly those versions rather than assembling a model from twelve
 independently resolved latest states.
 
 Different tables are expected to sit at different versions. A revision that renames one element

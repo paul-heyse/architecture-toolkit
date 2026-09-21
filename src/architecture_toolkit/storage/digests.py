@@ -19,7 +19,7 @@ with the model digest W2 computes; that is the DATA-27 rationale, carried throug
 The hard-gate test still asserts chunk independence explicitly, because a definition that nothing
 exercises is a definition that can rot around a changed `from_arrow`.
 
-**The eleven digests are not a decomposition of the model digest, and should not be read as one.**
+**The per-table digests are not a decomposition of the model digest, and are not read as one.**
 A table's digest covers the records *that table* encodes, and `elements` deliberately does not
 encode detail — it was normalized into the five detail tables. So the `elements` digest is the
 digest of elements with no detail attached, and a model that changes only one interface's timeout
@@ -29,7 +29,7 @@ what DATA-21's "unchanged table versions can be reused" gate needs: a per-table 
 records both, for those two different questions.
 
 Nothing is lost by the split: every detail row carries its `element_id`, so the join that
-`assemble_model` performs is determined by the data, and two models with the same eleven digests
+`assemble_model` performs is determined by the data, and two models with the same table digests
 assemble to the same model.
 
 `canonical_table` is the *physical* normal form and is deliberately not a digest input. It exists

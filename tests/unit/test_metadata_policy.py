@@ -16,7 +16,7 @@ from architecture_toolkit.storage.metadata import (
     reattach,
     strip,
 )
-from architecture_toolkit.storage.schemas import TABLE_SCHEMAS, TableRole
+from architecture_toolkit.storage.schemas import STORAGE_SCHEMA_VERSION, TABLE_SCHEMAS, TableRole
 
 SRC = Path(__file__).resolve().parents[2] / "src" / "architecture_toolkit"
 
@@ -94,7 +94,7 @@ def test_a_described_schema_says_what_it_is() -> None:
     read = read_description(described)
     assert read.table_id == "elements"
     assert read.table_role is TableRole.ENTITY
-    assert read.storage_schema_version == "1.0.0"
+    assert read.storage_schema_version == STORAGE_SCHEMA_VERSION
     assert read.toolkit_version == metadata.toolkit_version()
     assert set(SCHEMA_KEYS) <= set(described.metadata or {})
 

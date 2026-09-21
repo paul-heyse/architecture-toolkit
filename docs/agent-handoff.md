@@ -27,7 +27,7 @@ Implemented:
 - the configured YAML 1.2 authoring adapter, the SourceMap, source-located diagnostics with a
   stated resolution, command-driven round-trip editing and the versioned canonical semantic hash
   with a record-level delta (W2);
-- the Arrow fabric: eleven declared table schemas, bidirectional Pydantic mappings, the metadata
+- the Arrow fabric: twelve declared table schemas, bidirectional Pydantic mappings, the metadata
   policy, arro3 and C-stream normalization, chunk-independent table digests and the
   `SnapshotProvider` boundary with its materialized provider (W3);
 - versioned Delta persistence and coherent releases: the immutable manifest, the one-writer

@@ -7,7 +7,7 @@ narrative. Architectural history is still defined by stable IDs, semantic diffs,
 decisions and release manifests."
 
 The distinction is not pedantry. Delta's history says a file was rewritten; it cannot say a
-capability was retired, and it will happily report eleven commits for a change that means one
+capability was retired, and it will happily report a commit per table for a change that means one
 thing. `domain/semantics.semantic_delta` is the architectural answer and W6 classifies it; this
 module exists to *cross-check* that answer against what storage actually did, which is a genuinely
 useful thing a storage log can do.

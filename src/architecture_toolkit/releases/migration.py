@@ -16,11 +16,13 @@ manifest pins keeps reading under the schema it was written with, which is the p
 rather than from a cutoff. An earlier release stays queryable after an intentional schema
 migration — §10E — because nothing about it changed.
 
-`MIGRATIONS` is **empty**, and that is the honest state: `STORAGE_SCHEMA_VERSION` is `1.0.0` and
-nothing has been published against an earlier one, so there is no migration to declare. The
-machinery is real and exercised end to end by a synthetic `1.0.0 -> 1.1.0` migration in
-`tests/integration/test_migration.py`. Inventing a production schema change to make the registry
-non-empty would be making up work to demonstrate machinery.
+`MIGRATIONS` holds one step as of W7a: `1.0.0 -> 1.1.0`, which adds the `views` table. It was
+empty from W4 to W6 and that was the honest state then — `STORAGE_SCHEMA_VERSION` had only ever
+been `1.0.0`, so a declared migration would have been a step between a version and itself, and
+inventing one to make the registry non-empty would have been making up work to demonstrate
+machinery. The machinery stays independently exercised by synthetic migrations in
+`tests/integration/test_audit_and_migration.py`, which is what keeps the mechanism tested apart
+from the one instance of it that happens to be declared.
 """
 
 from collections.abc import Callable, Mapping, Sequence
@@ -124,9 +126,29 @@ class MigrationResult:
         return tuple(sorted(name for name, (before, _) in self.versions.items() if before is None))
 
 
-MIGRATIONS: Final[Mapping[str, Migration]] = MappingProxyType({})
-"""Empty at W4 because `STORAGE_SCHEMA_VERSION` has only ever been `1.0.0`. See the module
-docstring for why that is the honest state rather than a gap."""
+_ADD_VIEWS: Final[Migration] = Migration(
+    migration_id="1.0.0-to-1.1.0-add-views",
+    from_storage_schema_version="1.0.0",
+    to_storage_schema_version="1.1.0",
+    description=(
+        "Adds the `views` table (PROJ-03). No existing table changes shape and no row is "
+        "rewritten: a release published at 1.0.0 had no views, so the new table is created with "
+        "the declared schema and zero rows."
+    ),
+    added_tables=("views",),
+)
+
+MIGRATIONS: Final[Mapping[str, Migration]] = MappingProxyType({_ADD_VIEWS.migration_id: _ADD_VIEWS})
+"""The declared steps, keyed by id. One, as of W7a.
+
+It was empty from W4 to W6 and that was the honest state: `STORAGE_SCHEMA_VERSION` had only ever
+been `1.0.0`, so a declared migration would have been a step between a version and itself. W7a is
+the first schema change — a twelfth table — and this is the first entry.
+
+Note what it does *not* do. It rewrites nothing, because nothing changed shape; a release
+published before `views` existed had no views, and the only honest content for the new table is
+zero rows. That is why `added_tables` exists separately from `tables`.
+"""
 
 
 def migration_for(from_version: str, to_version: str) -> Migration:

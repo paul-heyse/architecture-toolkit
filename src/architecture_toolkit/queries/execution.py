@@ -102,8 +102,8 @@ class ReleaseQueryExecutor:
     Everything below this exists because the caller that has a release *id* — the CLI, a future
     portal, an agent — has to resolve it to a context, find the recipe, and run it, and doing that
     inline is how three commands ended up with the same eight lines. Building the context is the
-    expensive part, so it is memoised per release: a session registers eleven Delta versions, and
-    a command that queries and then traverses should not do it twice.
+    expensive part, so it is memoised per release: a session registers one Delta version per
+    table, and a command that queries and then traverses should not do it twice.
 
     Not frozen and not hashable (`eq=False`), because the cache is state. That is the one mutable
     object in the query layer and it holds no architecture facts — only sessions, which are

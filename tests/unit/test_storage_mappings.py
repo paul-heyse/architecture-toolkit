@@ -46,6 +46,15 @@ from architecture_toolkit.domain.references import (
     ReleaseReference,
 )
 from architecture_toolkit.domain.semantics import stamp_digests
+from architecture_toolkit.domain.views import (
+    FilterDimension,
+    FilterMode,
+    MembershipPolicy,
+    PublicationState,
+    ViewDefinition,
+    ViewFilter,
+    ViewType,
+)
 from architecture_toolkit.storage.errors import SchemaViolation
 from architecture_toolkit.storage.mappings import (
     DATA_SCHEMA_DETAILS,
@@ -55,7 +64,7 @@ from architecture_toolkit.storage.mappings import (
     mapping_for,
 )
 from architecture_toolkit.storage.metadata import read_description, strip
-from architecture_toolkit.storage.schemas import TABLE_IDS, TABLE_SCHEMAS
+from architecture_toolkit.storage.schemas import STORAGE_SCHEMA_VERSION, TABLE_IDS, TABLE_SCHEMAS
 
 ROOT = Path(__file__).resolve().parents[2]
 EXAMPLE = ROOT / "examples" / "minimal" / "model.yaml"
@@ -299,6 +308,45 @@ def _sparse_and_full() -> dict[str, tuple[Any, Any]]:
                 content_hash=OTHER,
             ),
         ),
+        "views": (
+            ViewDefinition(
+                view_id="view-1",
+                model_id="m-1",
+                view_type=ViewType.SYSTEM_LANDSCAPE,
+                notation=Notation.C4,
+                title="Landscape",
+                content_hash=DIGEST,
+            ),
+            ViewDefinition(
+                view_id="view-2",
+                model_id="m-1",
+                view_type=ViewType.CONTAINER,
+                notation=Notation.C4,
+                scope="elt-1",
+                audience="platform engineering",
+                title="Containers",
+                description="Every container of the billing system.",
+                membership_policy=MembershipPolicy.DERIVED,
+                included_element_ids=("elt-1", "elt-2"),
+                included_relationship_ids=("rel-1",),
+                perspective="ownership",
+                filter=(
+                    ViewFilter(
+                        filter_mode=FilterMode.INCLUDE,
+                        dimension=FilterDimension.KIND,
+                        values=("software.container", "software.system"),
+                    ),
+                    ViewFilter(
+                        filter_mode=FilterMode.EXCLUDE,
+                        dimension=FilterDimension.LIFECYCLE_STATE,
+                        values=("retired",),
+                    ),
+                ),
+                layout_profile_id="layout-1",
+                publication_state=PublicationState.PUBLISHED,
+                content_hash=OTHER,
+            ),
+        ),
         "requirement_details": (
             RequirementDetail(
                 element_id="elt-1",
@@ -468,12 +516,12 @@ def test_key_membership_is_written_sorted_and_read_back_as_a_set() -> None:
 
 @pytest.mark.unit
 @pytest.mark.requirement("DATA-10", "DATA-14")
-def test_the_example_compiles_to_eleven_tables_and_assembles_back() -> None:
+def test_the_example_compiles_to_every_declared_table_and_assembles_back() -> None:
     model = example_model()
     table_set = compile_tables(model)
     assert list(table_set.tables) == list(TABLE_IDS)
     assert table_set.model_id == model.model_id
-    assert table_set.storage_schema_version == "1.0.0"
+    assert table_set.storage_schema_version == STORAGE_SCHEMA_VERSION
     assert assemble_model(table_set) == stamp_digests(model)
 
 

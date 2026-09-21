@@ -184,11 +184,37 @@ SYNTHETIC_ADDITION = Migration(
 
 @pytest.mark.unit
 @pytest.mark.requirement("DATA-56")
-def test_no_migration_is_declared_because_no_schema_has_changed() -> None:
-    """The honest state. `STORAGE_SCHEMA_VERSION` has only ever been 1.0.0."""
-    assert MIGRATIONS == {}
+def test_the_declared_migrations_are_the_schema_history_and_nothing_else() -> None:
+    """Inverted at W7a. It read `MIGRATIONS == {}` from W4 to W6, which was true and honest then.
+
+    `STORAGE_SCHEMA_VERSION` had only ever been `1.0.0`, so there was no step to declare. The
+    `views` table is the first real schema change, so there is now exactly one — and the
+    assertion that matters is not the count but that every declared step ends where the current
+    version is, so a migration cannot be declared to a version the toolkit does not produce.
+    """
+    assert MIGRATIONS
+    targets = {step.to_storage_schema_version for step in MIGRATIONS.values()}
+    assert STORAGE_SCHEMA_VERSION in targets
+    assert migration_for("1.0.0", "1.1.0").added_tables == ("views",)
     with pytest.raises(MigrationError, match="no declared migration"):
         migration_for(STORAGE_SCHEMA_VERSION, "9.9.9")
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("DATA-56")
+def test_no_declared_migration_chains_through_another() -> None:
+    """`migration_for` does no composition, so the registry has to be directly usable.
+
+    With one step this is trivially true. It is asserted now because the moment a second step is
+    declared, the question "can a 1.0.0 release reach 1.2.0" becomes real, and DATA-56 wants that
+    answered by a declaration rather than by a runner inferring it.
+    """
+    starts = {step.from_storage_schema_version for step in MIGRATIONS.values()}
+    ends = {step.to_storage_schema_version for step in MIGRATIONS.values()}
+    assert not (starts & ends), (
+        "a declared step starts where another ends; `migration_for` will not compose them, so "
+        "the intermediate version needs a direct step or a reader will be stranded on it"
+    )
 
 
 @pytest.mark.unit

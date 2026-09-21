@@ -66,7 +66,7 @@ def read_table_set(
     *,
     provider: MaterializedPyArrowSnapshotProvider | None = None,
 ) -> TableSet:
-    """The eleven tables of one release, each at the version the manifest pins."""
+    """Every table of one release, each at the version the manifest pins."""
     reader = provider if provider is not None else provider_for(store, manifest)
     tables: Mapping[TableId, pa.Table] = {
         ref.table_id: reattach(

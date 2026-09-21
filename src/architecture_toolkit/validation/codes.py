@@ -271,7 +271,7 @@ _ALL: tuple[DiagnosticCodeSpec, ...] = (
         CodeArea.RELEASE,
         category=DiagnosticCategory.RELEASE_COHERENCE,
         summary="The manifest does not pin every table the storage schema declares.",
-        remediation="Publish through the release protocol, which pins all eleven tables.",
+        remediation="Publish through the release protocol, which pins every table.",
     ),
     _spec(
         "CORE.RELEASE.DIGEST_MISMATCH",

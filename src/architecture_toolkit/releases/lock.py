@@ -14,8 +14,8 @@ person breaks with `break_lock`, after looking at what it says.
 
 The lock guards the *publication protocol*, not the Delta tables. Delta has its own per-table
 optimistic concurrency and will raise `CommitFailedError` on a stale handle — but that is a
-per-table guarantee, and the thing being protected here is the coherence of eleven tables and a
-pointer, which no storage engine in this stack knows about.
+per-table guarantee, and the thing being protected here is the coherence of every declared
+table and a pointer, which no storage engine in this stack knows about.
 """
 
 import json
