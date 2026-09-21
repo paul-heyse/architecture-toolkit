@@ -185,8 +185,11 @@ def test_every_provider_registers_a_release_catalog_with_the_same_answers(
     }
     assert counts["elements"] == 10
     assert counts["relationships"] == 8
-    # A typed empty table is still queryable, which is §11B's "preserve typed empties".
-    assert all(count >= 0 for count in counts.values())
+    # §11B's "preserve typed empties": the example has no deployment detail beyond one element,
+    # so the assertion that matters is the exact count each table actually holds — `>= 0` would
+    # have been true of a provider that returned nothing at all.
+    expected = {table_id: compile_tables(example())[table_id].num_rows for table_id in TABLE_IDS}
+    assert counts == expected
 
 
 @pytest.mark.qualification

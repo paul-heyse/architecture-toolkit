@@ -251,7 +251,12 @@ def test_a_second_publication_reports_how_many_tables_it_reused(
     )
     out = capsys.readouterr().out
     assert "published rel-0002" in out
-    assert model_digest(example_from(root)) is not None
+    # Identical content, so every table is reused — the count the manifest chain makes reportable.
+    assert f"{len(TABLE_IDS)} reused" in out
+    assert (
+        model_digest(example_from(root))
+        == ReleaseStore.at(root).read_manifest("rel-0002").model_digest
+    )
 
 
 def example_from(root: Path) -> Model:

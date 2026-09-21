@@ -238,6 +238,8 @@ def read_back_staged_versions(state: PublicationState) -> PublicationState:
     provisional = ArchitectureRelease(
         release_id=state.request.candidate.release_id,
         model_id=state.request.candidate.model_id,
+        parent_release_id=None if state.parent is None else state.parent.release_id,
+        change_set_id=_change_set_id(state.request),
         schema_version=state.require_table_set().schema_version,
         profile_version=state.require_table_set().profile_version,
         model_digest=model_digest(state.require_model()),
@@ -356,6 +358,19 @@ def publish(
         for name in STEP_ORDER:
             state = chosen[name](state)
     return state.require_manifest()
+
+
+def _change_set_id(request: PublicationRequest) -> str | None:
+    """Which change set produced this release, if one did.
+
+    An applied change set is the truth, because it is what was actually run. The candidate's own
+    field is the fallback, and records a change set applied somewhere upstream — an editor that
+    applied it to the source before handing over a model, say — which is a weaker claim but still
+    a real one. Precedence rather than a merge, so a manifest never names two.
+    """
+    if request.change_set is not None:
+        return request.change_set.change_set_id
+    return request.candidate.change_set_id
 
 
 def _commit(request: PublicationRequest) -> str:

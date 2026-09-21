@@ -22,6 +22,7 @@ from collections.abc import Iterable, Mapping
 from architecture_toolkit.validation.diagnostics import Diagnostic, build_diagnostic
 
 __all__ = [
+    "chain_breaks",
     "digest_mismatches",
     "missing_pins",
     "row_count_mismatches",
@@ -120,3 +121,75 @@ def storage_schema_mismatch(*, release_id: str, found: str, expected: str) -> Di
         canonical_object_id=release_id,
         context=(("found", found), ("expected", expected)),
     )
+
+
+def chain_breaks(
+    manifests: Iterable[tuple[str, str | None, str]],
+) -> tuple[Diagnostic, ...]:
+    """Is the parent chain of a release store navigable (DATA-21)?
+
+    Takes `(release_id, parent_release_id, model_id)` triples rather than a store, so this module
+    keeps depending on nothing but `validation/` — the same reason `storage/catalog.py` takes pins
+    rather than a manifest.
+
+    Three ways a chain fails, and they fail differently. A missing parent means a link was removed
+    or a manifest was copied out of another store. A cycle means no release is the first, so
+    nothing can be replayed in order. Two roots for one model means two histories in one store,
+    which no reader can order — and which is exactly what a manifest that silently left
+    `parent_release_id` unset would produce on every publication.
+    """
+    entries = list(manifests)
+    known = {release_id for release_id, _, _ in entries}
+    findings: list[Diagnostic] = []
+
+    for release_id, parent, _model_id in sorted(entries):
+        if parent is not None and parent not in known:
+            findings.append(
+                build_diagnostic(
+                    "CORE.RELEASE.PARENT_NOT_FOUND",
+                    message=f"release {release_id!r} names parent {parent!r}, which is not here",
+                    canonical_object_id=release_id,
+                    context=(("parent_release_id", parent),),
+                )
+            )
+
+    parents = {release_id: parent for release_id, parent, _ in entries}
+    for release_id in sorted(known):
+        if _reaches_itself(release_id, parents):
+            findings.append(
+                build_diagnostic(
+                    "CORE.RELEASE.CHAIN_CYCLE",
+                    message=f"release {release_id!r} is its own ancestor",
+                    canonical_object_id=release_id,
+                )
+            )
+
+    roots_by_model: dict[str, list[str]] = {}
+    for release_id, parent, model_id in entries:
+        if parent is None:
+            roots_by_model.setdefault(model_id, []).append(release_id)
+    for model_id, roots in sorted(roots_by_model.items()):
+        if len(roots) > 1:
+            findings.append(
+                build_diagnostic(
+                    "CORE.RELEASE.MULTIPLE_ROOTS",
+                    message=f"model {model_id!r} has {len(roots)} releases with no parent",
+                    canonical_object_id=model_id,
+                    context=(("roots", ", ".join(sorted(roots))),),
+                )
+            )
+    return tuple(findings)
+
+
+def _reaches_itself(start: str, parents: Mapping[str, str | None]) -> bool:
+    """Walk the parent chain from `start`, stopping at a repeat or at the root."""
+    seen: set[str] = set()
+    current: str | None = start
+    while current is not None:
+        if current in seen:
+            return True
+        seen.add(current)
+        current = parents.get(current)
+        if current == start:
+            return True
+    return False

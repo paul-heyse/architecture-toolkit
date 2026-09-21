@@ -174,7 +174,8 @@ def test_a_second_release_reuses_the_versions_it_did_not_change(tmp_path: Path) 
     assert {t: after[t] for t in TABLE_IDS if t != "elements"} == {
         t: before[t] for t in TABLE_IDS if t != "elements"
     }
-    assert second.parent_release_id is None or second.parent_release_id == "rel-0001"
+    assert second.parent_release_id == "rel-0001"
+    assert second.change_set_id == "cs-0001"
     assert store.current_id() == "rel-0002"
 
 

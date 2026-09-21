@@ -299,6 +299,32 @@ _ALL: tuple[DiagnosticCodeSpec, ...] = (
         ),
     ),
     _spec(
+        "CORE.RELEASE.PARENT_NOT_FOUND",
+        CodeArea.RELEASE,
+        category=DiagnosticCategory.RELEASE_COHERENCE,
+        summary="A manifest names a parent release the store does not hold.",
+        remediation=(
+            "The chain is what makes a release history navigable; a missing link means a manifest "
+            "was removed without its descendants, or copied out of another store."
+        ),
+    ),
+    _spec(
+        "CORE.RELEASE.CHAIN_CYCLE",
+        CodeArea.RELEASE,
+        category=DiagnosticCategory.RELEASE_COHERENCE,
+        summary="Release parentage forms a cycle, so no release is the first.",
+    ),
+    _spec(
+        "CORE.RELEASE.MULTIPLE_ROOTS",
+        CodeArea.RELEASE,
+        category=DiagnosticCategory.RELEASE_COHERENCE,
+        summary="One model has more than one release with no parent.",
+        remediation=(
+            "Every release after the first names the one it was built against. Two roots means "
+            "two histories in one store, which no reader can order."
+        ),
+    ),
+    _spec(
         "CORE.RELEASE.STORAGE_SCHEMA_MISMATCH",
         CodeArea.RELEASE,
         category=DiagnosticCategory.RELEASE_COHERENCE,
