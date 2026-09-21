@@ -6,10 +6,19 @@ from importlib.metadata import version
 from pathlib import Path
 
 from architecture_toolkit.contracts import SCHEMA_FAMILIES, emit, emittable
+from architecture_toolkit.queries.algorithms import (
+    components,
+    condensation,
+    cycles,
+    generations,
+    minimum_equivalent,
+    reachability_closure,
+)
 from architecture_toolkit.queries.errors import QueryError
 from architecture_toolkit.queries.execution import ReleaseQueryExecutor
+from architecture_toolkit.queries.graph import ArchitectureGraph
 from architecture_toolkit.queries.plans import capture
-from architecture_toolkit.queries.policy import POLICIES, policy_for
+from architecture_toolkit.queries.policy import POLICIES, GraphPolicy, policy_for
 from architecture_toolkit.queries.recipes import RECIPES, ParameterSpec, QueryRecipe, recipe_for
 from architecture_toolkit.queries.traversals import find_unverified_dependencies
 from architecture_toolkit.releases.archive import write_archive
@@ -48,6 +57,11 @@ ROOT = Path(__file__).resolve().parents[2]
 
 DEFAULT_POLICY = "impact.structural"
 UNVERIFIED_POLICY = "dependencies.direct"
+STRUCTURAL_POLICY = "containment.descendants"
+"""The `graph` default. The only baseline policy that declares cycle reporting, so it is the one
+under which every analysis below is defined; the others refuse what they were not declared for."""
+
+ANALYSES = ("cycles", "generations", "components", "condensation", "closure", "reduction")
 """The policy `find_unverified_dependencies` traverses; named here so `--unverified` can refuse to
 silently replace a policy the operator asked for."""
 
@@ -123,6 +137,8 @@ def main() -> int:
     query.add_argument("recipe_id")
     query.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
     query.add_argument("--release", help="Defaults to the current release.")
+    query.add_argument("--base", help="For a comparison recipe: the release to compare against.")
+    query.add_argument("--candidate", help="For a comparison recipe: the release to compare.")
     query.add_argument(
         "--param",
         action="append",
@@ -156,6 +172,19 @@ def main() -> int:
         ),
     )
     impact.add_argument("--format", choices=("human", "json"), default="human")
+
+    analysis = sub.add_parser(
+        "graph", help="Structural analyses of one release under one named policy"
+    )
+    analysis.add_argument("analysis", choices=sorted(ANALYSES))
+    analysis.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
+    analysis.add_argument("--release", help="Defaults to the current release.")
+    analysis.add_argument(
+        "--policy",
+        default=STRUCTURAL_POLICY,
+        help=f"A named policy; `impact --policy list` shows them. Defaults to {STRUCTURAL_POLICY}.",
+    )
+    analysis.add_argument("--format", choices=("human", "json"), default="human")
 
     sub.add_parser("build", help="Reserved: full projection pipeline is not implemented")
     args = parser.parse_args()
@@ -225,6 +254,8 @@ def main() -> int:
             args.recipe_id,
             store_root=args.store,
             release_id=args.release,
+            base=args.base,
+            candidate=args.candidate,
             params=args.param,
             output=args.format,
         )
@@ -236,6 +267,16 @@ def main() -> int:
             store_root=args.store,
             release_id=args.release,
             params=args.param,
+        )
+
+    if args.command == "graph":
+        return _graph(
+            parser,
+            args.analysis,
+            store_root=args.store,
+            release_id=args.release,
+            policy_id=args.policy,
+            output=args.format,
         )
 
     if args.command == "impact":
@@ -652,11 +693,79 @@ def _query(
     *,
     store_root: Path,
     release_id: str | None,
+    base: str | None,
+    candidate: str | None,
     params: list[str],
     output: str,
 ) -> int:
+    """One command for both kinds of recipe, because a recipe is a recipe.
+
+    Two sides or one release, never both: a comparison that also named a single release would be
+    ambiguous about which of the three the unqualified names refer to, and DATA-47's whole point is
+    that neither side is ever implicit.
+    """
     try:
         recipe = recipe_for(recipe_id)
+    except KeyError as unknown:
+        parser.exit(EXIT_USAGE, f"{unknown.args[0]}\n")
+        return EXIT_USAGE
+    sides = (base, candidate)
+    if any(sides) and release_id is not None:
+        parser.exit(EXIT_USAGE, "Give --release or both of --base and --candidate, not both.\n")
+        return EXIT_USAGE
+    if any(sides) and not all(sides):
+        parser.exit(EXIT_USAGE, "A comparison needs both --base and --candidate.\n")
+        return EXIT_USAGE
+    executor = ReleaseQueryExecutor(_store_at(store_root))
+    bound = _bound(parser, recipe, params)
+    if bound is None:
+        return EXIT_USAGE
+    try:
+        result = (
+            executor.compare(
+                recipe_id,
+                base_release_id=base,
+                candidate_release_id=candidate,
+                parameters=bound,
+            )
+            if base is not None and candidate is not None
+            else executor.answer(
+                recipe_id,
+                release_id=release_id if release_id is not None else executor.current(),
+                parameters=bound,
+            )
+        )
+    except (QueryError, UnknownReleaseError) as refused:
+        parser.exit(EXIT_USAGE, f"{refused.args[0]}\n")
+        return EXIT_USAGE
+    rows = result.table.to_pylist()
+    if output == "json":
+        print(json.dumps(rows, indent=2, default=str))
+        return EXIT_OK
+    print(
+        f"{recipe.query_recipe_id} v{recipe.query_recipe_version} on "
+        f"{', '.join(result.release_ids)}"
+    )
+    _print_table([column.name for column in recipe.output_schema], rows)
+    return EXIT_OK
+
+
+def _graph(
+    parser: argparse.ArgumentParser,
+    analysis: str,
+    *,
+    store_root: Path,
+    release_id: str | None,
+    policy_id: str,
+    output: str,
+) -> int:
+    """The CORE-30 and CORE-31 analyses, which had no operator path at all until now.
+
+    One command with a named analysis rather than six commands: they take the same two arguments
+    and differ only in what they ask of the same policy view.
+    """
+    try:
+        policy = policy_for(policy_id)
     except KeyError as unknown:
         parser.exit(EXIT_USAGE, f"{unknown.args[0]}\n")
         return EXIT_USAGE
@@ -664,21 +773,36 @@ def _query(
     if opened is None:
         return EXIT_USAGE
     executor, chosen = opened
-    bound = _bound(parser, recipe, params)
-    if bound is None:
-        return EXIT_USAGE
+    graph = executor.graph_for(chosen)
     try:
-        result = executor.answer(recipe_id, release_id=chosen, parameters=bound)
+        answer = _analyse(analysis, graph, policy)
     except QueryError as refused:
         parser.exit(EXIT_USAGE, f"{refused.args[0]}\n")
         return EXIT_USAGE
-    rows = result.table.to_pylist()
     if output == "json":
-        print(json.dumps(rows, indent=2, default=str))
+        print(json.dumps(answer, indent=2, default=str))
         return EXIT_OK
-    print(f"{recipe.query_recipe_id} v{recipe.query_recipe_version} on {result.release_ids[0]}")
-    _print_table([column.name for column in recipe.output_schema], rows)
+    print(f"{analysis} of {chosen} under {policy.policy_id} v{policy.policy_version}")
+    if not answer:
+        print("  (nothing to report)")
+    for line in answer:
+        print(f"  {json.dumps(line, default=str)}")
     return EXIT_OK
+
+
+def _analyse(analysis: str, graph: ArchitectureGraph, policy: GraphPolicy) -> list[object]:
+    """Each analysis as plain data, so one printer and one serializer cover all six."""
+    if analysis == "cycles":
+        return [result.model_dump() for result in cycles(graph, policy)]
+    if analysis == "generations":
+        return [list(generation) for generation in generations(graph, policy)]
+    if analysis == "components":
+        return [result.model_dump() for result in components(graph, policy)]
+    if analysis == "condensation":
+        return [condensation(graph, policy).model_dump()]
+    if analysis == "closure":
+        return [edge.model_dump() for edge in reachability_closure(graph, policy)]
+    return [edge.model_dump() for edge in minimum_equivalent(graph, policy)]
 
 
 def _print_table(columns: list[str], rows: list[dict[str, object]]) -> None:

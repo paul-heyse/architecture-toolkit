@@ -15,7 +15,7 @@ import pytest
 from architecture_toolkit.cli import EXIT_OK, EXIT_USAGE, main
 from architecture_toolkit.domain.model import Model
 from architecture_toolkit.releases.store import ReleaseStore
-from tests.integration.conftest import Publisher
+from tests.integration.conftest import Publisher, rename_first_element
 
 CONTRACT = Path(__file__).resolve().parents[2] / "schemas" / "query-contract.schema.json"
 
@@ -332,3 +332,124 @@ def test_unverified_refuses_to_silently_replace_the_policy_it_was_given(
 
     assert exit_code.value.code == EXIT_USAGE
     assert "drop --policy impact.structural or the flag" in capsys.readouterr().err
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("DATA-47")
+def test_query_runs_a_comparison_recipe_across_two_named_sides(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    store: ReleaseStore,
+    example_model: Model,
+    publish_release: Publisher,
+) -> None:
+    """`application_ownership_across_releases` had no operator path at all until now."""
+    publish_release("rel-0001", example_model, expected_parent=None)
+    publish_release(
+        "rel-0002", rename_first_element(example_model, "Renamed"), expected_parent="rel-0001"
+    )
+
+    code = run(
+        monkeypatch,
+        "query",
+        "application_ownership_across_releases",
+        "--store",
+        str(store.root),
+        "--base",
+        "rel-0001",
+        "--candidate",
+        "rel-0002",
+    )
+
+    assert code == EXIT_OK
+    printed = capsys.readouterr().out
+    assert "on rel-0001, rel-0002" in printed
+    assert "process-1" in printed
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("DATA-47")
+@pytest.mark.parametrize(
+    ("argv", "expected"),
+    [
+        (("--base", "rel-0001"), "needs both --base and --candidate"),
+        (("--candidate", "rel-0002"), "needs both --base and --candidate"),
+        (
+            ("--release", "rel-0001", "--base", "rel-0001", "--candidate", "rel-0002"),
+            "not both",
+        ),
+    ],
+)
+def test_a_comparison_never_leaves_a_side_implicit(
+    argv: tuple[str, ...],
+    expected: str,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    published: Path,
+) -> None:
+    """DATA-47's point is that neither side is ever inferred, including from a missing flag."""
+    with pytest.raises(SystemExit) as exit_code:
+        run(
+            monkeypatch,
+            "query",
+            "application_ownership_across_releases",
+            "--store",
+            str(published),
+            *argv,
+        )
+
+    assert exit_code.value.code == EXIT_USAGE
+    assert expected in capsys.readouterr().err
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("CORE-30", "CORE-31")
+@pytest.mark.parametrize(
+    "analysis", ["generations", "components", "condensation", "closure", "reduction", "cycles"]
+)
+def test_every_structural_analysis_has_an_operator_path(
+    analysis: str,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    published: Path,
+) -> None:
+    """Each of these was callable only from a test until now."""
+    assert run(monkeypatch, "graph", analysis, "--store", str(published)) == EXIT_OK
+
+    printed = capsys.readouterr().out
+    assert f"{analysis} of rel-0001 under containment.descendants" in printed
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("CORE-31")
+def test_a_reduction_names_the_relationships_that_back_each_edge(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], published: Path
+) -> None:
+    """CORE-31 at the operator surface: derived analysis that still points at real relationships."""
+    assert (
+        run(monkeypatch, "graph", "reduction", "--store", str(published), "--format", "json")
+        == EXIT_OK
+    )
+
+    edges = json.loads(capsys.readouterr().out)
+    assert edges == [{"source": "system-1", "target": "component-1", "relationship_ids": ["rel-1"]}]
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("CORE-30")
+def test_asking_for_cycles_under_a_policy_that_does_not_report_them_is_refused(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], published: Path
+) -> None:
+    with pytest.raises(SystemExit) as exit_code:
+        run(
+            monkeypatch,
+            "graph",
+            "cycles",
+            "--store",
+            str(published),
+            "--policy",
+            "impact.structural",
+        )
+
+    assert exit_code.value.code == EXIT_USAGE
+    assert "cycle_handling=skip" in capsys.readouterr().err
