@@ -19,10 +19,10 @@ reaches the base graph. The real protection is that the handle is private and th
 three strings nobody would want to mutate.
 """
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Final
 
-import pyarrow as pa
 from datafusion import col
 
 from architecture_toolkit.domain.identifiers import (
@@ -35,12 +35,15 @@ from architecture_toolkit.domain.identifiers import (
 from architecture_toolkit.queries import _nx
 from architecture_toolkit.queries.context import ReleaseContext
 from architecture_toolkit.queries.errors import GraphError
+from architecture_toolkit.queries.policy import Direction, GraphPolicy
+from architecture_toolkit.queries.results import GraphPathResult, TraversalResult
 
 __all__ = [
     "EDGE_COLUMNS",
     "NODE_COLUMNS",
     "ArchitectureGraph",
     "build_graph",
+    "graph_from_rows",
 ]
 
 NODE_COLUMNS: Final[tuple[str, ...]] = ("element_id", "kind_id")
@@ -118,42 +121,219 @@ class ArchitectureGraph:
         """CORE-25. True, and `tests/unit/test_graph_facade.py` says why that is not enough."""
         return _nx.is_frozen(self._graph)
 
+    def _view_for(self, policy: GraphPolicy) -> _nx.Graph:
+        """The policy's read-only filtered projection (CORE-27), never a copy of the graph.
+
+        Private, because it is the one method that would hand a caller a NetworkX object and
+        CORE-24 says the raw graph does not leave. The start object is not exempt from the filter
+        either: a policy whose node kinds exclude the object being asked about has been pointed at
+        the wrong question, and silently including it would hide that.
+        """
+        return _nx.view(
+            self._graph,
+            keep_node=lambda node: policy.permits_kind(self.kind_of(node)),
+            keep_edge=lambda source, target, key: self._edge_permitted(
+                policy, (source, target, key)
+            ),
+        )
+
+    def _edge_permitted(self, policy: GraphPolicy, edge: _nx.Edge) -> bool:
+        attributes = _nx.edge_attributes(self._graph, edge)
+        return policy.permits_type(str(attributes[RELATIONSHIP_TYPE])) and policy.permits_context(
+            attributes[CONTEXT]
+        )
+
+    def traverse(self, policy: GraphPolicy, start: ElementId) -> TraversalResult:
+        """Every bounded, explainable path this policy reaches from `start` (CORE-28, CORE-29).
+
+        The caps are handed to the generator rather than applied afterwards, so `max_paths` bounds
+        the enumeration rather than trimming a list that was already built. One extra path is
+        requested so the result can say it was truncated instead of quietly looking complete.
+        """
+        if start not in set(_nx.node_ids(self._graph)):
+            message = f"{start!r} is not in release {self.release_id}"
+            raise GraphError(message)
+        view = self._view_for(policy)
+        walk = view if policy.direction is Direction.FORWARD else _nx.reverse_view(view)
+        if start not in set(_nx.node_ids(walk)):
+            return self._empty(policy, start)
+
+        reachable = _nx.descendants(walk, start)
+        found = _nx.simple_edge_paths(
+            walk, start, reachable, cutoff=policy.max_depth, limit=policy.max_paths + 1
+        )
+        truncated = len(found) > policy.max_paths
+        paths = self._explain(policy, start, found[: policy.max_paths])
+        limited, results_capped = self._cap(policy, paths)
+        return TraversalResult(
+            release_id=self.release_id,
+            policy_id=policy.policy_id,
+            policy_version=policy.policy_version,
+            start=start,
+            classification=policy.classification,
+            paths=limited,
+            truncated=truncated or results_capped,
+            limit_reached="max_paths" if truncated else ("max_results" if results_capped else None),
+        )
+
+    def reached(self, policy: GraphPolicy, start: ElementId) -> tuple[ElementId, ...]:
+        """Just the objects, for a caller that wants the answer without the justification."""
+        return self.traverse(policy, start).reached
+
+    def _empty(self, policy: GraphPolicy, start: ElementId) -> TraversalResult:
+        return TraversalResult(
+            release_id=self.release_id,
+            policy_id=policy.policy_id,
+            policy_version=policy.policy_version,
+            start=start,
+            classification=policy.classification,
+        )
+
+    def _explain(
+        self, policy: GraphPolicy, start: ElementId, found: tuple[tuple[_nx.Edge, ...], ...]
+    ) -> tuple[GraphPathResult, ...]:
+        """Turn edge walks into results, stopping each at the first stop kind it passes.
+
+        Truncating here rather than while enumerating is deliberate: `all_simple_edge_paths` has no
+        stop-node parameter, and pre-filtering the view would remove a stop-kind object from the
+        answer entirely instead of ending paths at it. Two walks can truncate to the same path, so
+        the results are de-duplicated on their relationship sequence.
+        """
+        seen: dict[tuple[str, ...], GraphPathResult] = {}
+        for walk in found:
+            steps = self._until_stop(policy, walk)
+            if not steps:
+                continue
+            relationship_ids = tuple(key for _, _, key in steps)
+            if relationship_ids in seen:
+                continue
+            node_ids = (start, *(self._step_target(policy, step) for step in steps))
+            seen[relationship_ids] = GraphPathResult(
+                release_id=self.release_id,
+                policy_id=policy.policy_id,
+                policy_version=policy.policy_version,
+                start=start,
+                end=node_ids[-1],
+                node_ids=node_ids,
+                relationship_ids=relationship_ids,
+                relationship_types=tuple(
+                    self.type_of(self._as_stored(policy, step)) for step in steps
+                ),
+                depth=len(steps),
+                classification=policy.classification,
+            )
+        return tuple(seen.values())
+
+    def _until_stop(self, policy: GraphPolicy, walk: tuple[_nx.Edge, ...]) -> tuple[_nx.Edge, ...]:
+        if not policy.stop_kinds:
+            return walk
+        kept: list[_nx.Edge] = []
+        for step in walk:
+            kept.append(step)
+            if self.kind_of(self._step_target(policy, step)) in policy.stop_kinds:
+                break
+        return tuple(kept)
+
+    def _step_target(self, policy: GraphPolicy, step: _nx.Edge) -> ElementId:
+        """Where this step arrives, in traversal order rather than in stored orientation."""
+        del policy
+        return step[1]
+
+    def _as_stored(self, policy: GraphPolicy, step: _nx.Edge) -> _nx.Edge:
+        """The edge as the graph holds it, so its attributes can be read.
+
+        A reverse traversal walks a reversed view, where a step reads `(target, source, key)`. The
+        relationship ID is the same either way; the attributes live on the stored orientation.
+        """
+        source, target, key = step
+        return (
+            (source, target, key)
+            if policy.direction is Direction.FORWARD
+            else (
+                target,
+                source,
+                key,
+            )
+        )
+
+    def _cap(
+        self, policy: GraphPolicy, paths: tuple[GraphPathResult, ...]
+    ) -> tuple[tuple[GraphPathResult, ...], bool]:
+        """Bound the number of distinct objects reported, not only the number of paths."""
+        kept: list[GraphPathResult] = []
+        endpoints: dict[ElementId, None] = {}
+        for path in paths:
+            if path.end not in endpoints and len(endpoints) == policy.max_results:
+                return tuple(kept), True
+            endpoints.setdefault(path.end, None)
+            kept.append(path)
+        return tuple(kept), False
+
 
 def build_graph(context: ReleaseContext) -> ArchitectureGraph:
-    """Project one release into a disposable graph (CORE-22, CORE-23, DATA-16)."""
+    """Project one release into a disposable graph (CORE-22, CORE-23, DATA-16).
+
+    Two bounded projections out of the session the recipes use, through the expression API rather
+    than SQL so a side-qualified table name never has to be interpolated into a query string.
+    """
     nodes = context.table("elements").select(*(col(name) for name in NODE_COLUMNS))
     relationships = context.table("relationships").select(*(col(name) for name in EDGE_COLUMNS))
-    return _assemble(context, nodes.to_arrow_table(), relationships.to_arrow_table())
-
-
-def _assemble(
-    context: ReleaseContext, nodes: pa.Table, relationships: pa.Table
-) -> ArchitectureGraph:
-    element_ids = {str(row["element_id"]) for row in nodes.to_pylist()}
-    graph = _nx.build(
-        {"release_id": context.scope.release_id, "model_id": context.scope.model_id},
-        ((str(row["element_id"]), {KIND: str(row[KIND])}) for row in nodes.to_pylist()),
-        (
+    return graph_from_rows(
+        release_id=context.scope.release_id,
+        model_id=context.scope.model_id,
+        model_digest=context.scope.model_digest,
+        nodes=(
+            (str(row["element_id"]), str(row[KIND])) for row in nodes.to_arrow_table().to_pylist()
+        ),
+        edges=(
             (
                 str(row["source_element_id"]),
                 str(row["target_element_id"]),
                 str(row["relationship_id"]),
-                {RELATIONSHIP_TYPE: str(row[RELATIONSHIP_TYPE]), CONTEXT: _optional(row[CONTEXT])},
+                str(row[RELATIONSHIP_TYPE]),
+                _optional(row[CONTEXT]),
             )
-            for row in relationships.to_pylist()
+            for row in relationships.to_arrow_table().to_pylist()
+        ),
+    )
+
+
+def graph_from_rows(
+    *,
+    release_id: ReleaseId,
+    model_id: ModelId,
+    model_digest: SemanticDigest,
+    nodes: Iterable[tuple[ElementId, str]],
+    edges: Iterable[tuple[ElementId, ElementId, RelationshipId, str, str | None]],
+) -> ArchitectureGraph:
+    """Assemble the graph from already-projected rows.
+
+    Separate from `build_graph` so the projection can be tested without a store, and so the one
+    place that decides what a node and an edge carry is not also the place that talks to
+    DataFusion.
+    """
+    node_rows: list[tuple[ElementId, _nx.Data]] = [
+        (element_id, {KIND: kind_id}) for element_id, kind_id in nodes
+    ]
+    element_ids = {element_id for element_id, _ in node_rows}
+    graph = _nx.build(
+        {"release_id": release_id, "model_id": model_id},
+        node_rows,
+        (
+            (source, target, relationship_id, {RELATIONSHIP_TYPE: type_id, CONTEXT: context_id})
+            for source, target, relationship_id, type_id, context_id in edges
         ),
     )
     invented = sorted(set(_nx.node_ids(graph)) - element_ids)
     if invented:
         message = (
-            f"release {context.scope.release_id} has relationship endpoints that are not elements: "
-            f"{invented}"
+            f"release {release_id} has relationship endpoints that are not elements: {invented}"
         )
         raise GraphError(message)
     return ArchitectureGraph(
-        release_id=context.scope.release_id,
-        model_id=context.scope.model_id,
-        model_digest=context.scope.model_digest,
+        release_id=release_id,
+        model_id=model_id,
+        model_digest=model_digest,
         _graph=_nx.freeze(graph),
     )
 

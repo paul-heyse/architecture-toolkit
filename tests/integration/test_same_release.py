@@ -11,13 +11,12 @@ weight are the ones about an *older* release, where a surface that resolved late
 first check and fail these.
 """
 
-import pyarrow as pa
 import pytest
 
 from architecture_toolkit.domain.model import Model, Relationship
 from architecture_toolkit.queries.context import ComparisonContext, ReleaseContext
 from architecture_toolkit.queries.errors import GraphError
-from architecture_toolkit.queries.graph import _assemble, build_graph
+from architecture_toolkit.queries.graph import build_graph, graph_from_rows
 from architecture_toolkit.releases.store import ReleaseStore
 from tests.integration.conftest import Publisher, rename_first_element
 
@@ -135,41 +134,22 @@ def test_each_side_of_a_comparison_projects_its_own_graph(
     assert set(candidate_graph.relationship_ids()) - set(base_graph.relationship_ids()) == {"rel-9"}
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 @pytest.mark.requirement("CORE-22", "CORE-23")
-def test_a_relationship_pointing_at_no_element_is_refused_rather_than_inventing_a_node(
-    store: ReleaseStore, example_model: Model, publish_release: Publisher
-) -> None:
+def test_a_relationship_pointing_at_no_element_is_refused_rather_than_inventing_a_node() -> None:
     """`add_edges_from` invents a node for an endpoint it has not seen; the builder must not.
 
     Publication runs the cross-record layer, so this release cannot be produced through
-    `architecture publish` — which is exactly why the guard is worth having. It is reached by
-    calling the assembly step directly with a doctored edge table, the way a store written by
-    something other than this toolkit would present one. A graph that quietly grew a node would
-    report an object the release does not contain, which is a same-release violation of a subtler
-    kind than reading the wrong version.
+    `architecture publish` — which is exactly why the guard is worth having, for a store written
+    by something other than this toolkit. A graph that quietly grew a node would report an object
+    the release does not contain, which is a same-release violation of a subtler kind than reading
+    the wrong version.
     """
-    manifest = publish_release("rel-0001", example_model, expected_parent=None)
-    context = ReleaseContext.for_release(store, manifest)
-    nodes = context.arrow("SELECT element_id, kind_id FROM elements")
-    dangling = pa.table(
-        {
-            "source_element_id": ["system-1"],
-            "target_element_id": ["ghost-1"],
-            "relationship_id": ["rel-99"],
-            "relationship_type_id": ["depends_on"],
-            "context_id": [None],
-        },
-        schema=pa.schema(
-            [
-                pa.field("source_element_id", pa.string()),
-                pa.field("target_element_id", pa.string()),
-                pa.field("relationship_id", pa.string()),
-                pa.field("relationship_type_id", pa.string()),
-                pa.field("context_id", pa.string()),
-            ]
-        ),
-    )
-
     with pytest.raises(GraphError, match="ghost-1"):
-        _assemble(context, nodes, dangling)
+        graph_from_rows(
+            release_id="rel-0001",
+            model_id="sample-service",
+            model_digest="sha256:" + "0" * 64,
+            nodes=[("system-1", "software.system")],
+            edges=[("system-1", "ghost-1", "rel-99", "depends_on", None)],
+        )

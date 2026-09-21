@@ -26,8 +26,15 @@ from architecture_toolkit.queries.errors import (
     UnknownRecipeError,
 )
 from architecture_toolkit.queries.execution import QueryResult, execute
-from architecture_toolkit.queries.graph import ArchitectureGraph, build_graph
+from architecture_toolkit.queries.graph import ArchitectureGraph, build_graph, graph_from_rows
 from architecture_toolkit.queries.plans import PlanEvidence, capture, write_evidence
+from architecture_toolkit.queries.policy import (
+    POLICIES,
+    CycleHandling,
+    Direction,
+    GraphPolicy,
+    policy_for,
+)
 from architecture_toolkit.queries.recipes import (
     RECIPES,
     ColumnSpec,
@@ -36,15 +43,31 @@ from architecture_toolkit.queries.recipes import (
     TableInput,
     recipe_for,
 )
+from architecture_toolkit.queries.results import (
+    GraphPathResult,
+    PathClassification,
+    TraversalResult,
+)
+from architecture_toolkit.queries.traversals import (
+    find_interface_dependents,
+    find_unverified_dependencies,
+    trace_requirement_implementation,
+)
 
 __all__ = [
+    "POLICIES",
     "RECIPES",
     "ArchitectureGraph",
     "ColumnSpec",
     "ComparisonContext",
+    "CycleHandling",
+    "Direction",
     "GraphError",
+    "GraphPathResult",
+    "GraphPolicy",
     "ParameterError",
     "ParameterSpec",
+    "PathClassification",
     "PlanEvidence",
     "PolicyError",
     "QueryError",
@@ -56,11 +79,17 @@ __all__ = [
     "ResultContractError",
     "Side",
     "TableInput",
+    "TraversalResult",
     "UnknownPolicyError",
     "UnknownRecipeError",
     "build_graph",
     "capture",
     "execute",
+    "find_interface_dependents",
+    "find_unverified_dependencies",
+    "graph_from_rows",
+    "policy_for",
     "recipe_for",
+    "trace_requirement_implementation",
     "write_evidence",
 ]

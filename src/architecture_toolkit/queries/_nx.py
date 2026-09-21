@@ -46,6 +46,7 @@ __all__ = [
     "node_attributes",
     "node_cycles",
     "node_ids",
+    "reverse_view",
     "simple_edge_paths",
     "strongly_connected",
     "topological_generations",
@@ -146,6 +147,15 @@ def view(
     return nx.subgraph_view(  # pyrefly: ignore[no-matching-overload]
         graph, filter_node=keep_node, filter_edge=keep_edge
     )
+
+
+def reverse_view(graph: Graph) -> Graph:
+    """The same graph with every relationship followed backwards, as a view rather than a copy.
+
+    `copy=False` is what makes it a view; the default copies, which would defeat CORE-27's point
+    about not duplicating graph state for every policy.
+    """
+    return graph.reverse(copy=False)
 
 
 def simple_edge_paths(

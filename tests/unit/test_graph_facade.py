@@ -25,10 +25,16 @@ READ_ONLY_SURFACE = frozenset(
         "context_of",
         "relationships_between",
         "is_frozen",
+        "traverse",
+        "reached",
     }
 )
-"""Every public name on the facade. CORE-24 says there is no general mutation API; this is the
-list that says so, and the test below fails if a method is added without being classified."""
+"""Every public name on the facade.
+
+CORE-24 says there is no general mutation API, and also that the raw graph is encapsulated — so
+this list is two statements at once: nothing here mutates, and nothing here returns a NetworkX
+object. `_view_for` is private for the second reason. The test below fails if a method is added
+without that decision being made."""
 
 TRAVERSAL_ATTRIBUTES = frozenset({"kind_id", "relationship_type_id", "context_id"})
 """The three `core.md` permits: object kind, relationship type, selected traversal context."""
