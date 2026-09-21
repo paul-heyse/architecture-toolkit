@@ -5,8 +5,10 @@ sibling filename; the ArchiMate set does not, and that difference is what makes 
 a general mechanism rather than a BPMN convenience.
 
 These load real vendored files that `scripts/bootstrap_tools.py` fetches into gitignored
-`.tools/`, so they skip rather than fail when the vendor step has not run — a missing vendor
-artifact is an environment fact, not a defect, and CI bootstraps before pytest.
+`.tools/`, so they skip rather than fail on a fresh checkout — a missing vendor artifact is an
+environment fact, not a defect. CI vendors before it tests, and `scripts/check_evidence.py`
+refuses a run in which a requirement-marked test skipped; the first version of this sentence
+claimed the ordering the workflow did not have, and all six of these skipped in CI as a result.
 """
 
 import json

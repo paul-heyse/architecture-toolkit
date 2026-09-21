@@ -25,11 +25,18 @@ jobs:
           python-version: 3.14.7
           enable-cache: true
       - run: uv sync --locked --all-groups
+      # Before pytest, not after. `.tools/` is gitignored and nothing caches it, so when this ran
+      # near the end of the job every test that needs a vendored standards schema skipped — and a
+      # skip is green. Thirteen tests carrying CORE-40/41/42 markers proved nothing for two
+      # commits while the build passed. The cost of this position is that opengroup.org and
+      # w3.org are now on the critical path for the test step, not only the vendor step.
+      - run: uv run python scripts/bootstrap_tools.py
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pyrefly check
       - run: uv run pyrefly coverage check --strict --fail-under 100
       - run: uv run pytest --junitxml=.runtime/junit.xml
+      - run: uv run python scripts/check_evidence.py
       - run: uv run python scripts/check_schema.py
       - run: uv run python scripts/check_cli_docs.py
       - run: uv run python scripts/check_plan_coverage.py
@@ -51,7 +58,6 @@ jobs:
       - name: Install Graphviz (macOS)
         if: runner.os == 'macOS'
         run: brew install graphviz
-      - run: uv run python scripts/bootstrap_tools.py
       - run: uv run python scripts/qualify_tools.py
       - name: Archive qualification evidence
         if: always()

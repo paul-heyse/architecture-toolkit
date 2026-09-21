@@ -2,8 +2,14 @@
 
 The schema set used here is the BPMN 2.0.2 one `tools.lock.json` already pins. It is fetched by
 `scripts/bootstrap_tools.py` into gitignored `.tools/`, so these tests skip rather than fail when
-the vendor step has not run — a missing vendor artifact is an environment fact, not a defect, and
-`.github/workflows/ci.yml` runs the bootstrap before pytest.
+the vendor step has not run: on a fresh checkout a missing vendor artifact is an environment fact,
+not a defect.
+
+**A skip is not free, and this file is why.** CI ran `pytest` twelve steps before the bootstrap, so
+every test below skipped on both platforms for two commits while the build stayed green. The
+workflow now vendors first, and `scripts/check_evidence.py` refuses a run in which any
+requirement-marked test skipped — because the earlier version of this paragraph asserted the
+ordering as fact and was wrong, and nothing noticed.
 """
 
 import hashlib
