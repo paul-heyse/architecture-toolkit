@@ -12,17 +12,23 @@ from hypothesis import strategies as st
 
 from architecture_toolkit.domain.model import Model
 from architecture_toolkit.domain.semantics import model_digest
-from architecture_toolkit.projections.summary import ModelSummary, summary_of
-from architecture_toolkit.projections.text import bundle_for, environment, render
-from tests.strategies.relations import coherent_models
+from architecture_toolkit.projections.summary import summary_of
+from architecture_toolkit.projections.text import (
+    bundle_for,
+    environment,
+    md_escape,
+    render,
+)
+from tests.strategies.relations import full_models
 
 SUMMARY = "model-summary.md.j2"
+_FIXED_BUNDLE_DIGEST = bundle_for(environment(), SUMMARY).digest
 
 
 @pytest.mark.property
 @pytest.mark.slow
 @pytest.mark.requirement("CORE-33", "CORE-36", "CORE-45")
-@given(model=coherent_models())
+@given(model=full_models())
 def test_the_same_model_always_renders_the_same_bytes(model: Model) -> None:
     """Determinism, over generated models rather than over the one fixture.
 
@@ -46,7 +52,7 @@ def test_authored_order_is_not_generated_order(data: st.DataObject) -> None:
     digest — for an architecture that had not changed, which is the layout-versus-semantics
     confusion this toolkit exists to prevent, arriving through the back door.
     """
-    model = data.draw(coherent_models())
+    model = data.draw(full_models())
     # Rebuilt through validation rather than `model_copy(update=...)`, which
     # `rules/no-validation-bypass.yml` forbids: CORE-10 says a candidate comes from the validated
     # path, and a test that took the shortcut would be demonstrating the property on an object the
@@ -68,12 +74,47 @@ def test_authored_order_is_not_generated_order(data: st.DataObject) -> None:
 @pytest.mark.property
 @pytest.mark.slow
 @pytest.mark.requirement("CORE-34", "CORE-36", "CORE-45")
-@given(model=coherent_models())
+@given(model=full_models())
 def test_the_bundle_digest_is_a_property_of_the_templates_not_of_the_data(model: Model) -> None:
-    """Whatever is rendered, the bundle behind it is the same two files and the same digest."""
+    """Whatever is rendered, the bundle behind it is the same two files and the same digest.
+
+    Every assertion here used to be independent of the drawn model: it rendered, discarded the
+    result, and compared two bundle digests and a field set — so a hundred Hypothesis examples
+    re-asserted a constant. The render's output is what the digest has to be independent *of*, so
+    it is now compared across draws.
+    """
     env = environment()
     bundle = bundle_for(env, SUMMARY)
-    render(env, SUMMARY, summary_of(model))
+    rendered = render(env, SUMMARY, summary_of(model))
+
     assert bundle_for(env, SUMMARY).digest == bundle.digest
     assert bundle.paths == ("_macros.md.j2", SUMMARY)
-    assert set(ModelSummary.model_fields) >= {"model_id", "elements", "relationships"}
+    assert bundle.digest == _FIXED_BUNDLE_DIGEST, (
+        "the bundle digest moved while rendering generated data; it is a property of the "
+        "templates and the filters, and of nothing a model can say"
+    )
+    # Through the filter, not raw: an identifier containing `_` renders escaped, which is
+    # `md_escape` working. Asserting the raw id would be asserting the filter is absent.
+    assert rendered.startswith(f"# {md_escape(model.model_id)}")
+
+
+@pytest.mark.property
+@pytest.mark.slow
+@pytest.mark.requirement("CORE-32", "CORE-45", "PROJ-03")
+@given(model=full_models())
+def test_every_view_a_model_declares_reaches_the_generated_artifact(model: Model) -> None:
+    """The branch no property covered until now.
+
+    The three properties drew `coherent_models()`, which never generates a view, so every one of
+    them rendered the template's "This model defines no views" branch. The views table, the member
+    count and the `md_escape` on a view title had been exercised by exactly one fixture.
+    """
+    rendered = render(environment(), SUMMARY, summary_of(model))
+
+    if not model.views:
+        assert "defines no views" in rendered
+        return
+    assert "defines no views" not in rendered
+    for view in model.views:
+        assert f"| {view.view_id} |" in rendered
+        assert str(view.member_count) in rendered

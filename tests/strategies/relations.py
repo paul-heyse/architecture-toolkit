@@ -24,6 +24,7 @@ from architecture_toolkit.domain.references import (
     LinkRole,
     Reference,
     ReferenceLink,
+    ReferenceTarget,
     RelationshipReference,
     ReleaseReference,
 )
@@ -104,10 +105,18 @@ def coherent_models(draw: st.DrawFn) -> Model:
 MAX_PER_COLLECTION = 3
 
 
-def _subjects(pool: list[Element], relations: list[Relationship]) -> st.SearchStrategy[object]:
-    """Every `ReferenceTarget` variant, addressed at records that exist in the model."""
+def _subjects(
+    pool: list[Element], relations: list[Relationship]
+) -> st.SearchStrategy[ReferenceTarget]:
+    """Every `ReferenceTarget` variant, addressed at records that exist in the model.
+
+    Typed as the union rather than as `object`, so a caller that stores a draw in a
+    `ReferenceTarget` variable type-checks. `object` was wide enough while the only consumer
+    passed it straight into `st.builds`, and stopped being when one needed to choose between this
+    and a constructed `ElementReference`.
+    """
     element_pool = st.sampled_from([element.element_id for element in pool])
-    variants: list[st.SearchStrategy[object]] = [
+    variants: list[st.SearchStrategy[ReferenceTarget]] = [
         st.builds(ElementReference, element_id=element_pool),
         st.builds(FieldReference, element_id=element_pool, field_path=st.just("detail")),
         st.builds(ReleaseReference, release_id=element_ids),
@@ -161,20 +170,46 @@ def reference_links(
     )
 
 
+@st.composite
 def notation_bindings(
-    *, pool: list[Element], relations: list[Relationship], model_id: str
-) -> st.SearchStrategy[NotationBinding]:
-    return st.builds(
-        NotationBinding,
-        binding_id=element_ids,
-        model_id=st.just(model_id),
-        subject=_subjects(pool, relations),
-        notation=st.sampled_from(list(Notation)),
-        notation_type=names,
-        notation_object_id=st.text(min_size=1, max_size=40),
-        view_id=st.none() | element_ids,
-        mapping_profile_version=versions,
-        link_target=descriptions,
+    draw: st.DrawFn,
+    *,
+    pool: list[Element],
+    relations: list[Relationship],
+    model_id: str,
+    definitions: list[ViewDefinition] | None = None,
+) -> NotationBinding:
+    """A binding, optionally placed in one of the model's own views.
+
+    `view_id` used to be `st.none() | element_ids` — a free identifier, so a generated binding
+    named a view that did not exist and `binding-view-resolves` fired on 32 of 60 models. A
+    binding whose view is unresolvable is a model the toolkit refuses, so no property built on
+    these was seeing data the system would accept.
+
+    When a view is chosen, the notation and subject follow from it rather than being drawn
+    independently: `binding-sits-in-the-view-it-names` requires both to agree, and drawing them
+    freely would trade one guaranteed diagnostic for two.
+    """
+    view = draw(st.none() | st.sampled_from(definitions)) if definitions else None
+    subject: ReferenceTarget
+    if view is not None and view.included_element_ids:
+        subject = ElementReference(element_id=draw(st.sampled_from(view.included_element_ids)))
+        notation = view.notation
+    else:
+        view = None
+        subject = draw(_subjects(pool, relations))
+        notation = draw(st.sampled_from(list(Notation)))
+
+    return NotationBinding(
+        binding_id=draw(element_ids),
+        model_id=model_id,
+        subject=subject,
+        notation=notation,
+        notation_type=draw(names),
+        notation_object_id=draw(st.text(min_size=1, max_size=40)),
+        view_id=view.view_id if view is not None else None,
+        mapping_profile_version=draw(versions),
+        link_target=draw(descriptions),
     )
 
 
@@ -182,15 +217,24 @@ def notation_bindings(
 def views(
     draw: st.DrawFn, *, pool: list[Element], relations: list[Relationship], model_id: str
 ) -> ViewDefinition:
-    """A view whose members are drawn from the model's own elements and relationships.
+    """A view that satisfies every rule `validation/rules/views.py` applies to it.
 
-    Members come from the pool rather than from free identifiers, because a view naming objects
-    that do not exist is what `validation/rules/views.py` refuses — a strategy that generated one
-    by default would make every property test carry an invalid model.
+    The first version of this drew members from the model's pool and stopped there, which was not
+    enough: measured over sixty generated models it produced 48 `MEMBER_ENDPOINT_MISSING` and 3
+    `INDUCED_MEMBERSHIP_STALE` diagnostics. A strategy whose output its own wave's rules reject is
+    not a strategy — every property built on it carries a model the toolkit would refuse, so the
+    property proves something about data the system never sees.
 
-    Notation is drawn first and the view type from what that notation can express, so the
-    record-local coherence validator never rejects a draw. Filtering after the fact would work and
-    would waste most of them.
+    So membership is built in dependency order rather than drawn independently:
+
+    1. elements first, from the pool;
+    2. relationships only from those whose *both* endpoints are already members, which is what
+       `view-member-endpoints-included` requires and what a diagram can actually draw;
+    3. and for an `INDUCED` view, exactly the implied set — because that is what `induced` claims,
+       and `view-induced-membership-complete` checks the claim.
+
+    Notation is drawn before view type so the record-local coherence validator never rejects a
+    draw. Filtering after the fact would work and would waste most of them.
     """
     notation = draw(st.sampled_from(list(Notation)))
     view_type = draw(st.sampled_from(sorted(VIEW_TYPES_BY_NOTATION[notation], key=str)))
@@ -207,6 +251,36 @@ def views(
             max_size=0 if policy is MembershipPolicy.EXPLICIT else 2,
         )
     )
+
+    members = tuple(
+        draw(
+            st.lists(
+                st.sampled_from([element.element_id for element in pool]),
+                max_size=MAX_PER_COLLECTION,
+                unique=True,
+            )
+        )
+    )
+    drawable = [
+        relation
+        for relation in relations
+        if relation.source_element_id in members and relation.target_element_id in members
+    ]
+    if policy is MembershipPolicy.INDUCED:
+        edges = tuple(relation.relationship_id for relation in drawable)
+    else:
+        edges = tuple(
+            draw(
+                st.lists(
+                    st.sampled_from([relation.relationship_id for relation in drawable]),
+                    max_size=MAX_PER_COLLECTION,
+                    unique=True,
+                )
+            )
+            if drawable
+            else []
+        )
+
     return ViewDefinition(
         view_id=draw(element_ids),
         model_id=model_id,
@@ -217,26 +291,8 @@ def views(
         title=draw(names),
         description=draw(descriptions),
         membership_policy=policy,
-        included_element_ids=tuple(
-            draw(
-                st.lists(
-                    st.sampled_from([element.element_id for element in pool]),
-                    max_size=MAX_PER_COLLECTION,
-                    unique=True,
-                )
-            )
-        ),
-        included_relationship_ids=tuple(
-            draw(
-                st.lists(
-                    st.sampled_from([relation.relationship_id for relation in relations]),
-                    max_size=MAX_PER_COLLECTION,
-                    unique=True,
-                )
-            )
-            if relations
-            else []
-        ),
+        included_element_ids=members,
+        included_relationship_ids=edges,
         perspective=draw(descriptions),
         filter=tuple(rules),
         layout_profile_id=draw(st.none() | element_ids),
@@ -280,18 +336,25 @@ def full_models(draw: st.DrawFn) -> Model:
             unique_by=lambda interaction: interaction.interaction_id,
         )
     )
-    bindings = draw(
-        st.lists(
-            notation_bindings(pool=pool, relations=relations, model_id=model.model_id),
-            max_size=MAX_PER_COLLECTION,
-            unique_by=lambda binding: binding.binding_id,
-        )
-    )
+    # Views before bindings, because a binding may name one and everything about that binding
+    # then follows from the view it names.
     definitions = draw(
         st.lists(
             views(pool=pool, relations=relations, model_id=model.model_id),
             max_size=MAX_PER_COLLECTION,
             unique_by=lambda view: view.view_id,
+        )
+    )
+    bindings = draw(
+        st.lists(
+            notation_bindings(
+                pool=pool,
+                relations=relations,
+                model_id=model.model_id,
+                definitions=definitions,
+            ),
+            max_size=MAX_PER_COLLECTION,
+            unique_by=lambda binding: binding.binding_id,
         )
     )
     return Model.model_validate(

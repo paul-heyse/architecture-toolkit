@@ -46,20 +46,21 @@ from tests.strategies.relations import full_models
 # record gained a field, which changes what the preimage covers and must be stated in the commit
 # that does it.
 #
-# It has moved four times: three in W7a and one in the hardening pass after it.
+# It has moved five times: three in W7a and two in the hardening pass after it.
 #
 # At W3, when `Element`
 # and `Relationship` gained DATA-13's `extensions`. At W7a, when `Model` gained `views` and the
 # preimage began covering an empty collection where it had covered nothing. And immediately after,
 # when the example itself gained a view — a change to the *fixture*, not to the schema. And
-# again when the example gained a second view, because its BPMN binding named a C4 one. Separating
-# them keeps each move auditable: a reader can tell a schema change from a fixture change from a
-# fixture *correction*.
+# again when the example gained a second view, because its BPMN binding named a C4 one; and once
+# more when it gained one view per remaining notation, so W7b has something to generate from in
+# each. Separating them keeps each move auditable: a reader can tell a schema change from a
+# fixture change from a fixture *correction* from a fixture *extension*.
 #
 # Nothing has been published in any of the three, so no migration was owed and
 # `SEMANTIC_HASH_VERSION` stays at 1. The first release is what makes a digest durable, and there
 # has not been one.
-EXAMPLE_DIGEST = "sha256:dbcdc6a371bfe2330cfbac3e974756a054bb668121be74c4d8cd58f8f903f640"
+EXAMPLE_DIGEST = "sha256:3af33ca6b8391f55fb41c16707152332f2287e57c3adb25be101139a424396b4"
 
 
 def _model(source: dict[str, Any]) -> Model:

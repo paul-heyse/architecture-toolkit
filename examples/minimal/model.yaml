@@ -228,3 +228,38 @@ views:
     membership_policy: explicit
     included_element_ids: [process-1]
     publication_state: draft
+
+  # One per remaining notation, so W7b has something to generate from in each and
+  # `VIEW_TYPES_BY_NOTATION` is exercised against a real model rather than only in unit tests.
+  - view_id: view-3
+    model_id: sample-service
+    view_type: archimate_layered
+    notation: archimate
+    audience: enterprise architecture
+    title: Capability to technology
+    description: The layered view, from business capability down to the deployment node.
+    membership_policy: explicit
+    included_element_ids: [capability-1, process-1, system-1, component-1, deployment-1]
+    included_relationship_ids: [rel-1, rel-6]
+    publication_state: published
+
+  - view_id: view-4
+    model_id: sample-service
+    view_type: uml_sequence
+    notation: uml
+    title: Request handoff
+    description: The handoff interaction, as a sequence.
+    membership_policy: explicit
+    included_element_ids: [role-1, process-1, system-1]
+    publication_state: draft
+
+  - view_id: view-5
+    model_id: sample-service
+    view_type: erd
+    notation: erd
+    scope: schema-1
+    title: Request payload schema
+    description: The data schema, as an entity-relationship view.
+    membership_policy: explicit
+    included_element_ids: [schema-1, object-1]
+    publication_state: draft
