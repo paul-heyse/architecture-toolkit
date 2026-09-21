@@ -22,7 +22,7 @@ declaring one would be a boundary with nothing on the other side of it.
 """
 
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 
 from architecture_toolkit.changes.diff import model_changes
@@ -211,7 +211,7 @@ class ArchitectureOperations:
     ) -> ArchitectureRelease:
         """Stage and write the manifest without exposing it (DATA-38)."""
         self._refuse_unready(change_set, require_review=False)
-        return persist(request)
+        return persist(self._carrying(request, change_set))
 
     def publish(
         self,
@@ -228,7 +228,24 @@ class ArchitectureOperations:
         required, an absent one is not an approval.
         """
         self._refuse_unready(change_set, require_review=require_review)
-        return publish(request)
+        return publish(self._carrying(request, change_set))
+
+    @staticmethod
+    def _carrying(
+        request: PublicationRequest, change_set: ArchitectureChangeSet | None
+    ) -> PublicationRequest:
+        """Render the change record into the request so step seven can pin its digest.
+
+        `new_release_id` is filled in here and nowhere else: until this moment the record is a
+        preview describing a release that does not exist, and the release it describes is the one
+        being published right now.
+        """
+        if change_set is None:
+            return request
+        published = change_set.model_validate(
+            dict(change_set) | {"new_release_id": request.candidate.release_id}
+        )
+        return replace(request, change_report=published.model_dump_json(indent=2))
 
     @staticmethod
     def _refuse_unready(change_set: ArchitectureChangeSet | None, *, require_review: bool) -> None:

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from architecture_toolkit.changes.audit import compared_tables, storage_disagreements
 from architecture_toolkit.changes.errors import ChangeError
 from architecture_toolkit.changes.operations import ArchitectureOperations
 from architecture_toolkit.changes.record import (
@@ -16,7 +17,7 @@ from architecture_toolkit.changes.record import (
     ReviewDecision,
 )
 from architecture_toolkit.changes.records import ModelChanges
-from architecture_toolkit.changes.releases import diff_releases
+from architecture_toolkit.changes.releases import diff_releases, identity_disagreements
 from architecture_toolkit.contracts import SCHEMA_FAMILIES, emit, emittable
 from architecture_toolkit.domain.commands import CHANGE_SET_ADAPTER, CommandError
 from architecture_toolkit.domain.semantics import MODEL_COLLECTIONS
@@ -227,6 +228,14 @@ def main() -> int:
         action="store_true",
         help="Also print layout and display changes, which are never part of the narrative.",
     )
+    difference.add_argument(
+        "--cross-check",
+        action="store_true",
+        help=(
+            "Also check the narrative against DataFusion and the Delta change feed (DATA-57). "
+            "Storage is never the narrative; disagreeing with it means one of them is wrong."
+        ),
+    )
     difference.add_argument("--format", choices=("human", "json"), default="human")
 
     reviewing = sub.add_parser("review", help="Record a decision on a change report")
@@ -380,6 +389,7 @@ def main() -> int:
             base=args.base,
             candidate=args.candidate,
             include_presentation=args.include_presentation,
+            cross_check=args.cross_check,
             output=args.format,
         )
 
@@ -1184,12 +1194,15 @@ def _diff(
     base: str,
     candidate: str,
     include_presentation: bool,
+    cross_check: bool,
     output: str,
 ) -> int:
     """`preview semantic diff` between two published releases (DATA-26)."""
     store = _store_at(store_root)
     try:
-        changes = diff_releases(store, store.read_manifest(base), store.read_manifest(candidate))
+        base_manifest = store.read_manifest(base)
+        candidate_manifest = store.read_manifest(candidate)
+        changes = diff_releases(store, base_manifest, candidate_manifest)
     except (ChangeError, ReleaseError, UnknownReleaseError) as refused:
         parser.exit(EXIT_USAGE, f"{refused.args[0]}\n")
         return EXIT_USAGE
@@ -1198,6 +1211,31 @@ def _diff(
         return EXIT_OK
     print(f"{base} -> {candidate}")
     _print_changes(changes, include_presentation=include_presentation)
+    if not cross_check:
+        return EXIT_OK
+    return _cross_check(store, base_manifest, candidate_manifest)
+
+
+def _cross_check(
+    store: ReleaseStore, base: ArchitectureRelease, candidate: ArchitectureRelease
+) -> int:
+    """Two other readings of the same pair, neither of which is the narrative (DATA-57).
+
+    Reported separately from the diff because agreement is not part of the answer: what changed is
+    what the digest says changed, and these say whether two independent surfaces still describe the
+    same release pair the same way.
+    """
+    engine = identity_disagreements(store, base, candidate)
+    storage = storage_disagreements(store, base, candidate)
+    tables = compared_tables(base, candidate)
+    for message in (*engine, *storage):
+        print(f"  DISAGREEMENT {message}")
+    if engine or storage:
+        return EXIT_DIAGNOSTICS
+    print(
+        f"  cross-check: DataFusion agrees, and the Delta change feed agrees over "
+        f"{len(tables)} rewritten table(s)"
+    )
     return EXIT_OK
 
 

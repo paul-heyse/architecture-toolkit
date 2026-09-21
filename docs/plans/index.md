@@ -68,7 +68,10 @@ Each resolves a dependency inversion in the naive reading of M1..M6.
 manifest to pin a semantic digest per table, and CORE-20, CORE-21 and DATA-45 all reference the
 hash before any change record exists. One versioned implementation is delivered in W2; W3 extends
 it to table level, W4 pins it, W6 builds the change narrative on it. The **hash primitive lives in
-`domain/`** because it is the canonical normal form; diff and classification stay in `releases/`.
+`domain/`** because it is the canonical normal form. Diff and classification were planned for
+`releases/` and landed in `changes/`, a layer above it: W5 made `queries/` import `releases/`, so a
+change record living in `releases/` could not carry the `TraversalResult` DATA-26 asks for without
+a circular import.
 
 **DATA-29..31 and DATA-41 land in W1.** Status dimensions, explicit behavior and ERD semantics, and
 unknown or evidence-gap states are record fields. Added after W4 publishes immutable manifests they

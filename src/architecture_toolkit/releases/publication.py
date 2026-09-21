@@ -95,6 +95,16 @@ class PublicationRequest:
     a model built in process rather than authored."""
 
     change_set: ChangeSet | None = None
+
+    change_report: str | None = None
+    """The semantic change record, already rendered, for step seven to write and pin (DATA-26).
+
+    Opaque here on purpose. `changes/` may import `releases/` and not the other way round — which
+    is the import direction the change layer exists to preserve — so publication stores a report it
+    cannot interpret and `changes/operations.py` is what knows a change report is a thing. The
+    manifest field `change_report_digest` has been reserved since W4 for exactly this.
+    """
+
     profile: Profile = BASELINE_PROFILE
     now: Clock = _now
     generator_commit: str | None = None
@@ -320,7 +330,9 @@ def publish_immutable_manifest(state: PublicationState) -> PublicationState:
     """`publish immutable manifest` — written, but not yet current.
 
     The validation report is written first and its digest pinned, so DATA-21's "validation and
-    change reports" are a claim the manifest can make truthfully.
+    change reports" are a claim the manifest can make truthfully. The change report is written the
+    same way, from a payload the caller rendered: the release layer stores it and the change layer
+    is what understands it.
     """
     store = state.store
     manifest = state.require_manifest()
@@ -333,6 +345,15 @@ def publish_immutable_manifest(state: PublicationState) -> PublicationState:
         (artifact / "validation-report.json").write_text(payload, encoding="utf-8")
         manifest = manifest.model_validate(
             dict(manifest) | {"validation_report_digest": digest_bytes(payload.encode("utf-8"))}
+        )
+
+    change_report = state.request.change_report
+    if change_report is not None:
+        artifact.mkdir(parents=True, exist_ok=True)
+        payload = change_report if change_report.endswith("\n") else change_report + "\n"
+        (artifact / "change-report.json").write_text(payload, encoding="utf-8")
+        manifest = manifest.model_validate(
+            dict(manifest) | {"change_report_digest": digest_bytes(payload.encode("utf-8"))}
         )
 
     if state.request.preserve_source and state.request.source_text is not None:

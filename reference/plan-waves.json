@@ -296,7 +296,9 @@
         "W5"
       ],
       "packages": [
+        "src/architecture_toolkit/changes",
         "src/architecture_toolkit/releases",
+        "src/architecture_toolkit/queries",
         "src/architecture_toolkit/validation",
         "tests"
       ],

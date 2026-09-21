@@ -83,3 +83,113 @@ must produce four visibly different classifications.
   change-set model turns out small in practice.
 - **CLI verb naming** is a durable public surface. Confirm the verb set with the owner before
   release; renaming later breaks consumers.
+
+## Decisions taken during execution
+
+Recorded here because a wave plan that only says what was intended is unreadable next to the code
+that resulted. Four of these were put to the owner before implementation; the rest were forced by
+measurement.
+
+### The change layer is its own package
+
+`changes/` sits above `releases/` and `queries/`, imported only by `cli.py` and `contracts.py`.
+W5 made `queries/` import `releases/`, so a change record living in `releases/` — where
+[the plan index](index.md) said diff and classification would go — structurally could not carry the
+`TraversalResult` that DATA-26's "impact-analysis results" requires. The alternative was a
+locally-invented impact summary populated only by the CLI, which is the declared-but-unreachable
+shape W5.1 spent a wave removing. `rules/changes-not-imported-by-lower-layers.yml` and
+`tests/unit/test_layering.py` hold the direction.
+
+### The narrative is computed from two models, and the engines cross-check it
+
+`ARCH-TOOL-DATA-001` §6A asks DataFusion for the added/removed/changed-ID joins, and the first plan
+made the `semantic_identity_delta` recipe the source. That is wrong for a reason the contract
+itself supplies: §9C previews the diff **before** persist and publish, and CORE-20 presents one
+after a round-trip authoring edit. In both, the candidate is unpublished, so a release-scoped engine
+cannot be the narrative's source without making the preview impossible. The recipe and the Delta
+change feed are therefore both cross-checks — which is the standing §11H already gives the feed
+("Do not use them as the architectural change narrative") — and `identity_disagreements` and
+`storage_disagreements` are library functions on the `diff --cross-check` path rather than
+assertions living in tests.
+
+### Classification is keyed by field, not by record
+
+Measured rather than argued. A rename and an interface modification are **identical** one level up
+— both are `elements: changed` — and only the field separates them. `NotationBinding` forced it from
+the other side: it carries three natures across its own fields, so a per-record rule would either
+make moving a box into another view an architectural change or make a `mapping_profile_version`
+bump invisible, and `domain/notation.py` says DATA-31 forbids both.
+
+Path-keying was rejected: paths are open (`detail.fields.<any field_id>.nullability`), so "total
+over paths" is not definable without a glob language, and the totality assertion would degrade into
+"every path some test happened to exercise".
+
+### Two axes, and seven natures
+
+`ChangeKind` says what changed; `ChangeNature` says whether it enters the narrative.
+`projections.md` already names seven natures and W7a/W8 deliver the records that make the last two
+reachable, so defining the wider set now means a later wave extends the table instead of migrating
+every stored record. `STYLE_THEME_ONLY` and `PUBLICATION_NAVIGATION_ONLY` are asserted to be used by
+nothing, in both directions.
+
+### There is a residual, and it is guarded rather than avoided
+
+`Reference.authority` and its kind have no named category in any contract, so `FIELD_MODIFIED`
+exists. What keeps it from swallowing the table is that it is never a lookup default — an ast-grep
+rule forbids `.get` on the three tables — plus a pinned ceiling *and* a list of seventeen fields
+that must never reach it, because a bare count is gameable by adding rows elsewhere.
+
+### An alternative gets an identity, not a position
+
+DATA-28's teeth are in the refusals. `scenario_id` and `baseline_release_id` are set together or
+not at all; a scenario whose *parent* is its baseline is refused at the record; a scenario whose
+parent sits on another line is reported by `alternative_line_breaks`; `diff_releases` refuses a
+cross-line pair and names the operation that is right for it; and `AlternativeComparison` is
+deliberately not a `ModelChanges` and does not contain one, so it cannot be published as a change
+set even by accident.
+
+Physical separation needed no new machinery: one store has one current pointer and overwrites its
+tables wholesale, so an alternative is published into its own store root, which `--store` already
+provides. `compare_alternative` therefore takes **two** stores — the test found that, because a
+one-store signature silently read the baseline twice and reported that the alternative differed
+from its baseline in nothing.
+
+### `persist` is a verb, and `output` is typed
+
+`publish` iterates all eight `STEP_ORDER` names, so a partial `steps` mapping raises `KeyError`;
+`PERSIST_STEPS` is the protocol minus its eighth line. What that leaves is a written, unexposed
+manifest — the state DATA-24 permits after a crash and `recovery.resume` already knows how to
+finish. `output` returns a typed `OutputNotImplemented` because
+[W8's plan](w8-portal-export.md) says it will "replace the typed not-implemented diagnostic" and
+expects one to exist.
+
+### Corrections to this document
+
+Three claims in the sections above were stale or wrong when the wave started, and are corrected
+rather than quietly worked around:
+
+- **The CLI was not `doctor`, `validate`, `schema` and `build`.** W4 and W5.1 had taken it to
+  seventeen verbs, two of which — `validate` and `publish` — are DATA-38's own. W6 adds the other
+  six.
+- **`build` is not a typed not-implemented `Diagnostic`.** It is a bare
+  `parser.exit(EXIT_USAGE, ...)` with no dispatch branch. `output` is typed because W8 expects it
+  to be; `build` keeps its older stub, and the inconsistency is recorded here rather than
+  normalised in passing.
+- **`data.md` has no §10C.** The four qualification cases are §10C of the private record
+  `ARCH-TOOL-DATA-001`: *"A rename, interface modification, relationship removal and diagram-layout
+  edit must produce distinct semantic changes."* `tests/integration/test_change_gate.py` asserts
+  the four classifications are pairwise distinct **and** pins the expected value of each, because
+  distinctness alone is satisfiable by four residuals with different paths.
+
+## Known state carried forward
+
+- **Four of the seven natures have little or no data behind them.** `LAYOUT_ONLY` has two fields
+  and `RENDERER_TOOLCHAIN` one; `STYLE_THEME_ONLY` and `PUBLICATION_NAVIGATION_ONLY` have none
+  until W7a and W8. Declared with an explicit reason rather than omitted.
+- **`NotationBinding` still participates in `model_digest`.** That is W2's decision and W6 does not
+  change it: a binding edit *is* a model change. What W6 adds is that a binding's presentation
+  fields never enter the narrative. Moving bindings out of the digest would be a DATA-56
+  hash-version migration.
+- **`context_id` is still written by nothing**, carried forward from W5 unchanged.
+- **`require_review` is a caller's flag, not a policy record.** Nothing in the contracts says which
+  changes need review, and inventing a record would be a governance claim no contract makes.

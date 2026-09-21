@@ -32,6 +32,7 @@ __all__ = [
     "attempts_for",
     "changed_row_counts",
     "commit_audit",
+    "net_row_changes",
     "table_audit",
 ]
 
@@ -91,6 +92,13 @@ def changed_row_counts(
     return _tally(feed)
 
 
+# Delta spells an update as a pre/post image pair when a table is written with MERGE, and as a
+# plain delete/insert pair under the full-snapshot overwrite this toolkit uses. Both spellings are
+# named so the netting does not depend on which write path produced the feed.
+_REMOVING = frozenset({"delete", "update_preimage"})
+_ADDING = frozenset({"insert", "update_postimage"})
+
+
 def _tally(feed: pa.Table) -> Mapping[str, int]:
     counts: dict[str, int] = {}
     for kind in feed.column("_change_type").to_pylist():
@@ -113,4 +121,55 @@ def attempts_for(
             if audit.publication_attempt_id is not None
         )
         for ref in manifest.tables
+    }
+
+
+def net_row_changes(
+    store: ReleaseStore,
+    table_id: TableId,
+    identity_field: str,
+    *,
+    base_version: int,
+    candidate_version: int,
+) -> Mapping[str, tuple[str, ...]]:
+    """Which *identities* the change feed says moved, after cancelling the rows that did not.
+
+    `changed_row_counts` answers how much storage moved, and the answer is deliberately larger than
+    the semantic diff — publication writes full snapshots (DATA-22), so renaming one element
+    rewrites every row of `elements` and the feed reports each one as a delete and an insert.
+    Measured on the example model: one semantic change, twenty change-feed rows.
+
+    Netting is what makes the two comparable. A row identical in `(identity, content_hash)` on both
+    sides of the rewrite cancels; what survives is exactly the added, removed and changed
+    identities, which is the same question `semantic_delta` answers from the other direction. That
+    is the cross-check §11H asks for, and it is a cross-check rather than a narrative because it
+    cannot say *what* changed inside a record — only that the stamped digest moved.
+
+    Empty when the table was reused: an unmoved pin means storage did nothing to compare.
+    """
+    if base_version >= candidate_version:
+        return {"added": (), "removed": (), "changed": ()}
+    feed = delta.change_feed(
+        store.table_location(table_id),
+        version=candidate_version,
+        starting_version=base_version + 1,
+        ending_version=candidate_version,
+    )
+    rows = feed.select([identity_field, "content_hash", "_change_type"]).to_pylist()
+    deleted = {
+        (str(row[identity_field]), str(row["content_hash"]))
+        for row in rows
+        if str(row["_change_type"]) in _REMOVING
+    }
+    inserted = {
+        (str(row[identity_field]), str(row["content_hash"]))
+        for row in rows
+        if str(row["_change_type"]) in _ADDING
+    }
+    gone = {identity for identity, _ in deleted - inserted}
+    arrived = {identity for identity, _ in inserted - deleted}
+    return {
+        "added": tuple(sorted(arrived - gone)),
+        "removed": tuple(sorted(gone - arrived)),
+        "changed": tuple(sorted(gone & arrived)),
     }

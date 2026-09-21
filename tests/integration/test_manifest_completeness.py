@@ -55,7 +55,6 @@ REQUIRED_PINS: dict[str, str] = {
 # shape as `tests/strategies/__init__.py::DEFERRED_GROUPS`, so a deferral stays distinguishable
 # from an oversight — which is precisely the distinction this module exists to keep.
 DEFERRED_PINS: dict[str, str] = {
-    "change_report_digest": "W6 — no change report exists until semantic change records (DATA-26)",
     "projection_artifact_digests": "W8 — PROJ-41; declared at W4 so filling it is no migration",
     "render_artifact_digests": "W8 — PROJ-41",
     "validation_reports": "W8 — PROJ-41",
@@ -66,6 +65,13 @@ DEFERRED_PINS: dict[str, str] = {
 REQUIRED_ON_A_DESCENDANT: dict[str, str] = {
     "parent_release_id": "DATA-21: the release it was built against",
     "change_set_id": "DATA-21: the typed change set that produced it",
+}
+
+# Only on a release published with a change record. A publication may legitimately carry none —
+# the first release of a model has nothing to be a change from — so this is conditional rather
+# than required, and `tests/integration/test_change_report.py` is where the condition is met.
+REQUIRED_WITH_A_CHANGE_RECORD: dict[str, str] = {
+    "change_report_digest": "DATA-21, DATA-26: the semantic change record it pins",
 }
 
 # Only on a design alternative, and refused on anything else. A third conditional list rather than
@@ -91,6 +97,7 @@ def test_the_two_lists_together_cover_every_manifest_field() -> None:
         | set(DEFERRED_PINS)
         | set(REQUIRED_ON_A_DESCENDANT)
         | set(REQUIRED_ON_AN_ALTERNATIVE)
+        | set(REQUIRED_WITH_A_CHANGE_RECORD)
     )
     assert declared == accounted, f"unaccounted manifest fields: {sorted(declared ^ accounted)}"
 

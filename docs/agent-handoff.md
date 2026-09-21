@@ -44,6 +44,17 @@ Implemented:
 - an operator surface for both: `recipes`, `query` (one release or two named sides), `plan`,
   `impact` (bounded paths, `--unverified`, JSON against the generated contract) and `graph`
   (the six structural analyses) (W5.1);
+- semantic change records: a classification table total over every field of every record, with a
+  second axis saying whether a change enters the narrative at all; typed field-level diffs computed
+  over the digest's own normal form; the published `ArchitectureChangeSet` with its authorship,
+  rationale, decision references, validation and impact, written as a release artifact and pinned
+  in `change_report_digest` (W6);
+- design alternatives with their own scenario identity and an explicit baseline reference, refused
+  as revisions of the line they were derived from (W6);
+- the DATA-38 lifecycle through one API and six new verbs — `baseline`, `change`, `diff`, `review`,
+  `persist`, `output` — beside the `validate` and `publish` that already shipped (W6);
+- two cross-checks on the narrative, neither of which is the narrative: a declared DataFusion
+  comparison recipe over the stamped digests, and the netted Delta change feed (W6);
 - explicit-version Delta -> PyArrow -> DataFusion materialized adapter;
 - synthetic examples and basic qualification tests;
 - checksummed local Java/vendor bootstrap;
@@ -51,7 +62,6 @@ Implemented:
 - MkDocs documentation scaffold and two-platform CI.
 
 Not implemented:
-- semantic diff and scenario comparison;
 - generated ArchiMate/C4/BPMN/UML/ERD projections;
 - interactive/offline portal integration.
 
@@ -115,7 +125,7 @@ M2; DATA-15..18, DATA-26..29, DATA-38, DATA-46..50, CORE-22..31.
 - query-plan evidence for representative recipes;
 - private ArchitectureGraph + GraphPolicy facade;
 - explainable bounded path/SCC/DAG analyses;
-- semantic diff and scenario comparison.
+- semantic diff and scenario comparison (W6).
 
 ### Hard gates
 DataFusion and NetworkX read the same release. Cross-release comparisons use explicit sides.
