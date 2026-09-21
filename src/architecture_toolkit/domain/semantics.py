@@ -50,6 +50,7 @@ from architecture_toolkit.domain.references import Reference, ReferenceLink
 __all__ = [
     "COLLECTION_ORDER",
     "EXCLUDED_FIELDS",
+    "MODEL_COLLECTIONS",
     "PREIMAGE_PREFIX",
     "SEMANTIC_HASH_VERSION",
     "CollectionDelta",
@@ -125,8 +126,10 @@ COLLECTION_ORDER: Final[Mapping[tuple[type[BaseModel], str], CollectionOrder]] =
 """Every tuple-typed field reachable from `Model`, and how it is canonicalized. Total by test."""
 
 # The six top-level collections and the identity field of each, in `Model` field order. Used by
-# `stamp_digests` and `semantic_delta`, and cross-checked against `COLLECTION_ORDER` by test.
-_MODEL_COLLECTIONS: Final[tuple[tuple[str, str], ...]] = tuple(
+# `stamp_digests` and `semantic_delta`, cross-checked against `COLLECTION_ORDER` by test, and
+# public because W6's diff and its DataFusion cross-check both need exactly this list — three
+# copies of it would be three chances for one of them to miss a seventh collection.
+MODEL_COLLECTIONS: Final[tuple[tuple[str, str], ...]] = tuple(
     (name, COLLECTION_ORDER[(Model, name)].key[0])
     for name in (
         "elements",
@@ -317,7 +320,7 @@ def _by_identity(records: Iterable[_Records], key: str) -> dict[str, SemanticDig
 def semantic_delta(base: Model, candidate: Model) -> SemanticDelta:
     """Per-collection added/removed/changed identities, by record digest."""
     collections: list[CollectionDelta] = []
-    for name, key in _MODEL_COLLECTIONS:
+    for name, key in MODEL_COLLECTIONS:
         before = _by_identity(getattr(base, name), key)
         after = _by_identity(getattr(candidate, name), key)
         collections.append(

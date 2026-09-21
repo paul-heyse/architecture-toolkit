@@ -359,7 +359,7 @@ PRESENCE_RULES: Final[Mapping[tuple[str, bool], ChangeRule]] = MappingProxyType(
 """An added or removed record, by collection. `True` means present in the candidate.
 
 Separate from the field table because an added record has no changed fields to classify. Asserted
-total against `semantics.py::_MODEL_COLLECTIONS`, so a seventh collection cannot arrive without a
+total against `semantics.py::MODEL_COLLECTIONS`, so a seventh collection cannot arrive without a
 decision about what its appearance means.
 """
 

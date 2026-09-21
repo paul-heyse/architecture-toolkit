@@ -39,6 +39,7 @@ from architecture_toolkit.domain.authoring.plain import IDENTITY_KEYS
 from architecture_toolkit.domain.model import Model
 from architecture_toolkit.domain.semantics import (
     COLLECTION_ORDER,
+    MODEL_COLLECTIONS,
     SEMANTIC_HASH_VERSION,
     CollectionPolicy,
     canonical_value,
@@ -74,19 +75,6 @@ preimage becomes visible to the presentation pass automatically, instead of beco
 everything — a hand-written literal would be a second source of truth for a fact `COLLECTION_ORDER`
 already states, and the two would drift.
 """
-
-# The six top-level collections and the field naming each record's identity, in `Model` order.
-_COLLECTIONS: Final[tuple[tuple[str, str], ...]] = tuple(
-    (name, COLLECTION_ORDER[(Model, name)].key[0])
-    for name in (
-        "elements",
-        "relationships",
-        "interactions",
-        "references",
-        "reference_links",
-        "notation_bindings",
-    )
-)
 
 
 def _records_in(annotation: object) -> list[type[BaseModel]]:
@@ -382,7 +370,7 @@ def model_changes(base: Model, candidate: Model) -> ModelChanges:
         )
         raise DiffError(message)
     records: list[RecordChange] = []
-    for collection, key in _COLLECTIONS:
+    for collection, key in MODEL_COLLECTIONS:
         before = {str(getattr(item, key)): item for item in getattr(base, collection)}
         after = {str(getattr(item, key)): item for item in getattr(candidate, collection)}
         for identity in sorted(set(before) - set(after)):

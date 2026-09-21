@@ -44,15 +44,30 @@ from architecture_toolkit.changes.kinds import (
     ChangeRule,
     Traversal,
 )
+from architecture_toolkit.changes.record import (
+    MAX_RATIONALE,
+    ArchitectureChangeSet,
+    AuthorKind,
+    Authorship,
+)
 from architecture_toolkit.changes.records import FieldChange, ModelChanges, RecordChange
+from architecture_toolkit.changes.releases import (
+    diff_releases,
+    engine_identity_delta,
+    identity_disagreements,
+)
 
 __all__ = [
     "CHANGE_CLASSIFICATION",
+    "MAX_RATIONALE",
     "NARRATIVE_NATURES",
     "NEVER_EMITTED",
     "PRESENCE_RULES",
     "PRESENTATION_FIELDS",
     "UNREACHABLE_NATURES",
+    "ArchitectureChangeSet",
+    "AuthorKind",
+    "Authorship",
     "ChangeError",
     "ChangeKind",
     "ChangeNature",
@@ -65,7 +80,10 @@ __all__ = [
     "RecordChange",
     "ReviewError",
     "Traversal",
+    "diff_releases",
+    "engine_identity_delta",
     "field_changes",
+    "identity_disagreements",
     "model_changes",
     "presence_rule_for",
     "presentation_changes",

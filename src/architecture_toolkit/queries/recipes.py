@@ -43,6 +43,7 @@ from architecture_toolkit.domain.identifiers import (
     SchemaVersion,
     TableId,
 )
+from architecture_toolkit.domain.semantics import MODEL_COLLECTIONS
 from architecture_toolkit.queries.errors import ParameterError, UnknownRecipeError
 from architecture_toolkit.queries.policy import POLICIES
 from architecture_toolkit.queries.sides import Side
@@ -387,6 +388,93 @@ _CONTAINMENT_HIERARCHY = QueryRecipe(
     ),
 )
 
+
+_SEMANTIC_IDENTITY_DELTA = QueryRecipe(
+    query_recipe_id="semantic_identity_delta",
+    query_recipe_version="1.0.0",
+    purpose=(
+        "Which records were added, removed or changed between two releases, per collection, "
+        "by the semantic digest stamped on every row. This is the added/removed/changed-ID "
+        "join section 6A asks DataFusion for, and it cross-checks the change narrative rather "
+        "than sourcing it: the narrative is computed from two models so a diff can be "
+        "previewed before the candidate is published."
+    ),
+    release_context="comparison",
+    inputs=_sided("base", *(name for name, _ in MODEL_COLLECTIONS))
+    + _sided("candidate", *(name for name, _ in MODEL_COLLECTIONS)),
+    output_schema=(
+        ColumnSpec(name="collection", data_type="string", nullable=False),
+        ColumnSpec(name="identity", data_type="string", nullable=True),
+        ColumnSpec(name="change", data_type="string", nullable=False),
+    ),
+    # Literal, like every other recipe, rather than generated per collection: building it with
+    # f-strings is a real `S608` and the alternative to suppressing that lint is not to write the
+    # construct. One statement rather than six recipes, because the legs differ only in the table
+    # and its identity column. `tests/unit/test_recipe_contracts.py` asserts the SQL names every
+    # collection in `MODEL_COLLECTIONS` with its declared identity field, which is the guard the
+    # generated form would have been buying — and a stronger one, since it also catches a leg
+    # joined on the wrong column.
+    sql=(
+        "SELECT 'elements' AS collection, COALESCE(b.element_id, c.element_id) AS identity, "
+        "CASE WHEN b.element_id IS NULL THEN 'added' "
+        "WHEN c.element_id IS NULL THEN 'removed' "
+        "WHEN b.content_hash IS DISTINCT FROM c.content_hash THEN 'changed' "
+        "ELSE 'unchanged' END AS change "
+        "FROM base.elements b FULL OUTER JOIN candidate.elements c "
+        "ON b.element_id = c.element_id "
+        "UNION ALL "
+        "SELECT 'relationships' AS collection, "
+        "COALESCE(b.relationship_id, c.relationship_id) AS identity, "
+        "CASE WHEN b.relationship_id IS NULL THEN 'added' "
+        "WHEN c.relationship_id IS NULL THEN 'removed' "
+        "WHEN b.content_hash IS DISTINCT FROM c.content_hash THEN 'changed' "
+        "ELSE 'unchanged' END AS change "
+        "FROM base.relationships b FULL OUTER JOIN candidate.relationships c "
+        "ON b.relationship_id = c.relationship_id "
+        "UNION ALL "
+        "SELECT 'interactions' AS collection, "
+        "COALESCE(b.interaction_id, c.interaction_id) AS identity, "
+        "CASE WHEN b.interaction_id IS NULL THEN 'added' "
+        "WHEN c.interaction_id IS NULL THEN 'removed' "
+        "WHEN b.content_hash IS DISTINCT FROM c.content_hash THEN 'changed' "
+        "ELSE 'unchanged' END AS change "
+        "FROM base.interactions b FULL OUTER JOIN candidate.interactions c "
+        "ON b.interaction_id = c.interaction_id "
+        "UNION ALL "
+        "SELECT 'references' AS collection, COALESCE(b.reference_id, c.reference_id) AS identity, "
+        "CASE WHEN b.reference_id IS NULL THEN 'added' "
+        "WHEN c.reference_id IS NULL THEN 'removed' "
+        "WHEN b.content_hash IS DISTINCT FROM c.content_hash THEN 'changed' "
+        "ELSE 'unchanged' END AS change "
+        "FROM base.references b FULL OUTER JOIN candidate.references c "
+        "ON b.reference_id = c.reference_id "
+        "UNION ALL "
+        "SELECT 'reference_links' AS collection, COALESCE(b.link_id, c.link_id) AS identity, "
+        "CASE WHEN b.link_id IS NULL THEN 'added' "
+        "WHEN c.link_id IS NULL THEN 'removed' "
+        "WHEN b.content_hash IS DISTINCT FROM c.content_hash THEN 'changed' "
+        "ELSE 'unchanged' END AS change "
+        "FROM base.reference_links b FULL OUTER JOIN candidate.reference_links c "
+        "ON b.link_id = c.link_id "
+        "UNION ALL "
+        "SELECT 'notation_bindings' AS collection, "
+        "COALESCE(b.binding_id, c.binding_id) AS identity, "
+        "CASE WHEN b.binding_id IS NULL THEN 'added' "
+        "WHEN c.binding_id IS NULL THEN 'removed' "
+        "WHEN b.content_hash IS DISTINCT FROM c.content_hash THEN 'changed' "
+        "ELSE 'unchanged' END AS change "
+        "FROM base.notation_bindings b FULL OUTER JOIN candidate.notation_bindings c "
+        "ON b.binding_id = c.binding_id "
+        "ORDER BY 1, 2"
+    ),
+    qualification_cases=(
+        "a renamed element reports exactly one changed identity in elements",
+        "a removed relationship reports one removed identity and no changed ones",
+        "the result agrees with domain.semantics.semantic_delta on the same release pair",
+    ),
+)
+
+
 RECIPES: Final[Mapping[QueryRecipeId, QueryRecipe]] = MappingProxyType(
     {
         recipe.query_recipe_id: recipe
@@ -396,6 +484,7 @@ RECIPES: Final[Mapping[QueryRecipeId, QueryRecipe]] = MappingProxyType(
             _CAPABILITY_COVERAGE_MATRIX,
             _OWNERSHIP_ACROSS_RELEASES,
             _CONTAINMENT_HIERARCHY,
+            _SEMANTIC_IDENTITY_DELTA,
         )
     }
 )

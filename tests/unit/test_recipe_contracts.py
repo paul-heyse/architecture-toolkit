@@ -15,6 +15,7 @@ import re
 import pytest
 
 from architecture_toolkit.domain.identifiers import IDENTIFIER_PATTERN
+from architecture_toolkit.domain.semantics import MODEL_COLLECTIONS
 from architecture_toolkit.queries.errors import ParameterError, UnknownRecipeError
 from architecture_toolkit.queries.recipes import (
     RECIPES,
@@ -196,3 +197,27 @@ def test_bound_parameters_are_returned_unchanged() -> None:
         "root_element_id": "system-1",
         "max_depth": 3,
     }
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("DATA-26", "DATA-48")
+def test_the_identity_delta_recipe_covers_every_collection_on_both_sides() -> None:
+    """The guard a generated SQL string would have been buying, and a stronger one.
+
+    `semantic_identity_delta` is written literally, like every other recipe, because building it
+    with f-strings is a real `S608` and the answer to that lint is not to write the construct. What
+    the literal form gives up is the guarantee that a seventh collection cannot be forgotten, so it
+    is asserted here instead — against `MODEL_COLLECTIONS`, the same list `semantic_delta` and the
+    change differ walk, and including the identity column, which a generated form would not have
+    checked at all.
+    """
+    recipe = recipe_for("semantic_identity_delta")
+
+    for collection, key in MODEL_COLLECTIONS:
+        assert f"FROM base.{collection} b" in recipe.sql, collection
+        assert f"JOIN candidate.{collection} c" in recipe.sql, collection
+        assert f"ON b.{key} = c.{key}" in recipe.sql, f"{collection} joined on the wrong column"
+        assert f"'{collection}' AS collection" in recipe.sql, collection
+
+    assert recipe.sql.count("UNION ALL") == len(MODEL_COLLECTIONS) - 1
+    assert {item.table_id for item in recipe.inputs} == {name for name, _ in MODEL_COLLECTIONS}

@@ -45,7 +45,7 @@ from architecture_toolkit.domain.details import (
 )
 from architecture_toolkit.domain.model import Element, Model, Relationship
 from architecture_toolkit.domain.notation import NotationBinding
-from architecture_toolkit.domain.semantics import _MODEL_COLLECTIONS
+from architecture_toolkit.domain.semantics import MODEL_COLLECTIONS
 from architecture_toolkit.domain.status import StatusDimensions
 
 
@@ -147,7 +147,7 @@ def test_field_discovery_sees_through_annotated_optional_and_a_discriminated_uni
 @pytest.mark.unit
 @pytest.mark.requirement("DATA-26")
 def test_a_record_appearing_or_vanishing_is_classified_for_every_collection() -> None:
-    expected = {(name, present) for name, _ in _MODEL_COLLECTIONS for present in (True, False)}
+    expected = {(name, present) for name, _ in MODEL_COLLECTIONS for present in (True, False)}
 
     assert set(PRESENCE_RULES) == expected
     assert presence_rule_for("elements", in_candidate=True).kind is ChangeKind.ELEMENT_ADDED
