@@ -425,3 +425,44 @@ def test_an_empty_typed_table_keeps_every_column(tmp_path: Path) -> None:
     assert read.num_rows == 0
     assert read.schema.equals(declared.bare(), check_metadata=False)
     assert as_table(read).schema.names == strip(declared.bare()).names
+
+
+@pytest.mark.qualification
+@pytest.mark.interop
+@pytest.mark.requirement("DATA-60", "DATA-43", "DATA-52")
+def test_delta_scan_returns_string_view_where_the_other_read_paths_return_string(
+    tmp_path: Path,
+) -> None:
+    """**A finding, not a guarantee** — and the reason `ArrowStreamSnapshotProvider` casts.
+
+    Under deltalake 1.6.4 the three read paths do not agree on string type: `to_pyarrow_table()`
+    and `to_pyarrow_dataset()` return `string`, and `scan()` returns `string_view`. Values are
+    identical and the cast is lossless, so this is a type-fidelity divergence rather than a
+    correctness one — which is precisely the dimension §11I asks the matrix to track separately.
+
+    Pinned so it cannot be silently absorbed. When a deltalake release makes the paths agree, this
+    fails and the cast in the stream provider is removed deliberately rather than left in place
+    for years as a workaround nobody can date.
+    """
+    schema = pa.schema(
+        [
+            pa.field("k", pa.string(), nullable=False),
+            pa.field("n", pa.int64(), nullable=True),
+        ]
+    )
+    rows = [{"k": "a", "n": 1}, {"k": "b", "n": None}]
+    location = tmp_path / "scan_types"
+    write_deltalake(location, pa.Table.from_pylist(rows, schema=schema))
+
+    materialized = DeltaTable(location, version=0).to_pyarrow_table()
+    dataset = DeltaTable(location, version=0).to_pyarrow_dataset()
+    streamed = as_table(as_reader(DeltaTable(location, version=0).scan()))
+
+    assert materialized.schema.field("k").type == pa.string()
+    assert dataset.schema.field("k").type == pa.string()
+    assert streamed.schema.field("k").type == pa.string_view(), (
+        "upstream now agrees: drop the cast in ArrowStreamSnapshotProvider"
+    )
+
+    # Logical row equivalence holds across all three, which is why a cast is the right response.
+    assert streamed.cast(schema).to_pylist() == materialized.to_pylist() == rows
