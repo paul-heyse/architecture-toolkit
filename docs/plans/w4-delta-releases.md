@@ -93,6 +93,43 @@ so the cast cannot outlive its reason.
 Delta commit, so doing it inside publication would make the version a manifest pins depend on
 whether the table happened to be new. Publication's version arithmetic stays boring.
 
+### Corrected after the wave landed (W4.1)
+
+Reviewing the wave against a real store found three requirements satisfied in the test suite and
+not in the shipped path, and one protocol state with no exit. They are recorded here rather than
+quietly fixed, because the reason each got through is more useful than the fix.
+
+**The manifest did not pin the parent or the change set**, both of which DATA-21 names. The chain
+did not link, `cli._reused` was dead logic, and every publication reported "0 reused" — a symptom
+that was in the output at the end of the wave without being read as one. What let it through was
+a hedged assertion: `assert x is None or x == "rel-0001"` admits the failing case, so the test
+passed whatever the code did. Two other assertions claimed more than they checked. The fix is a
+guard for the class — `tests/integration/test_manifest_completeness.py` enumerates what the
+contract says a manifest must pin, checks the whole list against a published manifest, and
+asserts the required and deferred lists together cover every declared field, so the next field
+forgotten fails without anyone remembering to write a test for it.
+
+**Source provenance was never recorded.** Nothing set `revision` or `snapshot_path`, so the
+archive's source branch never ran and every milestone archive's `sources/` was empty — which is
+the self-containment DATA-25 exists to ask for. Publication now preserves the text that was
+*parsed* rather than the file on disk, because a file can change between being read and being
+published.
+
+**The application transaction counter was keyed on the wrong thing.** It came from the number of
+manifests in the store, which shifts when a failed publication leaves an orphan manifest behind —
+so a retry after the one crash the marker exists to survive would have been handed a different
+number and rewritten every table. One application id per release removes the state entirely.
+
+**An orphan manifest had no exit.** A crash between steps seven and eight leaves a complete,
+verified manifest that `write_manifest` then correctly refuses to overwrite, blocking its release
+id forever and pinning its versions against vacuum. `resume` completes it, `discard` removes it,
+and both were only possible once the chain linked: before `parent_release_id` was populated, "a
+manifest nobody points at" and "a superseded manifest" were the same thing.
+
+**`apply_constraints` was called only from tests**, so DATA-55 was a capability rather than a
+practice. `architecture constraints` makes it reachable; publication still does not apply them,
+for the reason its docstring gives.
+
 ## Work items
 
 1. **Delta writing** (DATA-22). Write a complete replacement snapshot for each changed table and

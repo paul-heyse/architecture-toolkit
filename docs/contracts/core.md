@@ -239,7 +239,8 @@ upstream/version reason.
 
 ## Pyrefly target
 
-D-032 selects Pyrefly; the current repository still uses ty until migration.
+D-032 selects Pyrefly, and the migration has landed. `ty` and `[tool.ty.environment]` are
+gone; what follows describes the configuration in force rather than a target.
 
 Target configuration:
 - explicit `[tool.pyrefly]`;

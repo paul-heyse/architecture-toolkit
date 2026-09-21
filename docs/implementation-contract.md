@@ -84,10 +84,12 @@ Do not implement a later layer by bypassing an unimplemented earlier contract.
 ## Current versus target state
 
 Current executable state is described in [qualification.md](qualification.md). In particular:
-- the current lock uses a materialized explicit-version PyArrow DataFusion adapter;
-- native Delta/DataFusion FFI is not qualified under the current versions;
-- the current repository still uses ty;
-- D-032 selects Pyrefly as the target type checker, but the dependency/config migration is separate.
+- the current lock uses a materialized explicit-version PyArrow DataFusion adapter, and the
+  Dataset, Arrow-stream and materialized providers are all qualified against it (W4);
+- native Delta/DataFusion FFI is not qualified under the current versions, and the provider that
+  would use it refuses rather than relying on a note;
+- D-032's Pyrefly migration has landed: `[tool.pyrefly]` checks `src`, `tests` and `scripts`, and
+  CI enforces strict type coverage at 100% over `src`.
 
 ## Non-goals
 

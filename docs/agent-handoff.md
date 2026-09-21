@@ -189,8 +189,5 @@ uv run python scripts/qualify_tools.py
 
 `ast-grep` is a system tool, not a locked dependency; see [contract enforcement](contract-enforcement.md).
 
-After the Pyrefly migration, replace the ty command with the accepted Pyrefly check/coverage commands
-and update CI/toolchain evidence in the same implementation PR.
-
 Dependency/tool upgrades regenerate locks/pins and pass relevant macOS ARM64 + Linux x86-64
 qualification. Never enable native Delta/DataFusion FFI merely because import/registration exists.
