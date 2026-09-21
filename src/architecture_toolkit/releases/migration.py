@@ -196,12 +196,50 @@ def apply_migration(
     }
     versions: dict[TableId, tuple[int | None, int]] = {}
     for table_id in migration.added_tables:
-        # Not `manifest.table(table_id)`: the old manifest never pinned this, which is the whole
-        # point. `to_arrow(())` rather than the bare schema, because `TableMapping.to_arrow`
-        # attaches the self-describing metadata, so a migration-created table is byte-identical
-        # to a publication-created one.
+        # Two refusals before a single byte is written, because the write below is an
+        # `overwrite` and an overwrite of the wrong table is unrecoverable.
+        #
+        # The manifest check is the semantic one: `added_tables` means "the release at the *from*
+        # version did not have this table". If the manifest pins it, that claim is false, and
+        # acting on it would replace a pinned table with zero rows — which is exactly the data
+        # loss this loop could otherwise cause. `manifest.table` raises `KeyError` when the table
+        # is absent, so an absent table is the *success* path here.
+        #
+        # The location check is the safety one: a manifest can be honest and a stale directory can
+        # still be on disk from an abandoned run. Creating a table over one that exists is not a
+        # creation.
+        try:
+            manifest.table(table_id)
+        except KeyError:
+            pass
+        else:
+            message = (
+                f"migration {migration.migration_id!r} declares {table_id!r} as an added table, "
+                f"but release {manifest.release_id!r} already pins it; adding a table that exists "
+                f"would overwrite it with zero rows"
+            )
+            raise MigrationError(message)
+
         location = store.table_location(table_id)
+        if delta.is_table(location):
+            message = (
+                f"migration {migration.migration_id!r} would create {table_id!r} at {location}, "
+                f"where a Delta table already exists; refusing rather than overwriting it"
+            )
+            raise MigrationError(message)
+
+        # Created, then written — two commits, and both are needed. `create_empty` is what
+        # `storage/delta.py` provides for "a table that has never had content", and it is the only
+        # call that works here: `write_snapshot(..., schema_mode="overwrite")` is an *overwrite*
+        # and deltalake refuses it against a location with no table, which is why this path could
+        # only ever have run against a table that already existed — the destructive case.
+        #
+        # The second write carries the migration metadata and the described schema.
+        # `to_arrow(())` rather than the bare schema, because `TableMapping.to_arrow` attaches the
+        # self-describing metadata, so a migration-created table is byte-identical to a
+        # publication-created one.
         empty = mapping_for(table_id).to_arrow(())
+        delta.create_empty(location, empty.schema)
         versions[table_id] = (
             None,
             delta.write_snapshot(

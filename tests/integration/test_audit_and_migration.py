@@ -1,5 +1,7 @@
 """Storage audit as evidence, and explicit versioned migrations (DATA-55, DATA-56, DATA-57)."""
 
+import shutil
+
 import pyarrow as pa
 import pytest
 from deltalake.exceptions import DeltaError
@@ -8,6 +10,7 @@ from architecture_toolkit.domain.model import Model
 from architecture_toolkit.domain.semantics import model_digest, semantic_delta, stamp_digests
 from architecture_toolkit.releases.audit import attempts_for, changed_row_counts, table_audit
 from architecture_toolkit.releases.errors import MigrationError
+from architecture_toolkit.releases.manifest import ArchitectureRelease
 from architecture_toolkit.releases.migration import (
     MIGRATIONS,
     Migration,
@@ -178,8 +181,21 @@ SYNTHETIC_ADDITION = Migration(
     from_storage_schema_version=STORAGE_SCHEMA_VERSION,
     to_storage_schema_version="9.9.9",
     description="Introduces a table the earlier version's releases never pinned.",
-    added_tables=("notation_bindings",),
+    added_tables=("views",),
 )
+
+
+def as_if_published_before(manifest: ArchitectureRelease, table_id: str) -> ArchitectureRelease:
+    """The manifest a release published before `table_id` existed would have carried.
+
+    Every release published today pins all twelve tables, because `compile_tables` writes all of
+    them. So the only honest way to exercise the added-table path is to reconstruct what an
+    earlier manifest looked like: one ref short.
+    """
+    return manifest.model_validate(
+        dict(manifest)
+        | {"tables": tuple(ref for ref in manifest.tables if ref.table_id != table_id)}
+    )
 
 
 @pytest.mark.unit
@@ -252,7 +268,7 @@ def test_a_migration_that_touches_nothing_is_refused() -> None:
 
 @pytest.mark.integration
 @pytest.mark.requirement("DATA-56")
-def test_a_migration_can_create_a_table_the_old_manifest_never_pinned(
+def test_a_migration_creates_a_table_the_old_manifest_never_pinned(
     store: ReleaseStore, example_model: Model, publish_release: Publisher
 ) -> None:
     """The case `apply_migration` could not express until W7a needed it.
@@ -261,22 +277,72 @@ def test_a_migration_can_create_a_table_the_old_manifest_never_pinned(
     raises `KeyError` for an id the old manifest never carried. A table being *added* has no old
     version by definition — which is why `before` is `None` rather than a number that would look
     like a real Delta version — and no transform, because a release published before the table
-    existed had no rows for it. The only honest content is the declared schema with zero rows;
-    inventing rows would be fabricating architecture.
-    """
-    manifest = publish_release("rel-0001", example_model, expected_parent=None)
-    result = apply_migration(store, SYNTHETIC_ADDITION, manifest)
+    existed had no rows for it.
 
-    assert result.created_tables == ("notation_bindings",)
-    before, after = result.versions["notation_bindings"]
+    The setup is what makes this honest. A release published today pins all twelve tables, so the
+    manifest is reconstructed one ref short and the physical directory removed: together, that is
+    what a store at the earlier schema version actually looked like.
+    """
+    published = publish_release("rel-0001", example_model, expected_parent=None)
+    earlier = as_if_published_before(published, "views")
+    shutil.rmtree(store.table_location("views"))
+
+    result = apply_migration(store, SYNTHETIC_ADDITION, earlier)
+
+    assert result.created_tables == ("views",)
+    before, after = result.versions["views"]
     assert before is None
     assert after >= 0
 
-    written = delta.read_version(store.table_location("notation_bindings"), version=after)
+    written = delta.read_version(store.table_location("views"), version=after)
     assert written.num_rows == 0
-    assert written.schema.names == list(schema_for("notation_bindings").schema.names), (
+    assert written.schema.names == list(schema_for("views").schema.names), (
         "an added table must carry the declared schema, not an empty one"
     )
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("DATA-56")
+def test_adding_a_table_the_manifest_already_pins_is_refused(
+    store: ReleaseStore, example_model: Model, publish_release: Publisher
+) -> None:
+    """The defect this refusal exists for, and it is not hypothetical.
+
+    `apply_migration` writes the new table with `schema_mode="overwrite"`. Without this check, a
+    migration declaring `added_tables=("elements",)` replaces every element row with zero rows —
+    silently, successfully, and irreversibly. `__post_init__` cannot catch it, because it only sees
+    the declaration; whether the table exists is a fact about the release being migrated.
+
+    The first version of this test used `notation_bindings` against a full manifest, so it
+    performed exactly that destruction and asserted it had succeeded.
+    """
+    published = publish_release("rel-0001", example_model, expected_parent=None)
+    rows_before = delta.read_version(
+        store.table_location("views"), version=published.table("views").delta_version
+    ).num_rows
+
+    with pytest.raises(MigrationError, match="already pins it"):
+        apply_migration(store, SYNTHETIC_ADDITION, published)
+
+    location = store.table_location("views")
+    assert delta.read_version(location, version=delta.tip(location)).num_rows == rows_before
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("DATA-56")
+def test_creating_a_table_over_a_stale_directory_is_refused(
+    store: ReleaseStore, example_model: Model, publish_release: Publisher
+) -> None:
+    """A manifest can be honest and a directory can still be there from an abandoned run.
+
+    Creating a table over one that exists is not a creation, so the location is checked as well as
+    the manifest — and the physical table is left alone.
+    """
+    published = publish_release("rel-0001", example_model, expected_parent=None)
+    earlier = as_if_published_before(published, "views")
+
+    with pytest.raises(MigrationError, match="already exists"):
+        apply_migration(store, SYNTHETIC_ADDITION, earlier)
 
 
 @pytest.mark.integration
