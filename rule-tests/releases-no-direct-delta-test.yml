@@ -1,0 +1,14 @@
+id: releases-no-direct-delta
+valid:
+  - "from architecture_toolkit.storage import delta"
+  - "from architecture_toolkit.storage.delta import write_snapshot"
+  - "from architecture_toolkit.storage.snapshot import MaterializedPyArrowSnapshotProvider"
+  # A different package that merely starts with the same characters.
+  - "import deltalake_helpers"
+  - "note = \"every deltalake call lives in storage/delta.py\""
+invalid:
+  - "import deltalake"
+  - "import deltalake as dl"
+  - "from deltalake import DeltaTable"
+  - "from deltalake import CommitProperties, Transaction"
+  - "from deltalake.table import DeltaTable"

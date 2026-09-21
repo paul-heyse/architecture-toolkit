@@ -28,16 +28,26 @@ METADATA_NAMES = frozenset(
 
 
 def _metadata_access(source: str) -> set[str]:
-    """Attribute reads and calls that touch Arrow metadata, ignoring `importlib.metadata`."""
+    """Attribute reads and calls that touch **Arrow** metadata.
+
+    Two exclusions, both because the name is overloaded rather than because the rule is being
+    relaxed. `importlib.metadata` is a module reference. `DeltaTable(...).metadata()` is Delta
+    *table* metadata — name, description and configuration, which is where Delta keeps its check
+    constraints — and has nothing to do with the Arrow schema and field metadata DATA-44 governs.
+    Neither can become hidden semantic authority over a model, which is what the rule protects.
+    """
     tree = ast.parse(source)
     found: set[str] = set()
     for node in ast.walk(tree):
         if not isinstance(node, ast.Attribute) or node.attr not in METADATA_NAMES:
             continue
-        # `importlib.metadata` and `from importlib import metadata` are module references, not
-        # Arrow metadata. The first is an Attribute on the name `importlib`; the second never
-        # appears as an Attribute at all.
         if isinstance(node.value, ast.Name) and node.value.id == "importlib":
+            continue
+        if (
+            isinstance(node.value, ast.Call)
+            and isinstance(node.value.func, ast.Name)
+            and node.value.func.id == "DeltaTable"
+        ):
             continue
         found.add(node.attr)
     return found
@@ -52,6 +62,10 @@ def test_the_scan_catches_a_known_bad_reading() -> None:
     }
     assert _metadata_access("import importlib\nx = importlib.metadata\n") == set()
     assert _metadata_access("def f(schema):\n    return schema.names\n") == set()
+    # Delta table metadata is a different thing wearing the same name, and the exclusion is
+    # narrow enough that a bare `.metadata` on anything else is still caught.
+    assert _metadata_access("c = DeltaTable(loc, version=0).metadata().configuration") == set()
+    assert _metadata_access("c = dt.metadata().configuration") == {"metadata"}
 
 
 @pytest.mark.unit

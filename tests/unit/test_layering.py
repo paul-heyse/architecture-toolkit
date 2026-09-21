@@ -187,3 +187,64 @@ def test_the_capsule_dunders_are_spelled_in_exactly_two_modules() -> None:
         if "__arrow_c_" in path.read_text()
     }
     assert spelled == allowed, f"capsule dunders spelled in {spelled}"
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("DATA-20", "DATA-51")
+def test_deltalake_is_reached_only_through_the_storage_delta_module() -> None:
+    """The half of the package split that `releases-no-direct-delta.yml` cannot state alone.
+
+    The rule covers `releases/`; this covers the whole package, which is the statement that
+    actually matters: `storage/delta.py` is the one place Delta is spoken to, so a change of
+    storage engine is one module rather than a search.
+    """
+    allowed = SRC / "storage" / "delta.py"
+    leaked = {
+        path.relative_to(SRC).as_posix()
+        for path in SRC.rglob("*.py")
+        if path != allowed
+        and any(module.split(".")[0] == "deltalake" for module in runtime_imports(path))
+    }
+    assert not leaked, f"deltalake imported outside storage/delta.py: {leaked}"
+    assert any(module.split(".")[0] == "deltalake" for module in runtime_imports(allowed)), (
+        "storage/delta.py no longer imports deltalake; the guard above has become vacuous"
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("DATA-21", "DATA-51")
+def test_only_one_call_in_the_toolkit_asks_delta_for_the_latest_version() -> None:
+    """Invariant 5 forbids a *published release* resolving an implicit latest version.
+
+    `storage.delta.tip` is the single deliberate `version=None`: a writer reading back the number
+    it just committed, under the publication lock, so the manifest can pin it explicitly. The
+    ast-grep rule enforces that a `version=` is present at all; this bounds where `None` is the
+    answer, so the exception stays one line rather than spreading.
+    """
+
+    def latest_version_calls(source: str) -> int:
+        """`version=None` as an actual keyword argument, not as prose about one.
+
+        A text count would find the three mentions in `delta.py`'s own docstrings, which is the
+        failure mode `docs/contract-enforcement.md` warns about: a guard that matches the
+        explanation instead of the code.
+        """
+        return sum(
+            1
+            for node in ast.walk(ast.parse(source))
+            if isinstance(node, ast.Call)
+            for keyword in node.keywords
+            if keyword.arg == "version"
+            and isinstance(keyword.value, ast.Constant)
+            and keyword.value.value is None
+        )
+
+    assert latest_version_calls("DeltaTable(loc, version=None)") == 1
+    assert latest_version_calls('x = "version=None"') == 0
+
+    offenders = {
+        path.relative_to(SRC).as_posix(): count
+        for path in SRC.rglob("*.py")
+        if (count := latest_version_calls(path.read_text()))
+    }
+    assert offenders == {"storage/delta.py": 1}, offenders

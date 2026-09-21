@@ -26,9 +26,9 @@ from typing import Final
 
 import pyarrow as pa
 from datafusion import SessionContext
-from deltalake import DeltaTable
 
 from architecture_toolkit.domain.providers import Materialization, SnapshotProviderDescription
+from architecture_toolkit.storage import delta
 from architecture_toolkit.storage.errors import UnknownTableError
 from architecture_toolkit.storage.interchange import batches_for_registration
 
@@ -81,7 +81,7 @@ class MaterializedPyArrowSnapshotProvider:
     def read(self, table_id: str, *, version: int) -> pa.Table:
         """The whole table at exactly `version`."""
         location = self._location(table_id)
-        return DeltaTable(location, version=require_version(version)).to_pyarrow_table()
+        return delta.read_version(location, version=require_version(version))
 
     def schema_for(self, table_id: str, *, version: int) -> pa.Schema:
         """What storage actually holds, read from the materialized table.
