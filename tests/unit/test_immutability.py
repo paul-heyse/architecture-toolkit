@@ -19,8 +19,23 @@ from typing import Annotated, Literal, get_args, get_origin
 import pytest
 from pydantic import BaseModel, Field, ValidationError
 
-from architecture_toolkit.domain.base import AuthoringRecord, CompiledRecord
+from architecture_toolkit.domain.base import (
+    AuthoringRecord,
+    CompiledRecord,
+    ManifestRecord,
+)
 from architecture_toolkit.domain.registry import BASELINE_PROFILE
+
+# A `__subclasses__` walk only sees classes that have been imported, so the sweep below is total
+# over *loaded* code rather than over the package. `domain.registry` happens to pull in the whole
+# model, which is why the `CompiledRecord` half has always worked; nothing pulled in the manifest
+# or the projection artifacts, so the `ManifestRecord` half would have swept an empty list and
+# passed. These imports are the coverage, and the floor assertion below is what stops one being
+# dropped by a tidying pass.
+from architecture_toolkit.projections import artifacts as _projection_artifacts
+from architecture_toolkit.releases import manifest as _release_manifest
+
+_ = (_release_manifest, _projection_artifacts)
 
 MUTABLE_ORIGINS = (list, dict, set)
 
@@ -55,23 +70,37 @@ def mutable_containers(annotation: object) -> list[str]:
     return found
 
 
+# Both frozen record bases, because the sweep used to root at `CompiledRecord` alone and
+# `ManifestRecord` subclasses were covered by nothing. That was invisible while the only ones were
+# the four in `releases/manifest.py`, written by hand and reviewed together; W7a adds five
+# artifact records and a sixth base user would have been the first nobody checked.
+FROZEN_BASES = (CompiledRecord, ManifestRecord)
+
+
 @pytest.mark.unit
 @pytest.mark.requirement("CORE-08")
-def test_no_compiled_record_declares_a_mutable_container() -> None:
+@pytest.mark.parametrize("base", FROZEN_BASES, ids=lambda base: base.__name__)
+def test_no_frozen_record_declares_a_mutable_container(base: type[BaseModel]) -> None:
     """Total across classes. Discovery is by subclass walk, so a new record is covered on sight."""
     offenders = {
         f"{subclass.__name__}.{name}": containers
-        for subclass in concrete_subclasses(CompiledRecord)
+        for subclass in concrete_subclasses(base)
         for name, field in subclass.model_fields.items()
         if (containers := mutable_containers(field.annotation))
     }
-    assert not offenders, f"compiled records must use tuple/frozenset: {offenders}"
+    assert not offenders, f"{base.__name__} subclasses must use tuple/frozenset: {offenders}"
 
 
 @pytest.mark.unit
 @pytest.mark.requirement("CORE-08")
-def test_compiled_records_are_frozen_and_strict() -> None:
-    for subclass in concrete_subclasses(CompiledRecord):
+@pytest.mark.parametrize("base", FROZEN_BASES, ids=lambda base: base.__name__)
+def test_frozen_records_are_frozen_and_strict(base: type[BaseModel]) -> None:
+    subclasses = concrete_subclasses(base)
+    assert len(subclasses) >= 4, (
+        f"{base.__name__} has {len(subclasses)} shipped subclasses loaded; the walk only sees "
+        f"imported classes, so a dropped import here silently empties the sweep"
+    )
+    for subclass in subclasses:
         config = subclass.model_config
         assert config.get("frozen") is True, subclass.__name__
         assert config.get("strict") is True, subclass.__name__
