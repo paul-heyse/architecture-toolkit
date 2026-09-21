@@ -9,12 +9,15 @@ import json
 import sys
 from pathlib import Path
 
+import jsonschema
 import pytest
 
 from architecture_toolkit.cli import EXIT_OK, EXIT_USAGE, main
 from architecture_toolkit.domain.model import Model
 from architecture_toolkit.releases.store import ReleaseStore
 from tests.integration.conftest import Publisher
+
+CONTRACT = Path(__file__).resolve().parents[2] / "schemas" / "query-contract.schema.json"
 
 
 def run(monkeypatch: pytest.MonkeyPatch, *argv: str) -> int:
@@ -232,3 +235,100 @@ def test_a_store_with_no_current_release_is_a_usage_error(
 
     assert exit_code.value.code == EXIT_USAGE
     assert "no current release" in capsys.readouterr().err
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("CORE-28", "CORE-12")
+def test_impact_json_validates_against_the_generated_query_contract(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], published: Path
+) -> None:
+    """A published contract nothing is checked against is the same kind of claim as an empty test.
+
+    `query-contract` is a multi-root family, so it is a definition library rather than a document
+    schema; the `$ref` below is how a caller picks the result they are holding out of it, and this
+    asserts that the CLI's output is one of them.
+    """
+    assert run(
+        monkeypatch, "impact", "system-1", "--store", str(published), "--format", "json"
+    ) == (EXIT_OK)
+    payload = json.loads(capsys.readouterr().out)
+
+    contract = json.loads((CONTRACT).read_text(encoding="utf-8"))
+    jsonschema.validate(
+        payload,
+        {
+            "$schema": contract["$schema"],
+            "$defs": contract["$defs"],
+            "$ref": "#/$defs/TraversalResult",
+        },
+    )
+    assert payload["classification"] == "potentially_affected"
+    assert payload["paths"][0]["relationship_ids"] == ["rel-1"]
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("CORE-12")
+def test_the_contract_would_reject_a_result_that_lost_its_relationships(
+    published: Path,
+) -> None:
+    """The negative control. CORE-28 is in the schema, not only in the record."""
+    contract = json.loads((CONTRACT).read_text(encoding="utf-8"))
+    schema = {
+        "$schema": contract["$schema"],
+        "$defs": contract["$defs"],
+        "$ref": "#/$defs/GraphPathResult",
+    }
+    complete = {
+        "release_id": "rel-0001",
+        "policy_id": "impact.structural",
+        "policy_version": "1.0.0",
+        "start": "system-1",
+        "end": "component-1",
+        "node_ids": ["system-1", "component-1"],
+        "relationship_ids": ["rel-1"],
+        "relationship_types": ["contains"],
+        "depth": 1,
+        "classification": "potentially_affected",
+    }
+    jsonschema.validate(complete, schema)
+
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate({k: v for k, v in complete.items() if k != "relationship_ids"}, schema)
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("DATA-17")
+def test_impact_can_keep_only_the_unverified_dependencies(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], published: Path
+) -> None:
+    """`find_unverified_dependencies` had no operator path at all until now."""
+    assert run(monkeypatch, "impact", "interface-1", "--store", str(published), "--unverified") == (
+        EXIT_OK
+    )
+
+    printed = capsys.readouterr().out
+    assert "dependencies.direct" in printed
+    assert "schema-1" in printed
+    assert "rel-3 (depends_on)" in printed
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("DATA-17")
+def test_unverified_refuses_to_silently_replace_the_policy_it_was_given(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], published: Path
+) -> None:
+    """A flag that overrode another flag would answer a question nobody asked."""
+    with pytest.raises(SystemExit) as exit_code:
+        run(
+            monkeypatch,
+            "impact",
+            "interface-1",
+            "--store",
+            str(published),
+            "--unverified",
+            "--policy",
+            "impact.structural",
+        )
+
+    assert exit_code.value.code == EXIT_USAGE
+    assert "drop --policy impact.structural or the flag" in capsys.readouterr().err

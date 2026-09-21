@@ -2,16 +2,16 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:architecture-toolkit:query-contract:v1",
   "title": "Query parameters and results",
-  "description": "A versioned query recipe: what it asks, which tables and release context it needs, the parameters it binds and the result schema it promises (DATA-48).",
+  "description": "What a query asks and what it answers: the versioned recipe with its parameter and result declarations, and the typed results a graph query returns (DATA-48, CORE-28).",
   "x-toolkit": {
     "family": "query-contract",
     "version": 1,
     "requirements": [
       "CORE-12",
+      "CORE-28",
       "DATA-48"
     ]
   },
-  "$ref": "#/$defs/QueryRecipe",
   "$defs": {
     "ColumnSpec": {
       "additionalProperties": false,
@@ -44,6 +44,229 @@
         "data_type"
       ],
       "title": "ColumnSpec",
+      "type": "object"
+    },
+    "ComponentResult": {
+      "additionalProperties": false,
+      "description": "One strongly connected component, mapped back to canonical IDs (CORE-30).",
+      "properties": {
+        "release_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Release Id",
+          "type": "string"
+        },
+        "policy_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "policy_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "element_ids": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+            "type": "string"
+          },
+          "title": "Element Ids",
+          "type": "array"
+        },
+        "is_cyclic": {
+          "title": "Is Cyclic",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "release_id",
+        "policy_id",
+        "policy_version",
+        "element_ids",
+        "is_cyclic"
+      ],
+      "title": "ComponentResult",
+      "type": "object"
+    },
+    "CondensationResult": {
+      "additionalProperties": false,
+      "description": "The component DAG: every SCC collapsed to a node, and the edges between them (CORE-30).",
+      "properties": {
+        "release_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Release Id",
+          "type": "string"
+        },
+        "policy_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "policy_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "components": {
+          "items": {
+            "$ref": "#/$defs/ComponentResult"
+          },
+          "title": "Components",
+          "type": "array"
+        },
+        "edges": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Edges",
+          "type": "array"
+        }
+      },
+      "required": [
+        "release_id",
+        "policy_id",
+        "policy_version",
+        "components",
+        "edges"
+      ],
+      "title": "CondensationResult",
+      "type": "object"
+    },
+    "CycleResult": {
+      "additionalProperties": false,
+      "description": "One cycle, with the relationships that realize it (CORE-30).\n\n`nx.simple_cycles` reports a multigraph cycle as a sequence of nodes and keeps no keys, so a\ncycle closed by one of two parallel relationships is indistinguishable from one closed by the\nother. `queries/algorithms.py` recovers the keys, and where a step has several relationships it\nreports each realization rather than choosing one \u2014 the same promise CORE-23 makes about paths.",
+      "properties": {
+        "release_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Release Id",
+          "type": "string"
+        },
+        "policy_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "policy_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "node_ids": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+            "type": "string"
+          },
+          "title": "Node Ids",
+          "type": "array"
+        },
+        "relationship_ids": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+            "type": "string"
+          },
+          "title": "Relationship Ids",
+          "type": "array"
+        },
+        "length": {
+          "title": "Length",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "release_id",
+        "policy_id",
+        "policy_version",
+        "node_ids",
+        "relationship_ids",
+        "length"
+      ],
+      "title": "CycleResult",
+      "type": "object"
+    },
+    "GraphPathResult": {
+      "additionalProperties": false,
+      "description": "One explainable path, with the provenance that makes it re-derivable (CORE-28).",
+      "properties": {
+        "release_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Release Id",
+          "type": "string"
+        },
+        "policy_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "policy_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "start": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Start",
+          "type": "string"
+        },
+        "end": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "End",
+          "type": "string"
+        },
+        "node_ids": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+            "type": "string"
+          },
+          "title": "Node Ids",
+          "type": "array"
+        },
+        "relationship_ids": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+            "type": "string"
+          },
+          "title": "Relationship Ids",
+          "type": "array"
+        },
+        "relationship_types": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+            "type": "string"
+          },
+          "title": "Relationship Types",
+          "type": "array"
+        },
+        "depth": {
+          "title": "Depth",
+          "type": "integer"
+        },
+        "classification": {
+          "$ref": "#/$defs/PathClassification"
+        }
+      },
+      "required": [
+        "release_id",
+        "policy_id",
+        "policy_version",
+        "start",
+        "end",
+        "node_ids",
+        "relationship_ids",
+        "relationship_types",
+        "depth",
+        "classification"
+      ],
+      "title": "GraphPathResult",
       "type": "object"
     },
     "ParameterSpec": {
@@ -85,6 +308,16 @@
       ],
       "title": "ParameterSpec",
       "type": "object"
+    },
+    "PathClassification": {
+      "description": "What a path means. Every member states a traversal; none states a consequence.",
+      "enum": [
+        "potentially_affected",
+        "traced",
+        "contained_by"
+      ],
+      "title": "PathClassification",
+      "type": "string"
     },
     "QueryRecipe": {
       "additionalProperties": false,
@@ -177,6 +410,141 @@
       "title": "QueryRecipe",
       "type": "object"
     },
+    "ReachabilityEdge": {
+      "additionalProperties": false,
+      "description": "A transitive-closure edge: `source` reaches `target` somehow (CORE-31).\n\n**It carries no relationship IDs, deliberately.** `nx.transitive_closure` mints its derived\nedges with the integer key `0`, in the same key space as a canonical relationship ID, and a\nfield to put that in would be a field somebody eventually treats as a relationship. Derived\nanalysis never replaces canonical relationships, and here that is enforced by the absence of\nthe field rather than by a warning.",
+      "properties": {
+        "source": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Target",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "target"
+      ],
+      "title": "ReachabilityEdge",
+      "type": "object"
+    },
+    "ReductionEdge": {
+      "additionalProperties": false,
+      "description": "A transitive-reduction edge, with every relationship that realizes it (CORE-31).\n\nUnlike a closure edge this one *is* backed by relationships \u2014 `nx.transitive_reduction` returns\na `DiGraph` and drops the keys, so they are recovered here. Plural, because two parallel\nrelationships both realize the step and picking one would misreport the model.",
+      "properties": {
+        "source": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Target",
+          "type": "string"
+        },
+        "relationship_ids": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+            "type": "string"
+          },
+          "title": "Relationship Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "source",
+        "target",
+        "relationship_ids"
+      ],
+      "title": "ReductionEdge",
+      "type": "object"
+    },
+    "ReleaseComparison": {
+      "additionalProperties": false,
+      "description": "What changed between two releases, at graph identity (DATA-17).\n\nDeliberately about identities rather than content: `semantic_delta` in `domain/semantics.py`\nanswers \"what changed in this model\" and W6 owns the change narrative. This answers the\nnarrower question a graph can answer \u2014 which objects and relationships exist on each side.",
+      "properties": {
+        "base_release_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Base Release Id",
+          "type": "string"
+        },
+        "candidate_release_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Candidate Release Id",
+          "type": "string"
+        },
+        "added_elements": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+            "type": "string"
+          },
+          "title": "Added Elements",
+          "type": "array"
+        },
+        "removed_elements": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+            "type": "string"
+          },
+          "title": "Removed Elements",
+          "type": "array"
+        },
+        "added_relationships": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+            "type": "string"
+          },
+          "title": "Added Relationships",
+          "type": "array"
+        },
+        "removed_relationships": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+            "type": "string"
+          },
+          "title": "Removed Relationships",
+          "type": "array"
+        },
+        "retyped_relationships": {
+          "default": [],
+          "items": {
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+                "type": "string"
+              },
+              {
+                "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+                "type": "string"
+              },
+              {
+                "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+                "type": "string"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Retyped Relationships",
+          "type": "array"
+        }
+      },
+      "required": [
+        "base_release_id",
+        "candidate_release_id"
+      ],
+      "title": "ReleaseComparison",
+      "type": "object"
+    },
     "TableInput": {
       "additionalProperties": false,
       "description": "A table this recipe reads, and which side it reads it from (DATA-47).\n\n`side` is `None` for a single-release recipe. A comparison recipe names its sides explicitly\nso the declaration says which release each input comes from, rather than leaving a reader to\ninfer it from the SQL.",
@@ -207,6 +575,69 @@
         "table_id"
       ],
       "title": "TableInput",
+      "type": "object"
+    },
+    "TraversalResult": {
+      "additionalProperties": false,
+      "description": "Every path one traversal found, and whether a cap stopped it finding more.",
+      "properties": {
+        "release_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Release Id",
+          "type": "string"
+        },
+        "policy_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "policy_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "start": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Start",
+          "type": "string"
+        },
+        "classification": {
+          "$ref": "#/$defs/PathClassification"
+        },
+        "paths": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/GraphPathResult"
+          },
+          "title": "Paths",
+          "type": "array"
+        },
+        "truncated": {
+          "default": false,
+          "title": "Truncated",
+          "type": "boolean"
+        },
+        "limit_reached": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Limit Reached"
+        }
+      },
+      "required": [
+        "release_id",
+        "policy_id",
+        "policy_version",
+        "start",
+        "classification"
+      ],
+      "title": "TraversalResult",
       "type": "object"
     }
   }

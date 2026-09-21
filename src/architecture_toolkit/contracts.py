@@ -45,6 +45,16 @@ from architecture_toolkit.domain.notation import NotationBinding
 from architecture_toolkit.domain.references import Reference, ReferenceLink
 from architecture_toolkit.domain.registry import Profile
 from architecture_toolkit.queries.recipes import QueryRecipe
+from architecture_toolkit.queries.results import (
+    ComponentResult,
+    CondensationResult,
+    CycleResult,
+    GraphPathResult,
+    ReachabilityEdge,
+    ReductionEdge,
+    ReleaseComparison,
+    TraversalResult,
+)
 from architecture_toolkit.releases.manifest import ArchitectureRelease
 from architecture_toolkit.validation.claims import ValidationClaimReport
 from architecture_toolkit.validation.diagnostics import Diagnostic
@@ -159,12 +169,22 @@ SCHEMA_FAMILIES: tuple[SchemaFamily, ...] = (
         version=1,
         title="Query parameters and results",
         description=(
-            "A versioned query recipe: what it asks, which tables and release context it needs, "
-            "the parameters it binds and the result schema it promises (DATA-48)."
+            "What a query asks and what it answers: the versioned recipe with its parameter and "
+            "result declarations, and the typed results a graph query returns (DATA-48, CORE-28)."
         ),
         path="schemas/query-contract.schema.json",
-        requirements=frozenset({"CORE-12", "DATA-48"}),
-        roots=(QueryRecipe,),
+        requirements=frozenset({"CORE-12", "CORE-28", "DATA-48"}),
+        roots=(
+            QueryRecipe,
+            TraversalResult,
+            GraphPathResult,
+            CycleResult,
+            ComponentResult,
+            CondensationResult,
+            ReachabilityEdge,
+            ReductionEdge,
+            ReleaseComparison,
+        ),
     ),
 )
 

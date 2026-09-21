@@ -11,6 +11,7 @@ from architecture_toolkit.queries.execution import ReleaseQueryExecutor
 from architecture_toolkit.queries.plans import capture
 from architecture_toolkit.queries.policy import POLICIES, policy_for
 from architecture_toolkit.queries.recipes import RECIPES, ParameterSpec, QueryRecipe, recipe_for
+from architecture_toolkit.queries.traversals import find_unverified_dependencies
 from architecture_toolkit.releases.archive import write_archive
 from architecture_toolkit.releases.candidate import ReleaseCandidate, next_release_id
 from architecture_toolkit.releases.errors import (
@@ -44,6 +45,11 @@ EXIT_USAGE = 2
 EXIT_UNREADABLE = 3
 
 ROOT = Path(__file__).resolve().parents[2]
+
+DEFAULT_POLICY = "impact.structural"
+UNVERIFIED_POLICY = "dependencies.direct"
+"""The policy `find_unverified_dependencies` traverses; named here so `--unverified` can refuse to
+silently replace a policy the operator asked for."""
 
 
 def main() -> int:
@@ -137,8 +143,19 @@ def main() -> int:
     impact.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
     impact.add_argument("--release", help="Defaults to the current release.")
     impact.add_argument(
-        "--policy", default="impact.structural", help="A named policy; `--policy list` shows them."
+        "--policy",
+        default=None,
+        help=f"A named policy; `--policy list` shows them. Defaults to {DEFAULT_POLICY}.",
     )
+    impact.add_argument(
+        "--unverified",
+        action="store_true",
+        help=(
+            "Keep only dependencies whose qualification is not established. Uses the "
+            "dependencies.direct policy, so it cannot be combined with another --policy."
+        ),
+    )
+    impact.add_argument("--format", choices=("human", "json"), default="human")
 
     sub.add_parser("build", help="Reserved: full projection pipeline is not implemented")
     args = parser.parse_args()
@@ -228,6 +245,8 @@ def main() -> int:
             store_root=args.store,
             release_id=args.release,
             policy_id=args.policy,
+            unverified=args.unverified,
+            output=args.format,
         )
 
     parser.exit(EXIT_USAGE, "Not implemented: follow docs/implementation-contract.md.\n")
@@ -725,15 +744,26 @@ def _impact(
     *,
     store_root: Path,
     release_id: str | None,
-    policy_id: str,
+    policy_id: str | None,
+    unverified: bool = False,
+    output: str = "human",
 ) -> int:
     """A bounded traversal, printed with the path that justifies every result (CORE-28)."""
     if policy_id == "list":
         for policy in POLICIES.values():
             print(f"{policy.policy_id:<36} {policy.direction.value:<8} {policy.purpose}")
         return EXIT_OK
+    if unverified and policy_id is not None and policy_id != UNVERIFIED_POLICY:
+        # A flag that silently overrode another flag would be the quiet kind of wrong this
+        # command exists to avoid: the answer would not be the policy the operator named.
+        parser.exit(
+            EXIT_USAGE,
+            f"--unverified traverses {UNVERIFIED_POLICY}; drop --policy {policy_id} or the flag.\n",
+        )
+        return EXIT_USAGE
+    chosen_policy = policy_id or (UNVERIFIED_POLICY if unverified else DEFAULT_POLICY)
     try:
-        policy = policy_for(policy_id)
+        policy = policy_for(chosen_policy)
     except KeyError as unknown:
         parser.exit(EXIT_USAGE, f"{unknown.args[0]}\n")
         return EXIT_USAGE
@@ -742,10 +772,20 @@ def _impact(
         return EXIT_USAGE
     executor, chosen = opened
     try:
-        result = executor.graph_for(chosen).traverse(policy, element_id)
+        graph = executor.graph_for(chosen)
+        result = (
+            find_unverified_dependencies(graph, executor.context_for(chosen), element_id)
+            if unverified
+            else graph.traverse(policy, element_id)
+        )
     except QueryError as refused:
         parser.exit(EXIT_USAGE, f"{refused.args[0]}\n")
         return EXIT_USAGE
+    if output == "json":
+        # Validates against `schemas/query-contract.schema.json`, which
+        # `tests/integration/test_query_cli.py` holds it to.
+        print(result.model_dump_json(indent=2))
+        return EXIT_OK
     print(
         f"{result.start} under {result.policy_id} v{result.policy_version} "
         f"on {result.release_id}: {len(result.reached)} object(s) {result.classification.value}"
