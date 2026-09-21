@@ -36,7 +36,6 @@ def publish_with(
             expected_parent=None,
             source_text=text,
             preserve_source=preserve,
-            attempt=1,
             now=lambda: MOMENT,
             generator_commit="abc1234",
         )
@@ -76,7 +75,6 @@ def test_the_snapshot_is_the_text_that_was_parsed_not_the_file_on_disk(
             ),
             expected_parent=None,
             source_text=text,
-            attempt=1,
             now=lambda: MOMENT,
             generator_commit="abc1234",
         )

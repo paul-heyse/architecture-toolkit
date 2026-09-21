@@ -62,7 +62,7 @@ def renamed(model: Model, new_name: str) -> Model:
 
 
 def publish_into(
-    store: ReleaseStore, release_id: str, model: Model, *, parent: str | None, attempt: int
+    store: ReleaseStore, release_id: str, model: Model, *, parent: str | None
 ) -> ArchitectureRelease:
     return publish(
         PublicationRequest(
@@ -73,7 +73,6 @@ def publish_into(
                 source_bundle=source_bundle(source_id="s", text=EXAMPLE.read_text()),
             ),
             expected_parent=parent,
-            attempt=attempt,
             now=lambda: MOMENT,
             generator_commit="abc1234",
         )
@@ -90,7 +89,7 @@ def test_the_whole_path_round_trips_for_every_provider(
     """Pydantic to Arrow to Delta to an explicit version to a provider to DataFusion and back."""
     assert callable(record_property)
     store = ReleaseStore.at(tmp_path).initialize()
-    manifest = publish_into(store, "rel-0001", example(), parent=None, attempt=1)
+    manifest = publish_into(store, "rel-0001", example(), parent=None)
 
     reader = provider_named(
         provider_name, {ref.table_id: store.resolve(ref.uri) for ref in manifest.tables}
@@ -134,10 +133,8 @@ def test_historical_reproducibility_across_three_releases(
     }
     parents = {"rel-0001": None, "rel-0002": "rel-0001", "rel-0003": "rel-0002"}
     manifests = {
-        release_id: publish_into(
-            store, release_id, model, parent=parents[release_id], attempt=index + 1
-        )
-        for index, (release_id, model) in enumerate(models.items())
+        release_id: publish_into(store, release_id, model, parent=parents[release_id])
+        for release_id, model in models.items()
     }
     # The releases genuinely differ in storage, not only in name.
     versions = {rid: dict(m.pinned_versions)["elements"] for rid, m in manifests.items()}
@@ -161,7 +158,7 @@ def test_table_digests_survive_the_whole_storage_round_trip(tmp_path: Path) -> N
     from architecture_toolkit.storage.mappings import compile_tables
 
     expected = table_set_digests(compile_tables(example()))
-    manifest = publish_into(store, "rel-0001", example(), parent=None, attempt=1)
+    manifest = publish_into(store, "rel-0001", example(), parent=None)
     observed = table_set_digests(read_table_set(store, manifest))
 
     assert dict(observed) == dict(expected)
@@ -179,9 +176,9 @@ def test_two_releases_are_queryable_side_by_side_without_mixing_latest(tmp_path:
     each resolved its own pinned versions rather than both resolving the tip.
     """
     store = ReleaseStore.at(tmp_path).initialize()
-    first = publish_into(store, "rel-0001", example(), parent=None, attempt=1)
+    first = publish_into(store, "rel-0001", example(), parent=None)
     second = publish_into(
-        store, "rel-0002", renamed(example(), "Candidate side"), parent="rel-0001", attempt=2
+        store, "rel-0002", renamed(example(), "Candidate side"), parent="rel-0001"
     )
 
     context = SessionContext()

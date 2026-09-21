@@ -67,7 +67,7 @@ def example() -> Model:
 
 
 def a_request(
-    store: ReleaseStore, release_id: str, *, expected_parent: str | None, attempt: int = 1
+    store: ReleaseStore, release_id: str, *, expected_parent: str | None
 ) -> PublicationRequest:
     return PublicationRequest(
         store=store,
@@ -79,7 +79,6 @@ def a_request(
             ),
         ),
         expected_parent=expected_parent,
-        attempt=attempt,
         now=lambda: MOMENT,
         generator_commit="abc1234",
     )
@@ -153,12 +152,12 @@ def test_a_failure_at_any_stage_leaves_the_previous_release_current(
 ) -> None:
     """The gate proper: one good release, then a failed second at each stage in turn."""
     store = ReleaseStore.at(tmp_path).initialize()
-    first = publish(a_request(store, "rel-0001", expected_parent=None, attempt=1))
+    first = publish(a_request(store, "rel-0001", expected_parent=None))
     assert store.current_id() == "rel-0001"
 
     with pytest.raises(InjectedFailure):
         publish(
-            a_request(store, "rel-0002", expected_parent="rel-0001", attempt=2),
+            a_request(store, "rel-0002", expected_parent="rel-0001"),
             steps=failing_at(step_name),
         )
 
@@ -181,11 +180,11 @@ def test_a_failure_after_the_manifest_is_written_still_does_not_publish_it(
     and the protocol is built to survive.
     """
     store = ReleaseStore.at(tmp_path).initialize()
-    publish(a_request(store, "rel-0001", expected_parent=None, attempt=1))
+    publish(a_request(store, "rel-0001", expected_parent=None))
 
     with pytest.raises(InjectedFailure):
         publish(
-            a_request(store, "rel-0002", expected_parent="rel-0001", attempt=2),
+            a_request(store, "rel-0002", expected_parent="rel-0001"),
             steps=failing_at("atomically move current pointer"),
         )
 
@@ -208,12 +207,12 @@ def test_orphan_table_versions_are_permitted_and_invisible(tmp_path: Path) -> No
     these.
     """
     store = ReleaseStore.at(tmp_path).initialize()
-    first = publish(a_request(store, "rel-0001", expected_parent=None, attempt=1))
+    first = publish(a_request(store, "rel-0001", expected_parent=None))
     pinned = dict(first.pinned_versions)
 
     with pytest.raises(InjectedFailure):
         publish(
-            a_request(store, "rel-0002", expected_parent="rel-0001", attempt=2),
+            a_request(store, "rel-0002", expected_parent="rel-0001"),
             steps=failing_at("read back exact staged versions"),
         )
 
@@ -231,7 +230,7 @@ def test_orphan_table_versions_are_permitted_and_invisible(tmp_path: Path) -> No
 def test_orphan_versions_from_changed_content_are_still_invisible(tmp_path: Path) -> None:
     """The same guarantee where a version genuinely is orphaned."""
     store = ReleaseStore.at(tmp_path).initialize()
-    first = publish(a_request(store, "rel-0001", expected_parent=None, attempt=1))
+    first = publish(a_request(store, "rel-0001", expected_parent=None))
     pinned = dict(first.pinned_versions)
 
     changed = example()
@@ -255,7 +254,6 @@ def test_orphan_versions_from_changed_content_are_still_invisible(tmp_path: Path
             source_bundle=source_bundle(source_id="s", text="x"),
         ),
         expected_parent="rel-0001",
-        attempt=2,
         now=lambda: MOMENT,
         generator_commit="abc1234",
     )
@@ -278,13 +276,13 @@ def test_publication_succeeds_on_a_retry_after_a_failed_attempt(tmp_path: Path) 
 
     with pytest.raises(InjectedFailure):
         publish(
-            a_request(store, "rel-0001", expected_parent=None, attempt=1),
+            a_request(store, "rel-0001", expected_parent=None),
             steps=failing_at("publish immutable manifest"),
         )
     assert store.current_id() is None
     staged = {t: delta.tip(store.table_location(t)) for t in TABLE_IDS}
 
-    manifest = publish(a_request(store, "rel-0001", expected_parent=None, attempt=1))
+    manifest = publish(a_request(store, "rel-0001", expected_parent=None))
     assert store.current_id() == "rel-0001"
     # The retry wrote nothing new: the attempt marker said those tables were already committed.
     assert dict(manifest.pinned_versions) == staged

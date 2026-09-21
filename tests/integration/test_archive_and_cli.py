@@ -39,7 +39,7 @@ def test_an_archive_holds_every_table_as_parquet_with_its_digest_intact(
     Parquet rather than a Delta pointer, so the archive needs no transaction log, no retention
     policy and no library that understands one.
     """
-    manifest = publish_release("rel-0001", example_model, expected_parent=None, attempt=1)
+    manifest = publish_release("rel-0001", example_model, expected_parent=None)
     result = write_archive(store, manifest, tmp_path / "milestone")
 
     assert result.table_count == len(TABLE_IDS)
@@ -56,7 +56,7 @@ def test_an_archive_carries_the_manifest_schemas_and_reports(
     store: ReleaseStore, example_model: Model, publish_release: Publisher, tmp_path: Path
 ) -> None:
     """§5F's contents list, minus outputs, which W8 fills."""
-    manifest = publish_release("rel-0001", example_model, expected_parent=None, attempt=1)
+    manifest = publish_release("rel-0001", example_model, expected_parent=None)
     result = write_archive(store, manifest, tmp_path / "milestone")
 
     assert (result.root / "manifest.json").is_file()
@@ -77,7 +77,7 @@ def test_every_archived_file_is_digested_and_verifiable(
     store: ReleaseStore, example_model: Model, publish_release: Publisher, tmp_path: Path
 ) -> None:
     """An archive whose contents cannot be checked is a directory of hopeful files."""
-    manifest = publish_release("rel-0001", example_model, expected_parent=None, attempt=1)
+    manifest = publish_release("rel-0001", example_model, expected_parent=None)
     result = write_archive(store, manifest, tmp_path / "milestone")
     assert verify_archive(result.root) == ()
 
@@ -92,7 +92,7 @@ def test_two_archives_of_one_release_are_byte_identical(
     store: ReleaseStore, example_model: Model, publish_release: Publisher, tmp_path: Path
 ) -> None:
     """Canonical form on the way out, so an archive can be compared with another copy of itself."""
-    manifest = publish_release("rel-0001", example_model, expected_parent=None, attempt=1)
+    manifest = publish_release("rel-0001", example_model, expected_parent=None)
     first = write_archive(store, manifest, tmp_path / "a")
     second = write_archive(store, manifest, tmp_path / "b")
     assert first.contents == second.contents
@@ -103,7 +103,7 @@ def test_two_archives_of_one_release_are_byte_identical(
 def test_an_archive_is_written_once(
     store: ReleaseStore, example_model: Model, publish_release: Publisher, tmp_path: Path
 ) -> None:
-    manifest = publish_release("rel-0001", example_model, expected_parent=None, attempt=1)
+    manifest = publish_release("rel-0001", example_model, expected_parent=None)
     write_archive(store, manifest, tmp_path / "milestone")
     with pytest.raises(ArchiveError, match="not empty"):
         write_archive(store, manifest, tmp_path / "milestone")
@@ -117,12 +117,11 @@ def test_a_superseded_release_still_archives_after_a_vacuum(
     """Retention protects it, so the archive of a historical baseline is still possible later."""
     from architecture_toolkit.releases.retention import vacuum_table
 
-    first = publish_release("rel-0001", example_model, expected_parent=None, attempt=1)
+    first = publish_release("rel-0001", example_model, expected_parent=None)
     publish_release(
         "rel-0002",
         rename_first_element(example_model, "Second"),
         expected_parent="rel-0001",
-        attempt=2,
     )
     for table_id in TABLE_IDS:
         vacuum_table(store, table_id, apply=True)

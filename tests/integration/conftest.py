@@ -45,7 +45,6 @@ def publish_release(store: ReleaseStore) -> Publisher:
         model: Model,
         *,
         expected_parent: str | None,
-        attempt: int = 1,
     ) -> ArchitectureRelease:
         return publish(
             PublicationRequest(
@@ -58,7 +57,6 @@ def publish_release(store: ReleaseStore) -> Publisher:
                     ),
                 ),
                 expected_parent=expected_parent,
-                attempt=attempt,
                 now=lambda: MOMENT,
                 generator_commit="abc1234",
             )

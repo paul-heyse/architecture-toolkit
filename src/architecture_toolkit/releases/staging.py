@@ -35,11 +35,25 @@ from architecture_toolkit.storage.digests import table_set_digests
 from architecture_toolkit.storage.mappings import TableSet
 from architecture_toolkit.storage.schemas import TABLE_IDS
 
-__all__ = ["APP_ID", "StagedTable", "StagingOutcome", "stage_tables"]
+__all__ = ["APP_ID_PREFIX", "StagedTable", "StagingOutcome", "app_id", "stage_tables"]
 
-APP_ID: Final[str] = "architecture-toolkit/publication"
-"""The application transaction id every publication writes under. One id, because the question it
-answers is "has this attempt already written this table", and the table is already the scope."""
+APP_ID_PREFIX: Final[str] = "architecture-toolkit/publication/"
+"""One application transaction id **per release**, not one shared id with a counter.
+
+The question the marker answers is "has this release already written this table", so the release
+is the right key. The counter this replaced was derived from the number of manifests in the store,
+which shifts when a failed publication leaves an orphan manifest behind — so a retry after the one
+crash the marker exists to survive would have been handed a different number and rewritten every
+table. Keying on the release id makes a retry of the same release find its own marker and a
+different release not find it, with no state to keep."""
+
+
+def app_id(release_id: str) -> str:
+    return f"{APP_ID_PREFIX}{release_id}"
+
+
+_MARKER_VERSION: Final[int] = 1
+"""Every release writes its marker at version 1, because the app id already identifies it."""
 
 
 class StagingOutcome(StrEnum):
@@ -80,18 +94,17 @@ def stage_tables(
     table_set: TableSet,
     *,
     parent: ArchitectureRelease | None,
-    attempt: int,
-    publication_attempt_id: str,
+    release_id: str,
     source_bundle_digest: str,
     generator_commit: str,
     change_set_id: str | None = None,
 ) -> tuple[StagedTable, ...]:
     """Stage every table of a candidate, writing only what changed.
 
-    `attempt` is the retry-safety counter. Two publications of different content must not share
-    one, or the second would be skipped as already committed; the publication protocol derives it
-    from the number of releases so a *retry* of one attempt reuses its number and a new attempt
-    does not.
+    `release_id` is both the identity of the work and the retry key: a second call for the same
+    release finds its own markers and skips, and a different release does not. That is DATA-54's
+    "per-table retry/idempotency" and nothing more — a table can be staged successfully and the
+    release still never published.
     """
     digests = table_set_digests(table_set)
     parent_pins = _parent_pins(parent)
@@ -115,7 +128,7 @@ def stage_tables(
             )
             continue
 
-        already = _already_committed(location, attempt=attempt)
+        already = _already_committed(location, release_id=release_id)
         if already is not None:
             staged.append(
                 StagedTable(
@@ -132,7 +145,7 @@ def stage_tables(
             location,
             table,
             commit_metadata=commit_metadata(
-                publication_attempt_id=publication_attempt_id,
+                publication_attempt_id=release_id,
                 model_id=table_set.model_id,
                 table_id=table_id,
                 profile_version=table_set.profile_version,
@@ -141,8 +154,8 @@ def stage_tables(
                 change_set_id=change_set_id,
                 expected_parent_release_id=None if parent is None else parent.release_id,
             ),
-            app_id=APP_ID,
-            attempt=attempt,
+            app_id=app_id(release_id),
+            attempt=_MARKER_VERSION,
         )
         staged.append(
             StagedTable(
@@ -161,14 +174,14 @@ def _parent_pins(parent: ArchitectureRelease | None) -> Mapping[TableId, TableRe
     return {} if parent is None else {ref.table_id: ref for ref in parent.tables}
 
 
-def _already_committed(location: Path, *, attempt: int) -> int | None:
-    """The version this attempt wrote, if it already did (DATA-54).
+def _already_committed(location: Path, *, release_id: str) -> int | None:
+    """The version this release wrote to this table, if it already did (DATA-54).
 
-    Returns `None` for a table that does not exist yet, for an attempt that has not run, and for
-    an *older* attempt — a marker from attempt 3 must not cause attempt 4 to be skipped.
+    `None` for a table that does not exist yet and for a release that has not written it. There is
+    no ordering question any more: a marker either belongs to this release or it does not.
     """
     if not delta.is_table(location):
         return None
     version = delta.tip(location)
-    seen = delta.committed_attempt(location, app_id=APP_ID, version=version)
-    return version if seen is not None and seen >= attempt else None
+    seen = delta.committed_attempt(location, app_id=app_id(release_id), version=version)
+    return version if seen is not None else None

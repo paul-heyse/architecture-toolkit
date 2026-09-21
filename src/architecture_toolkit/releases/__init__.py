@@ -33,6 +33,7 @@ from architecture_toolkit.releases.publication import (
     publish,
 )
 from architecture_toolkit.releases.reader import read_model, read_table_set
+from architecture_toolkit.releases.recovery import discard, is_orphan, orphans, resume
 from architecture_toolkit.releases.retention import (
     RetentionPlan,
     probe_readability,
@@ -64,13 +65,17 @@ __all__ = [
     "StaleParentError",
     "TableRef",
     "UnknownReleaseError",
+    "discard",
+    "is_orphan",
     "next_release_id",
+    "orphans",
     "probe_readability",
     "publication_lock",
     "publish",
     "read_model",
     "read_table_set",
     "referenced_versions",
+    "resume",
     "retention_plan",
     "vacuum_table",
 ]

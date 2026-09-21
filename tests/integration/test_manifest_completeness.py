@@ -87,7 +87,7 @@ def test_the_two_lists_together_cover_every_manifest_field() -> None:
 def test_a_published_manifest_pins_every_required_field(
     example_model: Model, publish_release: Publisher
 ) -> None:
-    manifest = publish_release("rel-0001", example_model, expected_parent=None, attempt=1)
+    manifest = publish_release("rel-0001", example_model, expected_parent=None)
     empty = ArchitectureRelease.model_fields
     unset = {
         name: reason
@@ -103,7 +103,7 @@ def test_a_descendant_pins_its_parent_and_its_change_set(
     store: ReleaseStore, example_model: Model, publish_release: Publisher
 ) -> None:
     """The defect W4 shipped: both of these were always `None`."""
-    publish_release("rel-0001", example_model, expected_parent=None, attempt=1)
+    publish_release("rel-0001", example_model, expected_parent=None)
 
     victim = example_model.elements[0]
     change_set = ChangeSet(
@@ -126,7 +126,6 @@ def test_a_descendant_pins_its_parent_and_its_change_set(
             ),
             expected_parent="rel-0001",
             change_set=change_set,
-            attempt=2,
             now=lambda: MOMENT,
             generator_commit="abc1234",
         )
@@ -144,12 +143,11 @@ def test_a_release_without_a_change_set_still_pins_its_parent(
     store: ReleaseStore, example_model: Model, publish_release: Publisher
 ) -> None:
     """Re-authoring a source is a publication with a parent and no change set."""
-    publish_release("rel-0001", example_model, expected_parent=None, attempt=1)
+    publish_release("rel-0001", example_model, expected_parent=None)
     second = publish_release(
         "rel-0002",
         rename_first_element(example_model, "Re-authored"),
         expected_parent="rel-0001",
-        attempt=2,
     )
     assert second.parent_release_id == "rel-0001"
     assert second.change_set_id is None
@@ -161,18 +159,16 @@ def test_the_chain_of_a_real_store_links_and_has_one_root(
     store: ReleaseStore, example_model: Model, publish_release: Publisher
 ) -> None:
     """Three releases, one navigable history."""
-    publish_release("rel-0001", example_model, expected_parent=None, attempt=1)
+    publish_release("rel-0001", example_model, expected_parent=None)
     publish_release(
         "rel-0002",
         rename_first_element(example_model, "Second"),
         expected_parent="rel-0001",
-        attempt=2,
     )
     publish_release(
         "rel-0003",
         rename_first_element(example_model, "Third"),
         expected_parent="rel-0002",
-        attempt=3,
     )
 
     entries = [(m.release_id, m.parent_release_id, m.model_id) for m in store.iter_manifests()]
@@ -213,8 +209,8 @@ def test_the_reuse_count_a_publication_reports_is_the_real_one(
 
     Republishing identical content reuses every table, which is DATA-22's rule at its limit.
     """
-    publish_release("rel-0001", example_model, expected_parent=None, attempt=1)
-    second = publish_release("rel-0002", example_model, expected_parent="rel-0001", attempt=2)
+    publish_release("rel-0001", example_model, expected_parent=None)
+    second = publish_release("rel-0002", example_model, expected_parent="rel-0001")
 
     first_pins = dict(store.read_manifest("rel-0001").pinned_versions)
     assert dict(second.pinned_versions) == first_pins

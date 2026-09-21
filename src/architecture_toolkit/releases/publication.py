@@ -50,6 +50,7 @@ from architecture_toolkit.storage.digests import table_set_digests
 from architecture_toolkit.storage.mappings import TableSet, assemble_model, compile_tables
 from architecture_toolkit.storage.schemas import TABLE_IDS
 from architecture_toolkit.validation.claims import ValidationClaimReport
+from architecture_toolkit.validation.diagnostics import Diagnostic, build_diagnostic
 from architecture_toolkit.validation.pipeline import validate_model
 from architecture_toolkit.validation.release import digest_mismatches, row_count_mismatches
 
@@ -61,6 +62,7 @@ __all__ = [
     "PublicationState",
     "Step",
     "publish",
+    "verify_against_storage",
 ]
 
 type Clock = Callable[[], datetime]
@@ -92,7 +94,6 @@ class PublicationRequest:
 
     change_set: ChangeSet | None = None
     profile: Profile = BASELINE_PROFILE
-    attempt: int | None = None
     now: Clock = _now
     generator_commit: str | None = None
     preserve_source: bool = True
@@ -102,15 +103,6 @@ class PublicationRequest:
     it came from, and a git revision does not help there. Off is the "authorized snapshot" case:
     DATA-37's wording implies some sources must not be copied, and a caller that knows that has
     to be able to say so."""
-
-    @property
-    def publication_attempt_id(self) -> str:
-        """Identifies one attempt across every table it writes, and across its retries.
-
-        Derived from the release id and attempt number rather than random, so a retry of the same
-        attempt produces the same id and the DATA-53 provenance in each table's history lines up.
-        """
-        return f"{self.candidate.release_id}/attempt-{self.attempt or 1}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -227,8 +219,7 @@ def stage_changed_tables(state: PublicationState) -> PublicationState:
         state.store,
         table_set,
         parent=state.parent,
-        attempt=request.attempt or 1,
-        publication_attempt_id=request.publication_attempt_id,
+        release_id=request.candidate.release_id,
         source_bundle_digest=request.candidate.source_bundle.digest,
         generator_commit=_commit(request),
         change_set_id=request.candidate.change_set_id,
@@ -265,37 +256,60 @@ def read_back_staged_versions(state: PublicationState) -> PublicationState:
 
 
 def validate_schema_content_and_artifacts(state: PublicationState) -> PublicationState:
-    """`validate schema/content/artifacts` — the last chance to refuse.
-
-    Three independent checks, because they fail in different ways: per-table digests catch wrong
-    content, row counts catch a truncation a digest collision would hide, and reassembling the
-    model catches a table set that is individually fine and jointly incoherent.
-    """
+    """`validate schema/content/artifacts` — the last chance to refuse."""
     read_back = state.read_back
     manifest = state.require_manifest()
     if read_back is None:
         message = "nothing was read back; steps run in order"
         raise ReleaseError(message)
 
-    observed = table_set_digests(read_back)
-    pinned = {ref.table_id: ref.semantic_digest for ref in manifest.tables}
-    counts = {ref.table_id: ref.row_count for ref in manifest.tables}
-    observed_counts = {table_id: read_back[table_id].num_rows for table_id in TABLE_IDS}
-
-    findings = (
-        *digest_mismatches(pinned, dict(observed)),
-        *row_count_mismatches(counts, observed_counts),
-    )
+    findings = verify_against_storage(manifest, read_back)
     if findings:
         codes = sorted({finding.code for finding in findings})
         message = f"staged versions did not read back as staged: {codes}"
         raise ReadBackMismatchError(message)
-
-    restored = assemble_model(read_back)
-    if model_digest(restored) != manifest.model_digest:
-        message = "the staged tables do not reassemble into the candidate model"
-        raise ReadBackMismatchError(message)
     return state
+
+
+def verify_against_storage(
+    manifest: ArchitectureRelease, observed: TableSet
+) -> tuple[Diagnostic, ...]:
+    """Does what storage returns match what this manifest claims?
+
+    Three independent checks, because they fail in different ways: per-table digests catch wrong
+    content, row counts catch a truncation a digest collision would hide, and reassembling the
+    model catches a table set that is individually fine and jointly incoherent.
+
+    Shared by publication's sixth step and by `recovery.resume`, deliberately. A resume that
+    verified a manifest with its own second implementation would be trusting a different
+    definition of "correct" from the one the publication used.
+    """
+    pinned = {ref.table_id: ref.semantic_digest for ref in manifest.tables}
+    counts = {ref.table_id: ref.row_count for ref in manifest.tables}
+    observed_digests = dict(table_set_digests(observed))
+    observed_counts = {table_id: observed[table_id].num_rows for table_id in TABLE_IDS}
+
+    findings = (
+        *digest_mismatches(pinned, observed_digests),
+        *row_count_mismatches(counts, observed_counts),
+    )
+    if findings:
+        return findings
+
+    restored = assemble_model(observed)
+    if model_digest(restored) != manifest.model_digest:
+        return (
+            build_diagnostic(
+                "CORE.RELEASE.DIGEST_MISMATCH",
+                message=(
+                    f"the tables of {manifest.release_id!r} do not reassemble into the model "
+                    "its manifest pins"
+                ),
+                canonical_object_id=manifest.release_id,
+                context=(("pinned", manifest.model_digest), ("observed", model_digest(restored))),
+            ),
+        )
+    return ()
 
 
 def publish_immutable_manifest(state: PublicationState) -> PublicationState:
@@ -436,6 +450,5 @@ class DeltaPublisher:
                 candidate=candidate,
                 expected_parent=expected_parent,
                 profile=self._profile,
-                attempt=len(self._store.release_ids()) + 1,
             )
         )

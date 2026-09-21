@@ -13,9 +13,9 @@ from architecture_toolkit.releases.manifest import (
     SourceBundle,
 )
 from architecture_toolkit.releases.staging import (
-    APP_ID,
     StagedTable,
     StagingOutcome,
+    app_id,
     stage_tables,
 )
 from architecture_toolkit.releases.store import ReleaseStore
@@ -54,14 +54,13 @@ def stage(
     model: Model,
     *,
     parent: ArchitectureRelease | None = None,
-    attempt: int = 1,
+    release_id: str = "rel-0001",
 ) -> tuple[StagedTable, ...]:
     return stage_tables(
         store,
         compile_tables(model),
         parent=parent,
-        attempt=attempt,
-        publication_attempt_id=f"pa-{attempt}",
+        release_id=release_id,
         source_bundle_digest=DIGEST,
         generator_commit="abc1234",
     )
@@ -89,10 +88,10 @@ def test_only_the_table_a_rename_touches_is_rewritten(tmp_path: Path) -> None:
     """
     store = ReleaseStore.at(tmp_path).initialize()
     model = example()
-    first = stage(store, model, attempt=1)
+    first = stage(store, model, release_id="rel-0001")
     parent = _manifest_from(store, first)
 
-    second = stage(store, renamed(model), parent=parent, attempt=2)
+    second = stage(store, renamed(model), parent=parent, release_id="rel-0002")
     by_table = {item.table_id: item for item in second}
 
     assert by_table["elements"].outcome is StagingOutcome.WRITTEN
@@ -104,30 +103,36 @@ def test_only_the_table_a_rename_touches_is_rewritten(tmp_path: Path) -> None:
 
 @pytest.mark.integration
 @pytest.mark.requirement("DATA-54")
-def test_replaying_one_attempt_writes_nothing_twice(tmp_path: Path) -> None:
+def test_restaging_one_release_writes_nothing_twice(tmp_path: Path) -> None:
     """deltalake records the marker and does not act on it; the skip is ours.
 
     Without the read-then-skip a retry would produce a second commit of identical content, and
-    the version the first attempt recorded would no longer be the tip.
+    the version the first run recorded would no longer be the tip.
     """
     store = ReleaseStore.at(tmp_path).initialize()
     model = example()
-    stage(store, model, attempt=1)
+    stage(store, model, release_id="rel-0001")
     versions_before = {t: delta.tip(store.table_location(t)) for t in TABLE_IDS}
 
-    replay = stage(store, model, attempt=1)
+    replay = stage(store, model, release_id="rel-0001")
     assert all(item.outcome is StagingOutcome.ALREADY_COMMITTED for item in replay)
     assert {t: delta.tip(store.table_location(t)) for t in TABLE_IDS} == versions_before
 
 
 @pytest.mark.integration
 @pytest.mark.requirement("DATA-54")
-def test_a_later_attempt_is_not_skipped_by_an_earlier_marker(tmp_path: Path) -> None:
-    """The failure the naive check would have: attempt 3's marker suppressing attempt 4."""
+def test_a_different_release_is_not_skipped_by_another_release_marker(tmp_path: Path) -> None:
+    """A marker belongs to one release; another release's write must not be suppressed by it.
+
+    The counter this replaced was derived from the number of manifests in the store, which shifts
+    when a failed publication leaves an orphan manifest behind — so a retry after the one crash
+    the marker exists to survive would have been handed a different number and rewritten every
+    table. One id per release has no such state.
+    """
     store = ReleaseStore.at(tmp_path).initialize()
     model = example()
-    stage(store, model, attempt=1)
-    second = stage(store, renamed(model), attempt=2)
+    stage(store, model, release_id="rel-0001")
+    second = stage(store, renamed(model), release_id="rel-0002")
     by_table = {item.table_id: item for item in second}
     assert by_table["elements"].outcome is StagingOutcome.WRITTEN
     assert by_table["elements"].delta_version == 1
@@ -138,11 +143,11 @@ def test_a_later_attempt_is_not_skipped_by_an_earlier_marker(tmp_path: Path) -> 
 def test_every_staged_commit_carries_its_publication_provenance(tmp_path: Path) -> None:
     """DATA-53's fields come back as top-level keys of a history entry — Delta's doing, not ours."""
     store = ReleaseStore.at(tmp_path).initialize()
-    stage(store, example(), attempt=1)
+    stage(store, example(), release_id="rel-0001")
 
     location = store.table_location("elements")
     entry = delta.history(location, version=0)[0]
-    assert entry["publication_attempt_id"] == "pa-1"
+    assert entry["publication_attempt_id"] == "rel-0001"
     assert entry["table_id"] == "elements"
     assert entry["model_id"] == "sample-service"
     assert entry["generator_commit"] == "abc1234"
@@ -156,10 +161,12 @@ def test_every_staged_commit_carries_its_publication_provenance(tmp_path: Path) 
 @pytest.mark.requirement("DATA-54")
 def test_the_application_transaction_marker_is_readable_per_table(tmp_path: Path) -> None:
     store = ReleaseStore.at(tmp_path).initialize()
-    stage(store, example(), attempt=7)
+    stage(store, example(), release_id="rel-0007")
     location = store.table_location("elements")
-    assert delta.committed_attempt(location, app_id=APP_ID, version=0) == 7
+    assert delta.committed_attempt(location, app_id=app_id("rel-0007"), version=0) == 1
+    assert delta.committed_attempt(location, app_id=app_id("rel-0008"), version=0) is None
     assert delta.committed_attempt(location, app_id="someone-else", version=0) is None
+    assert app_id("rel-0007") != app_id("rel-0008")
 
 
 @pytest.mark.integration
@@ -167,7 +174,7 @@ def test_the_application_transaction_marker_is_readable_per_table(tmp_path: Path
 def test_staged_content_reads_back_with_the_digest_that_was_staged(tmp_path: Path) -> None:
     store = ReleaseStore.at(tmp_path).initialize()
     model = example()
-    staged = stage(store, model, attempt=1)
+    staged = stage(store, model, release_id="rel-0001")
     expected = table_set_digests(compile_tables(model))
     for item in staged:
         read = delta.read_version(store.table_location(item.table_id), version=item.delta_version)

@@ -69,7 +69,6 @@ def published(tmp_path: Path) -> tuple[ReleaseStore, ArchitectureRelease]:
                 source_bundle=source_bundle(source_id="s", text=EXAMPLE.read_text()),
             ),
             expected_parent=None,
-            attempt=1,
             now=lambda: MOMENT,
             generator_commit="abc1234",
         )
@@ -146,7 +145,6 @@ def test_a_pinned_version_stays_pinned_after_the_table_moves_on(name: str, tmp_p
                 source_bundle=source_bundle(source_id="s", text="x"),
             ),
             expected_parent="rel-0001",
-            attempt=2,
             now=lambda: MOMENT,
             generator_commit="abc1234",
         )

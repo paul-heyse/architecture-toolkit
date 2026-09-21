@@ -35,14 +35,14 @@ def test_history_traces_a_table_version_to_the_attempt_that_wrote_it(
     store: ReleaseStore, example_model: Model, publish_release: Publisher
 ) -> None:
     """Traceability in the direction an operator asks for it."""
-    manifest = publish_release("rel-0001", example_model, expected_parent=None, attempt=1)
+    manifest = publish_release("rel-0001", example_model, expected_parent=None)
     audits = table_audit(store, "elements", version=0)
     assert audits[0].operation == "WRITE"
-    assert audits[0].publication_attempt_id == "rel-0001/attempt-1"
+    assert audits[0].publication_attempt_id == "rel-0001"
     assert audits[0].provenance["model_id"] == "sample-service"
 
     by_table = attempts_for(store, manifest)
-    assert by_table["elements"] == ("rel-0001/attempt-1",)
+    assert by_table["elements"] == ("rel-0001",)
     assert set(by_table) == set(TABLE_IDS)
 
 
@@ -57,9 +57,9 @@ def test_the_change_feed_cross_checks_the_semantic_diff(
     are *expected* to differ. That is the point — the storage log is not the change narrative, and
     a test that asserted they matched would be asserting the confusion DATA-57 forbids.
     """
-    publish_release("rel-0001", example_model, expected_parent=None, attempt=1)
+    publish_release("rel-0001", example_model, expected_parent=None)
     renamed = rename_first_element(example_model, "Renamed for the feed")
-    publish_release("rel-0002", renamed, expected_parent="rel-0001", attempt=2)
+    publish_release("rel-0002", renamed, expected_parent="rel-0001")
 
     counts = changed_row_counts(store, "elements", base_version=0, candidate_version=1)
     assert counts, "the change feed reported nothing for a table that was rewritten"
@@ -78,7 +78,7 @@ def test_a_commit_audit_cannot_be_mistaken_for_a_change_record(
     store: ReleaseStore, example_model: Model, publish_release: Publisher
 ) -> None:
     """Typed so the confusion DATA-57 forbids is not expressible."""
-    publish_release("rel-0001", example_model, expected_parent=None, attempt=1)
+    publish_release("rel-0001", example_model, expected_parent=None)
     audit = table_audit(store, "elements", version=0)[0]
     fields = set(vars(audit)) if hasattr(audit, "__dict__") else set(audit.__slots__)
     assert fields == {"version", "operation", "provenance"}
@@ -118,7 +118,7 @@ def test_delta_enforces_a_row_local_constraint_and_the_engine_says_why(
     store: ReleaseStore, example_model: Model, publish_release: Publisher
 ) -> None:
     """The reason to use a check constraint at all: the engine refuses the write, not us."""
-    publish_release("rel-0001", example_model, expected_parent=None, attempt=1)
+    publish_release("rel-0001", example_model, expected_parent=None)
     location = store.table_location("interface_details")
     applied = apply_constraints(location, "interface_details", version=0)
     assert "timeout_ms_is_not_negative" in applied
@@ -139,7 +139,7 @@ def test_delta_enforces_a_row_local_constraint_and_the_engine_says_why(
 def test_applying_constraints_twice_is_harmless(
     store: ReleaseStore, example_model: Model, publish_release: Publisher
 ) -> None:
-    publish_release("rel-0001", example_model, expected_parent=None, attempt=1)
+    publish_release("rel-0001", example_model, expected_parent=None)
     location = store.table_location("references")
     first = apply_constraints(location, "references", version=0)
     second = apply_constraints(location, "references", version=delta.tip(location))
@@ -187,7 +187,7 @@ def test_a_migration_writes_new_versions_and_leaves_the_old_ones_readable(
     This is the property that makes retention meaningful. A migration that rewrote history would
     make every retained manifest a claim about data that no longer exists in that shape.
     """
-    manifest = publish_release("rel-0001", example_model, expected_parent=None, attempt=1)
+    manifest = publish_release("rel-0001", example_model, expected_parent=None)
     before = manifest.table("references").delta_version
 
     result = apply_migration(store, SYNTHETIC, manifest)
@@ -214,7 +214,7 @@ def test_a_migration_refuses_a_release_at_the_wrong_schema_version(
 ) -> None:
     """No chaining and no inference: a runner that guessed would be inferring what DATA-56 wants
     stated."""
-    manifest = publish_release("rel-0001", example_model, expected_parent=None, attempt=1)
+    manifest = publish_release("rel-0001", example_model, expected_parent=None)
     wrong = Migration(
         migration_id="from-2.0.0",
         from_storage_schema_version="2.0.0",
@@ -233,7 +233,7 @@ def test_a_migration_refuses_a_release_at_the_wrong_schema_version(
 def test_a_migration_records_what_it_was_in_the_commit(
     store: ReleaseStore, example_model: Model, publish_release: Publisher
 ) -> None:
-    manifest = publish_release("rel-0001", example_model, expected_parent=None, attempt=1)
+    manifest = publish_release("rel-0001", example_model, expected_parent=None)
     apply_migration(store, SYNTHETIC, manifest)
     location = store.resolve(manifest.table("references").uri)
     entry = delta.history(location, version=delta.tip(location))[0]

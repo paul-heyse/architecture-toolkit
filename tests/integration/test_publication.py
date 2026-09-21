@@ -62,14 +62,12 @@ def request(
     expected_parent: str | None,
     model: Model | None = None,
     change_set: ChangeSet | None = None,
-    attempt: int = 1,
 ) -> PublicationRequest:
     return PublicationRequest(
         store=store,
         candidate=candidate(release_id, model),
         expected_parent=expected_parent,
         change_set=change_set,
-        attempt=attempt,
         now=lambda: MOMENT,
         generator_commit="abc1234",
     )
@@ -141,7 +139,7 @@ def test_publishing_against_the_wrong_parent_fails(tmp_path: Path) -> None:
     store = ReleaseStore.at(tmp_path).initialize()
     publish(request(store, "rel-0001", expected_parent=None))
     with pytest.raises(StaleParentError):
-        publish(request(store, "rel-0002", expected_parent="rel-0009", attempt=2))
+        publish(request(store, "rel-0002", expected_parent="rel-0009"))
     assert store.current_id() == "rel-0001"
 
 
@@ -164,9 +162,7 @@ def test_a_second_release_reuses_the_versions_it_did_not_change(tmp_path: Path) 
             ),
         ),
     )
-    second = publish(
-        request(store, "rel-0002", expected_parent="rel-0001", change_set=change_set, attempt=2)
-    )
+    second = publish(request(store, "rel-0002", expected_parent="rel-0001", change_set=change_set))
 
     before = dict(first.pinned_versions)
     after = dict(second.pinned_versions)
@@ -199,7 +195,7 @@ def test_a_change_set_expecting_a_different_baseline_is_refused(tmp_path: Path) 
         ),
     )
     with pytest.raises(StaleParentError, match="different baseline"):
-        publish(request(store, "rel-0002", expected_parent="rel-0001", change_set=stale, attempt=2))
+        publish(request(store, "rel-0002", expected_parent="rel-0001", change_set=stale))
     assert store.current_id() == "rel-0001"
 
 
@@ -209,7 +205,7 @@ def test_a_manifest_is_never_overwritten(tmp_path: Path) -> None:
     store = ReleaseStore.at(tmp_path).initialize()
     publish(request(store, "rel-0001", expected_parent=None))
     with pytest.raises(ReleaseError, match="already published"):
-        publish(request(store, "rel-0001", expected_parent="rel-0001", attempt=2))
+        publish(request(store, "rel-0001", expected_parent="rel-0001"))
 
 
 @pytest.mark.integration
@@ -240,12 +236,12 @@ def test_the_lock_is_released_even_when_a_step_raises(tmp_path: Path) -> None:
 def test_retrying_one_attempt_publishes_the_same_versions(tmp_path: Path) -> None:
     """A retry after a crash between staging and the pointer move must not double-write."""
     store = ReleaseStore.at(tmp_path).initialize()
-    first = publish(request(store, "rel-0001", expected_parent=None, attempt=1))
+    first = publish(request(store, "rel-0001", expected_parent=None))
     versions = dict(first.pinned_versions)
 
     # Same attempt number, new release id: every table is already committed, so nothing is
     # written again and the pins are identical.
-    second = publish(request(store, "rel-0002", expected_parent="rel-0001", attempt=1))
+    second = publish(request(store, "rel-0002", expected_parent="rel-0001"))
     assert dict(second.pinned_versions) == versions
 
 

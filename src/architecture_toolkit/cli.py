@@ -17,8 +17,11 @@ from architecture_toolkit.releases.errors import (
 from architecture_toolkit.releases.manifest import ArchitectureRelease
 from architecture_toolkit.releases.provenance import source_bundle, source_revision
 from architecture_toolkit.releases.publication import PublicationRequest, publish
+from architecture_toolkit.releases.recovery import discard, orphans, resume
 from architecture_toolkit.releases.retention import probe_readability, vacuum_table
 from architecture_toolkit.releases.store import DEFAULT_STORE_ROOT, ReleaseStore
+from architecture_toolkit.storage import delta
+from architecture_toolkit.storage.constraints import apply_constraints, declared_constraints
 from architecture_toolkit.storage.schemas import TABLE_IDS
 from architecture_toolkit.validation.authoring import validate_source_text
 from architecture_toolkit.validation.render import render_diagnostics, render_report
@@ -78,6 +81,24 @@ def main() -> int:
     archive.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
     archive.add_argument("--into", type=Path, default=None)
 
+    resume_parser = sub.add_parser(
+        "resume", help="Finish a publication that wrote its manifest but not the pointer"
+    )
+    resume_parser.add_argument("release_id")
+    resume_parser.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
+
+    discard_parser = sub.add_parser("discard", help="Remove an orphan manifest")
+    discard_parser.add_argument("release_id")
+    discard_parser.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
+
+    constraints = sub.add_parser(
+        "constraints", help="Report or apply the row-local Delta check constraints"
+    )
+    constraints.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
+    constraints.add_argument(
+        "--apply", action="store_true", help="Actually add them; the default reports."
+    )
+
     vacuum = sub.add_parser("vacuum", help="Remove files no retained release needs")
     vacuum.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
     vacuum.add_argument(
@@ -130,6 +151,15 @@ def main() -> int:
 
     if args.command == "archive":
         return _archive(parser, args.release_id, store_root=args.store, into=args.into)
+
+    if args.command == "resume":
+        return _resume(parser, args.release_id, store_root=args.store)
+
+    if args.command == "discard":
+        return _discard(parser, args.release_id, store_root=args.store)
+
+    if args.command == "constraints":
+        return _constraints(store_root=args.store, apply=args.apply)
 
     if args.command == "vacuum":
         return _vacuum(store_root=args.store, apply=args.apply)
@@ -251,7 +281,6 @@ def _publish(
                 expected_parent=parent,
                 source_text=text,
                 preserve_source=preserve_source,
-                attempt=len(store.release_ids()) + 1,
             )
         )
     except ReleaseError as refused:
@@ -283,10 +312,16 @@ def _releases(*, store_root: Path, verify: bool) -> int:
     if not ids:
         print(f"no releases in {store_root}")
         return EXIT_OK
+    stranded = set(orphans(store))
     for release_id in ids:
         manifest = store.read_manifest(release_id)
-        marker = "*" if release_id == current else " "
-        print(f"{marker} {release_id}  {manifest.model_id}  {manifest.published_at.isoformat()}")
+        marker = "*" if release_id == current else ("!" if release_id in stranded else " ")
+        note = "  (orphan: never became current)" if release_id in stranded else ""
+        print(
+            f"{marker} {release_id}  {manifest.model_id}  {manifest.published_at.isoformat()}{note}"
+        )
+    if stranded:
+        print(f"{len(stranded)} orphan(s); `resume` completes one, `discard` removes it")
     if not verify:
         return EXIT_OK
 
@@ -345,4 +380,72 @@ def _vacuum(*, store_root: Path, apply: bool) -> int:
         print("nothing to remove; every file is referenced by a retained release")
     elif not apply:
         print("dry run; pass --apply to remove")
+    return EXIT_OK
+
+
+def _resume(parser: argparse.ArgumentParser, release_id: str, *, store_root: Path) -> int:
+    """Finish a publication that got as far as writing its manifest.
+
+    No re-staging: by the time a manifest exists its versions have been read back and verified,
+    and the only thing that did not happen is the pointer move.
+    """
+    store = _store_at(store_root)
+    try:
+        manifest = resume(store, release_id)
+    except UnknownReleaseError:
+        parser.exit(EXIT_USAGE, f"No release {release_id!r} in {store_root}.\n")
+        return EXIT_USAGE
+    except ReleaseError as refused:
+        print(f"{type(refused).__name__}: {refused}")
+        return EXIT_DIAGNOSTICS
+    print(f"resumed {manifest.release_id}; it is now the current release")
+    return EXIT_OK
+
+
+def _discard(parser: argparse.ArgumentParser, release_id: str, *, store_root: Path) -> int:
+    store = _store_at(store_root)
+    try:
+        discard(store, release_id)
+    except UnknownReleaseError:
+        parser.exit(EXIT_USAGE, f"No release {release_id!r} in {store_root}.\n")
+        return EXIT_USAGE
+    except ReleaseError as refused:
+        print(f"{type(refused).__name__}: {refused}")
+        return EXIT_DIAGNOSTICS
+    print(f"discarded {release_id}; its Delta versions are left for `vacuum` to judge")
+    return EXIT_OK
+
+
+def _constraints(*, store_root: Path, apply: bool) -> int:
+    """Report or apply the row-local invariants (DATA-55).
+
+    Publication deliberately does not do this: a constraint commit would make the version a
+    manifest pins depend on whether the table happened to be new.
+    """
+    store = _store_at(store_root)
+    current = store.current()
+    if current is None:
+        print(f"no current release in {store_root}; nothing to constrain")
+        return EXIT_OK
+
+    missing_total = 0
+    for ref in current.tables:
+        location = store.resolve(ref.uri)
+        declared = declared_constraints(ref.table_id)
+        if not declared:
+            continue
+        present = delta.constraints(location, version=delta.tip(location))
+        missing = sorted(set(declared) - set(present))
+        if not missing:
+            continue
+        missing_total += len(missing)
+        if apply:
+            apply_constraints(location, ref.table_id, version=delta.tip(location))
+            print(f"{ref.table_id}: added {', '.join(missing)}")
+        else:
+            print(f"{ref.table_id}: missing {', '.join(missing)}")
+    if missing_total == 0:
+        print("every row-local constraint is in force")
+    elif not apply:
+        print("reporting only; pass --apply to add them")
     return EXIT_OK
