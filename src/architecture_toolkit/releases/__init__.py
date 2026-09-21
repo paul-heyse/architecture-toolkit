@@ -33,6 +33,13 @@ from architecture_toolkit.releases.publication import (
     publish,
 )
 from architecture_toolkit.releases.reader import read_model, read_table_set
+from architecture_toolkit.releases.retention import (
+    RetentionPlan,
+    probe_readability,
+    referenced_versions,
+    retention_plan,
+    vacuum_table,
+)
 from architecture_toolkit.releases.store import DEFAULT_STORE_ROOT, ReleaseStore
 
 __all__ = [
@@ -51,14 +58,19 @@ __all__ = [
     "ReleaseCandidate",
     "ReleaseError",
     "ReleaseStore",
+    "RetentionPlan",
     "RetentionSafetyError",
     "SourceBundle",
     "StaleParentError",
     "TableRef",
     "UnknownReleaseError",
     "next_release_id",
+    "probe_readability",
     "publication_lock",
     "publish",
     "read_model",
     "read_table_set",
+    "referenced_versions",
+    "retention_plan",
+    "vacuum_table",
 ]
