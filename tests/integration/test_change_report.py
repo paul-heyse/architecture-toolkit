@@ -25,6 +25,26 @@ from tests.integration.conftest import EXAMPLE, MOMENT, Publisher
 AGENT = Authorship(author_id="agent-01", author_kind=AuthorKind.AGENT)
 
 
+def without_relationship(model: Model, relationship_id: str) -> Model:
+    """Drop one relationship by id, not by position.
+
+    `rel-3` rather than `relationships[0]`: since W7a the example carries a view, and `rel-1` is
+    one of its members — so removing the first relationship leaves a view naming an object that
+    does not exist, which `validation/rules/views.py` correctly refuses. Naming the relationship
+    keeps the test about what it is about, and says why the choice is not arbitrary.
+    """
+    return model.model_validate(
+        dict(model)
+        | {
+            "relationships": tuple(
+                relation
+                for relation in model.relationships
+                if relation.relationship_id != relationship_id
+            )
+        }
+    )
+
+
 @pytest.fixture
 def ops(store: ReleaseStore) -> ArchitectureOperations:
     return ArchitectureOperations(store=store, now=lambda: MOMENT)
@@ -268,7 +288,13 @@ def test_the_netted_feed_reports_additions_and_removals_not_only_changes(
         target_element_id="component-1",
     )
     widened = example_model.model_validate(
-        dict(example_model) | {"relationships": (*example_model.relationships[1:], extra)}
+        dict(example_model)
+        | {
+            "relationships": (
+                *without_relationship(example_model, "rel-3").relationships,
+                extra,
+            )
+        }
     )
     candidate = publish_release("rel-0002", widened, expected_parent="rel-0001")
 
@@ -279,7 +305,7 @@ def test_the_netted_feed_reports_additions_and_removals_not_only_changes(
     netted = net_row_changes(store, "relationships", "relationship_id", **versions)
 
     assert netted["added"] == ("rel-9",)
-    assert netted["removed"] == (example_model.relationships[0].relationship_id,)
+    assert netted["removed"] == ("rel-3",)
     assert netted["changed"] == ()
     assert storage_disagreements(store, base, candidate) == ()
 

@@ -26,6 +26,26 @@ from architecture_toolkit.releases.store import ReleaseStore
 from tests.integration.conftest import Publisher, rename_first_element
 
 
+def without_relationship(model: Model, relationship_id: str) -> Model:
+    """Drop one relationship by id, not by position.
+
+    `rel-3` rather than `relationships[0]`: since W7a the example carries a view, and `rel-1` is
+    one of its members — so removing the first relationship leaves a view naming an object that
+    does not exist, which `validation/rules/views.py` correctly refuses. Naming the relationship
+    keeps the test about what it is about, and says why the choice is not arbitrary.
+    """
+    return model.model_validate(
+        dict(model)
+        | {
+            "relationships": tuple(
+                relation
+                for relation in model.relationships
+                if relation.relationship_id != relationship_id
+            )
+        }
+    )
+
+
 @pytest.mark.integration
 @pytest.mark.requirement("DATA-26", "DATA-57")
 def test_the_engine_and_the_digest_agree_about_a_rename(
@@ -58,8 +78,9 @@ def test_the_engine_and_the_digest_agree_about_an_addition_and_a_removal(
         source_element_id="system-1",
         target_element_id="component-1",
     )
-    widened = example_model.model_validate(
-        dict(example_model) | {"relationships": (*example_model.relationships[1:], extra)}
+    dropped = without_relationship(example_model, "rel-3")
+    widened = dropped.model_validate(
+        dict(dropped) | {"relationships": (*dropped.relationships, extra)}
     )
     candidate = publish_release("rel-0002", widened, expected_parent="rel-0001")
 
@@ -67,7 +88,7 @@ def test_the_engine_and_the_digest_agree_about_an_addition_and_a_removal(
 
     engine = engine_identity_delta(store, base, candidate)
     assert engine["relationships"]["added"] == ("rel-99",)
-    assert engine["relationships"]["removed"] == (example_model.relationships[0].relationship_id,)
+    assert engine["relationships"]["removed"] == ("rel-3",)
     assert engine["relationships"]["changed"] == ()
 
 

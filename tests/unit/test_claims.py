@@ -85,16 +85,42 @@ def test_unreachable_claims_say_so_rather_than_passing(
 
 
 @pytest.mark.unit
-@pytest.mark.requirement("DATA-31")
-def test_a_deferred_rule_family_downgrades_the_claim_it_would_have_served(
+@pytest.mark.requirement("DATA-31", "PROJ-03")
+def test_cross_model_semantics_is_fully_checked_now_that_views_have_rules(
     minimal_model_source: dict[str, Any],
 ) -> None:
-    """Views are deferred to W7a, so cross-model semantics cannot be claimed complete."""
+    """Inverted at W7a, and the inversion is visible to every consumer of a claim report.
+
+    From W1 to W6 this asserted `NOT_FULLY_CHECKED` with `"views deferred"` in the scope text,
+    because `DEFERRALS` held `RuleFamily.VIEWS` and there was no view definition to check
+    membership against. `rules/views.py` supplies four, so the downgrade is gone — which changes
+    the text in the CLI's report, in `validation-report.json`, and in anything reading either.
+    """
     by_claim = {outcome.claim: outcome for outcome in _report(minimal_model_source).claims}
     semantics = by_claim[ValidationClaim.CROSS_MODEL_SEMANTICS]
-    assert semantics.status is ClaimStatus.NOT_FULLY_CHECKED
-    assert "views deferred" in semantics.scope
+    assert semantics.status is ClaimStatus.PASSED
+    assert "deferred" not in semantics.scope
     assert semantics.checked_by
+    assert "view-members-resolve" in semantics.checked_by
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("DATA-31")
+def test_the_downgrade_still_works_for_a_family_that_is_deferred() -> None:
+    """`DEFERRALS` is empty, so the mechanism it drives now has no instance to prove it.
+
+    Asserting the machinery directly rather than deleting the test with the last deferral: a
+    later wave will defer something again, and the day it does, the claim it would have served
+    has to be downgraded rather than silently passing.
+    """
+    from architecture_toolkit.validation.rules import DEFERRALS, Deferral, RuleFamily
+
+    assert DEFERRALS == {}, "a deferral exists again; assert what it downgrades, not just this"
+    reserved = Deferral(wave="W9", blocked_on="nothing", reason="A synthetic deferral.")
+    assert reserved.wave
+    assert reserved.blocked_on
+    assert reserved.reason
+    assert RuleFamily.VIEWS not in DEFERRALS
 
 
 @pytest.mark.unit

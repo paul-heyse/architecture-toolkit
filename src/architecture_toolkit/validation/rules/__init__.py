@@ -60,17 +60,16 @@ class Deferral:
     reason: str
 
 
-DEFERRALS: Mapping[RuleFamily, Deferral] = {
-    RuleFamily.VIEWS: Deferral(
-        wave="W7a",
-        blocked_on="PROJ-02, PROJ-03",
-        reason="No view definition exists to check membership against.",
-    ),
-}
-"""Families that cannot be implemented in W1, with what unblocks them.
+DEFERRALS: Mapping[RuleFamily, Deferral] = {}
+"""Families that cannot be implemented yet, with what unblocks them. Empty as of W7a.
 
-`WORKFLOWS` and `RELEASES` are reduced rather than deferred — each has the one rule its W1
-models support — so neither appears here. Only `VIEWS` has nothing at all to check.
+It held one entry from W1 to W6: `VIEWS`, blocked on PROJ-02 and PROJ-03, because there was no
+view definition to check membership against. W7a supplies one, so the entry is gone and
+`cross_model_semantics` stops reporting `not_fully_checked` in every claim report.
+
+Kept as a declared mapping rather than deleted. `WORKFLOWS` and `RELEASES` were *reduced* rather
+than deferred — each has the one rule its models support — and the distinction between "reduced"
+and "not started" is one a later wave will need to make again.
 """
 
 

@@ -1,8 +1,10 @@
 """Release and profile rules (CORE-07).
 
-Reduced in W1 to the one check the available models support. Release coherence needs W4's
-manifest; view membership needs W7a's view definitions and is recorded as a deferral in
-`rules/__init__.py` rather than being silently absent.
+Reduced in W1 to the one check the available models support, and still that one. Release
+coherence arrived at W4 in `validation/release.py`, which is a different module because it needs
+a manifest rather than a candidate; view membership arrived at W7a in `rules/views.py`, which is
+a different family. What is left here is the profile version check, which is all this module was
+ever about.
 """
 
 from collections.abc import Iterable

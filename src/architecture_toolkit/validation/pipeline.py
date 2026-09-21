@@ -30,11 +30,12 @@ from architecture_toolkit.validation.rules import (  # isort: skip
     profile as _profile_rules,
     semantic as _semantic_rules,
     structural as _structural_rules,
+    views as _view_rules,
 )
 
 __all__ = ["CrossRecordValidator", "validate_model"]
 
-_ = (_structural_rules, _semantic_rules, _profile_rules)
+_ = (_structural_rules, _semantic_rules, _profile_rules, _view_rules)
 
 # Which rule families speak to which claim. Written down so the claim block in a report is
 # derived from what ran rather than asserted alongside it.

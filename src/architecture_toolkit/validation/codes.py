@@ -346,7 +346,51 @@ _ALL: tuple[DiagnosticCodeSpec, ...] = (
     _spec(
         "CORE.VIEW.UNRESOLVED_MEMBER",
         CodeArea.VIEW,
-        summary="A view names an object that does not exist. Reserved; views arrive at W7a.",
+        claim=_SEMANTIC,
+        summary="A view names an element or relationship that does not exist.",
+        remediation=(
+            "Remove the member, or add the object it names. A view is semantic governed content, "
+            "so a member that resolves to nothing is a claim about an architecture that has none."
+        ),
+    ),
+    _spec(
+        "CORE.VIEW.UNRESOLVED_SCOPE",
+        CodeArea.VIEW,
+        claim=_SEMANTIC,
+        summary="A view is scoped to an element that does not exist.",
+        remediation="Point `scope` at a real element, or drop it — a landscape view has none.",
+    ),
+    _spec(
+        "CORE.VIEW.MEMBER_ENDPOINT_MISSING",
+        CodeArea.VIEW,
+        claim=_SEMANTIC,
+        summary="A view includes a relationship without both of the elements it connects.",
+        remediation=(
+            "Include both endpoints, or drop the relationship. A generated diagram cannot draw an "
+            "edge to something that is not on it, so the notation would silently lose the edge."
+        ),
+    ),
+    _spec(
+        "CORE.VIEW.INDUCED_MEMBERSHIP_STALE",
+        CodeArea.VIEW,
+        claim=_SEMANTIC,
+        disposition=Disposition.PROFILE_EXPECTATION,
+        severity=Severity.WARNING,
+        summary="An induced view omits a relationship between two of its own members.",
+        remediation=(
+            "Add the relationship, or say the membership is explicit. `induced` is a claim that "
+            "the relationships are exactly those the members imply, and a reader relies on it."
+        ),
+    ),
+    _spec(
+        "CORE.VIEW.UNRESOLVED_BINDING",
+        CodeArea.VIEW,
+        claim=_SEMANTIC,
+        summary="A notation binding names a view that does not exist.",
+        remediation=(
+            "Point `view_id` at a real view, or drop it — a binding without one is a model-level "
+            "mapping rather than a view-local representation."
+        ),
     ),
     # -- YAML authoring (CORE-15, CORE-16) ----------------------------------------------------
     # Raised by `domain/authoring/` as `AuthoringError` and normalized here. Parse failures never

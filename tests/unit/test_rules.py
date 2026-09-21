@@ -80,10 +80,64 @@ def _relation(rel: str, kind: str, source: str, target: str) -> dict[str, Any]:
 # the standing convention — "every guard asserts a known-bad input is caught, not only that the
 # current tree is clean" — and this is that convention applied to validation rules. The totality
 # test below makes a rule without a fixture impossible to land.
+def _view(**overrides: Any) -> dict[str, Any]:
+    return {
+        "view_id": "view-1",
+        "model_id": "m-1",
+        "view_type": "system_context",
+        "notation": "c4",
+        "title": "Context",
+        **overrides,
+    }
+
+
 TRIGGERS: dict[str, dict[str, Any]] = {
     "unique-identities": {
         "model_id": "m-1",
         "elements": [_element("dup-1"), _element("dup-1")],
+    },
+    "view-members-resolve": {
+        "model_id": "m-1",
+        "elements": [_element("a-1")],
+        "views": [_view(included_element_ids=["ghost"])],
+    },
+    "view-member-endpoints-included": {
+        "model_id": "m-1",
+        "elements": [
+            _element("a-1", "software.system"),
+            _element("b-1", "software.system"),
+        ],
+        "relationships": [_relation("rel-1", "exchanges_data_with", "a-1", "b-1")],
+        # The edge is on the view; `b-1` is not. A generated diagram would have to draw an edge
+        # to a node that is not there, or drop the edge and say nothing.
+        "views": [_view(included_element_ids=["a-1"], included_relationship_ids=["rel-1"])],
+    },
+    "view-induced-membership-complete": {
+        "model_id": "m-1",
+        "elements": [
+            _element("a-1", "software.system"),
+            _element("b-1", "software.system"),
+        ],
+        "relationships": [_relation("rel-1", "exchanges_data_with", "a-1", "b-1")],
+        # Both elements are members and the relationship between them is not, which is exactly
+        # what `induced` says cannot happen.
+        "views": [_view(membership_policy="induced", included_element_ids=["a-1", "b-1"])],
+    },
+    "binding-view-resolves": {
+        "model_id": "m-1",
+        "elements": [_element("a-1")],
+        "notation_bindings": [
+            {
+                "binding_id": "binding-1",
+                "model_id": "m-1",
+                "subject": {"subject_kind": "element", "element_id": "a-1"},
+                "notation": "bpmn",
+                "notation_type": "bpmn:Task",
+                "notation_object_id": "Task_1",
+                "mapping_profile_version": "1.0.0",
+                "view_id": "ghost-view",
+            }
+        ],
     },
     "endpoints-resolve": {
         "model_id": "m-1",
