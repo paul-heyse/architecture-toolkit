@@ -42,10 +42,6 @@ class ReleaseCandidate:
     baseline_release_id: ReleaseId | None = None
 
     @property
-    def is_alternative(self) -> bool:
-        return self.scenario_id is not None
-
-    @property
     def model_id(self) -> str:
         return self.model.model_id
 

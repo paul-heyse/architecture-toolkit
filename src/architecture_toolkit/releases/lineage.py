@@ -26,13 +26,7 @@ __all__ = [
     "is_ancestor",
     "lineage_of",
     "require_same_line",
-    "scenario_of",
 ]
-
-
-def scenario_of(manifest: ArchitectureRelease) -> str | None:
-    """Which line of work a release belongs to. `None` is the baseline line."""
-    return manifest.scenario_id
 
 
 def ancestors(store: ReleaseStore, manifest: ArchitectureRelease) -> Iterator[ArchitectureRelease]:

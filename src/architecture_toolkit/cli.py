@@ -12,6 +12,7 @@ from rich.table import Table
 
 from architecture_toolkit.changes.alternatives import compare_alternative
 from architecture_toolkit.changes.audit import compared_tables, storage_disagreements
+from architecture_toolkit.changes.diff import evidence_touched
 from architecture_toolkit.changes.errors import ChangeError, ReviewError
 from architecture_toolkit.changes.operations import ArchitectureOperations
 from architecture_toolkit.changes.record import (
@@ -38,6 +39,7 @@ from architecture_toolkit.cli_errors import (
 )
 from architecture_toolkit.contracts import SCHEMA_FAMILIES, emit, emittable
 from architecture_toolkit.domain.commands import CHANGE_SET_ADAPTER, CommandError
+from architecture_toolkit.domain.model import Model
 from architecture_toolkit.domain.semantics import MODEL_COLLECTIONS
 from architecture_toolkit.queries.algorithms import (
     components,
@@ -1387,6 +1389,7 @@ def _change(
     else:
         _print_provenance(record)
         _print_changes(changes, include_presentation=True)
+        _print_evidence(baseline, changes)
         _print_impact(record)
         print(render_report(report, source=str(change_set_path)))
     return EXIT_DIAGNOSTICS if report.hard_errors else EXIT_OK
@@ -1404,7 +1407,8 @@ def _print_provenance(record: ArchitectureChangeSet) -> None:
     if record.command_change_set_id is not None:
         print(f"  applying change set {record.command_change_set_id}")
     against = record.base_release_id or "no baseline"
-    print(f"  against {against} -> {record.new_release_id or 'not yet published'}")
+    produced = "not yet published" if record.is_preview else record.new_release_id
+    print(f"  against {against} -> {produced}")
     if record.rationale:
         print(f"  rationale: {record.rationale}")
     if record.decision_references:
@@ -1415,6 +1419,21 @@ def _print_provenance(record: ArchitectureChangeSet) -> None:
             f"  review: {review.decision.value} by {review.reviewer.author_id} "
             f"at {review.reviewed_at.isoformat()}"
         )
+
+
+def _print_evidence(model: Model, changes: ModelChanges) -> None:
+    """Which changed fields carried evidence that now points at something that moved.
+
+    Nothing is invalid when this fires — which is exactly why it is worth saying out loud. A
+    `ReferenceLink` justifying `detail.timeout_ms` still resolves after the timeout changes, and
+    it no longer justifies what it appears to.
+    """
+    touched = evidence_touched(model, changes)
+    if not touched:
+        return
+    print(f"  -- evidence attached to changed fields ({len(touched)}) --")
+    for path, reference_id in touched:
+        print(f"      {path}  <- {reference_id}")
 
 
 def _print_impact(record: ArchitectureChangeSet) -> None:

@@ -19,7 +19,7 @@ the same object. A positional path would lie in exactly the dimension this wave 
 from architecture_toolkit.changes.kinds import NARRATIVE_NATURES, ChangeKind, ChangeNature
 from architecture_toolkit.domain.base import CompiledRecord
 from architecture_toolkit.domain.identifiers import ModelId, SemanticDigest
-from architecture_toolkit.domain.references import ElementReference, FieldReference
+from architecture_toolkit.domain.references import FieldReference
 
 __all__ = ["FieldChange", "ModelChanges", "RecordChange"]
 
@@ -91,15 +91,6 @@ class RecordChange(CompiledRecord):
         """
         return any(nature in NARRATIVE_NATURES for nature in self.natures)
 
-    @property
-    def is_presence(self) -> bool:
-        return not self.fields
-
-    def as_element_reference(self) -> ElementReference | None:
-        if self.collection != "elements":
-            return None
-        return ElementReference(element_id=self.identity)
-
 
 class ModelChanges(CompiledRecord):
     """Every change between two models, semantic and presentational.
@@ -135,6 +126,3 @@ class ModelChanges(CompiledRecord):
     @property
     def kinds(self) -> frozenset[ChangeKind]:
         return frozenset(kind for record in self.records for kind in record.kinds)
-
-    def for_collection(self, collection: str) -> tuple[RecordChange, ...]:
-        return tuple(record for record in self.records if record.collection == collection)

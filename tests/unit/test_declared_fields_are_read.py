@@ -114,3 +114,71 @@ def test_the_change_rule_dataclass_is_held_to_the_same_standard() -> None:
 
     unread = sorted(declared - read)
     assert not unread, f"ChangeRule declares {unread}, which nothing in the package reads"
+
+
+# -- the two kinds of declaration the field scan above cannot see -----------------------------
+
+# Properties and module constants, which `model_fields` does not enumerate. W6 shipped ten of the
+# first kind with no reader at all — four delegating properties on `ArchitectureChangeSet`, plus
+# `RecordChange.is_presence`, `as_element_reference`, `ModelChanges.for_collection`,
+# `ReleaseCandidate.is_alternative` and `lineage.scenario_of` — so the guard for the class had a
+# blind spot exactly where the wave put its new code.
+
+PROPERTY_ONLY: dict[str, str] = {}
+"""Properties that are deliberately never read. Empty, and the point is to keep it that way."""
+
+
+def declared_properties(record: type) -> set[str]:
+    return {
+        name
+        for name, value in vars(record).items()
+        if isinstance(value, property) and not name.startswith("_")
+    }
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("CORE-26", "DATA-26")
+@pytest.mark.parametrize(
+    "record",
+    [ArchitectureChangeSet, Authorship, Review, ModelChanges, RecordChange, FieldChange],
+    ids=lambda record: record.__name__,
+)
+def test_every_declared_property_is_read_somewhere(record: type[BaseModel]) -> None:
+    read = attribute_reads(PACKAGE)
+    unread = sorted(declared_properties(record) - read - set(PROPERTY_ONLY))
+
+    assert not unread, (
+        f"{record.__name__} declares properties {unread}, which nothing in the package reads. "
+        "Give them force, remove them, or add them to PROPERTY_ONLY with the reason."
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("CORE-26", "DATA-26")
+def test_every_module_constant_the_change_layer_exports_is_read_somewhere() -> None:
+    """A constant nobody reads is the same defect as a field nobody reads, one scope up.
+
+    Scoped to `changes/` because that is where this wave's constants live; the names come from the
+    package's own `__all__`, so a constant exported and then never used fails here.
+    """
+    import architecture_toolkit.changes as layer
+
+    names = {
+        name
+        for name in layer.__all__
+        if name.isupper() and not isinstance(getattr(layer, name), type)
+    }
+    used = {
+        name
+        for name in names
+        if any(
+            name in path.read_text(encoding="utf-8")
+            for path in PACKAGE.rglob("*.py")
+            if path.name not in {"__init__.py"}
+        )
+    }
+
+    # Non-vacuity, both halves: the scan found constants at all, and it found the specific ones a
+    # reader would expect — a scan that silently matched nothing would satisfy the equality above.
+    assert {"CHANGE_CLASSIFICATION", "NEVER_EMITTED", "NARRATIVE_NATURES"} <= names
+    assert names == used, f"exported and unread: {sorted(names - used)}"

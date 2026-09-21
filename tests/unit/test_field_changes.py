@@ -11,6 +11,7 @@ import pytest
 
 from architecture_toolkit.changes.diff import (
     PRESENTATION_FIELDS,
+    evidence_touched,
     field_changes,
     model_changes,
     presentation_changes,
@@ -282,3 +283,45 @@ def test_a_field_declared_unable_to_differ_raises_rather_than_being_reported(
 
     with pytest.raises(DiffError, match="record_identity"):
         field_changes("elements", "capability-1", victim, impostor)
+
+
+# -- the join `as_field_reference` exists for -------------------------------------------------
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("DATA-26", "DATA-09")
+def test_evidence_attached_to_a_changed_field_is_reported(model: Model) -> None:
+    """`FieldChange.as_field_reference` promised this join and for one wave nothing performed it.
+
+    Evidence attached to a field that has since moved is the quietly wrong thing: nothing is
+    invalid, the link still resolves, and the justification no longer justifies what it points at.
+    The example attaches `ref-1` to `interface-1.detail.authentication_description`, so changing
+    exactly that field is what has to surface it.
+    """
+    victim = element(model, "interface-1")
+    detail = victim.detail
+    assert isinstance(detail, InterfaceDetail)
+    changed = with_element(
+        model,
+        "interface-1",
+        detail=detail.model_validate(dict(detail) | {"authentication_description": "Mutual TLS"}),
+    )
+
+    touched = evidence_touched(model, model_changes(model, changed))
+
+    assert touched == (("elements.interface-1.detail.authentication_description", "ref-1"),)
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("DATA-26")
+def test_a_change_to_a_field_with_no_evidence_reports_none(model: Model) -> None:
+    """The negative control: a join that always answered would be worth nothing."""
+    victim = element(model, "interface-1")
+    detail = victim.detail
+    assert isinstance(detail, InterfaceDetail)
+    changed = with_element(
+        model, "interface-1", detail=detail.model_validate(dict(detail) | {"timeout_ms": 5000})
+    )
+
+    assert evidence_touched(model, model_changes(model, changed)) == ()
+    assert model.reference_links, "the fixture must carry evidence or the test above is vacuous"

@@ -36,7 +36,9 @@ from architecture_toolkit.changes.errors import DiffError
 from architecture_toolkit.changes.kinds import ChangeRule, Traversal
 from architecture_toolkit.changes.records import FieldChange, ModelChanges, RecordChange
 from architecture_toolkit.domain.authoring.plain import IDENTITY_KEYS
+from architecture_toolkit.domain.identifiers import ReferenceId
 from architecture_toolkit.domain.model import Model
+from architecture_toolkit.domain.references import FieldReference
 from architecture_toolkit.domain.semantics import (
     COLLECTION_ORDER,
     MODEL_COLLECTIONS,
@@ -50,6 +52,7 @@ from architecture_toolkit.domain.semantics import (
 
 __all__ = [
     "PRESENTATION_FIELDS",
+    "evidence_touched",
     "field_changes",
     "model_changes",
     "presentation_changes",
@@ -409,3 +412,34 @@ def _model_level_changes(base: Model, candidate: Model) -> Iterator[RecordChange
     ]
     if changes:
         yield _record_change("model", base.model_id, changes)
+
+
+def evidence_touched(model: Model, changes: ModelChanges) -> tuple[tuple[str, ReferenceId], ...]:
+    """Which changed fields carried evidence, as `(identity_path, reference_id)` pairs.
+
+    This is the join `FieldChange.as_field_reference` exists for, and until now the docstring
+    promised it and nothing performed it. `ReferenceLink.subject` addresses a field with the same
+    `FieldReference` a change can be converted into, so "what evidence was attached to what you
+    just changed" is a set intersection rather than a string comparison — which is the whole reason
+    the field path is spelled the way the model already spells it.
+
+    An operator wants this because evidence attached to a field that has since moved is the most
+    quietly wrong thing a model can contain: nothing is invalid, and the justification no longer
+    justifies what it points at.
+    """
+    attached: dict[tuple[str, str], list[ReferenceId]] = {}
+    for link in model.reference_links:
+        subject = link.subject
+        if isinstance(subject, FieldReference):
+            attached.setdefault((subject.element_id, subject.field_path), []).append(
+                link.reference_id
+            )
+    found: list[tuple[str, ReferenceId]] = []
+    for record in changes.records:
+        for change in record.fields:
+            reference = change.as_field_reference()
+            if reference is None:
+                continue
+            for reference_id in attached.get((reference.element_id, reference.field_path), ()):
+                found.append((change.identity_path, reference_id))
+    return tuple(found)

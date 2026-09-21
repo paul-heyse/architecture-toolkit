@@ -117,7 +117,7 @@ def test_a_layout_only_edit_is_reported_and_stays_out_of_the_narrative(base: Mod
     assert changes.narrative == ()
 
     # 4. Nothing else moved, so the test cannot be quietly exercising an element edit.
-    assert changes.for_collection("elements") == ()
+    assert not [r for r in changes.records if r.collection == "elements"]
     assert base.elements == candidate.elements
 
     # 5. The negative control, on the same record and the same code path. Without it, a classifier
