@@ -1,0 +1,37 @@
+id: changes-not-imported-by-lower-layers
+language: python
+severity: error
+message: The change layer sits above the others; nothing below it may import it.
+note: |
+  DATA-26. `changes/` is the composition layer: it is the one package that may import `domain`,
+  `storage`, `validation`, `releases` and `queries` together, and it exists because `queries/`
+  already imports `releases/`. A change record has to carry a `TraversalResult` (DATA-26's
+  "impact-analysis results"), and a record living in `releases/` could not, because the import
+  would be circular.
+
+  That direction is load-bearing and it is also the thing that can silently regress: one `from
+  architecture_toolkit.changes import ...` inside `releases/` would break the import graph the
+  package decision was made to preserve, and the failure would arrive as an import error in
+  whichever module happened to be loaded first rather than as a design question.
+
+  Two modules are above it, and both are composition roots rather than layers: `cli.py`, and
+  `contracts.py`, which emits the generated JSON Schema for every family and therefore has to name
+  the records in all of them. `ast-grep test` cannot exercise the `ignores` glob, so
+  `tests/unit/test_layering.py` proves that half — the same split
+  `graph-networkx-only-in-adapter.yml` documents.
+files:
+  - src/architecture_toolkit/**/*.py
+ignores:
+  - src/architecture_toolkit/cli.py
+  - src/architecture_toolkit/contracts.py
+  - src/architecture_toolkit/changes/*.py
+rule:
+  kind: dotted_name
+  regex: ^architecture_toolkit\.changes(\..+)?$
+  any:
+    - inside:
+        kind: import_statement
+        stopBy: end
+    - inside:
+        kind: import_from_statement
+        field: module_name

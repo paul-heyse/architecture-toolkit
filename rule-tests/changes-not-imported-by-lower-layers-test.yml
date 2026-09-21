@@ -1,0 +1,13 @@
+id: changes-not-imported-by-lower-layers
+valid:
+  # The direction that is allowed: the change layer reaching down.
+  - "from architecture_toolkit.queries.results import TraversalResult"
+  - "from architecture_toolkit.releases.store import ReleaseStore"
+  - "import architecture_toolkit.domain.semantics"
+  # A local name that merely contains the word.
+  - "from architecture_toolkit.domain.commands import ChangeSet"
+invalid:
+  - "from architecture_toolkit.changes.record import ArchitectureChangeSet"
+  - "from architecture_toolkit.changes import model_changes"
+  - "import architecture_toolkit.changes"
+  - "import architecture_toolkit.changes.diff as diff"

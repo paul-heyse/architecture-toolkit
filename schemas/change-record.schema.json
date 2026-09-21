@@ -1,0 +1,1022 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:architecture-toolkit:change-record:v1",
+  "title": "Semantic change record",
+  "description": "What changed between two architecture releases and why: the published change set with its authorship, rationale, decision references, classified field-level changes, validation results and impact analysis, plus the comparison of a design alternative with its baseline (DATA-26, DATA-28).",
+  "x-toolkit": {
+    "family": "change-record",
+    "version": 1,
+    "requirements": [
+      "CORE-12",
+      "DATA-26",
+      "DATA-28"
+    ]
+  },
+  "$defs": {
+    "AlternativeComparison": {
+      "additionalProperties": false,
+      "description": "How one design alternative differs from the baseline it was derived from.\n\nNo `narrative` property and no `ModelChanges` field, both on purpose. What is here is a list of\ndifferences and the two identities the comparison is between, so a reader is never invited to\ndescribe an alternative as something that happened.",
+      "properties": {
+        "model_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Model Id",
+          "type": "string"
+        },
+        "scenario_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Scenario Id",
+          "type": "string"
+        },
+        "baseline_release_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Baseline Release Id",
+          "type": "string"
+        },
+        "alternative_release_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Alternative Release Id",
+          "type": "string"
+        },
+        "baseline_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Baseline Digest",
+          "type": "string"
+        },
+        "alternative_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Alternative Digest",
+          "type": "string"
+        },
+        "differences": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/RecordChange"
+          },
+          "title": "Differences",
+          "type": "array"
+        }
+      },
+      "required": [
+        "model_id",
+        "scenario_id",
+        "baseline_release_id",
+        "alternative_release_id",
+        "baseline_digest",
+        "alternative_digest"
+      ],
+      "title": "AlternativeComparison",
+      "type": "object"
+    },
+    "ArchitectureChangeSet": {
+      "additionalProperties": false,
+      "description": "What changed between two architecture releases, why, and with what consequences.\n\nImmutable once published, in this repository's sense: `CompiledRecord` forbids a mutable\ncontainer at any depth and the hashability guard enforces it for the whole subclass tree, so\n\"frozen\" here means the whole graph rather than the top level.",
+      "properties": {
+        "change_set_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Change Set Id",
+          "type": "string"
+        },
+        "model_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Model Id",
+          "type": "string"
+        },
+        "base_release_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Base Release Id"
+        },
+        "new_release_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "New Release Id"
+        },
+        "command_change_set_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Command Change Set Id"
+        },
+        "authored_by": {
+          "$ref": "#/$defs/Authorship"
+        },
+        "rationale": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rationale"
+        },
+        "decision_references": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+            "type": "string"
+          },
+          "title": "Decision References",
+          "type": "array"
+        },
+        "changes": {
+          "$ref": "#/$defs/ModelChanges"
+        },
+        "validation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ValidationClaimReport"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "impact": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/TraversalResult"
+          },
+          "title": "Impact",
+          "type": "array"
+        },
+        "review": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Review"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "change_set_id",
+        "model_id",
+        "authored_by",
+        "changes"
+      ],
+      "title": "ArchitectureChangeSet",
+      "type": "object"
+    },
+    "AuthorKind": {
+      "description": "Who made the change. Agents edit this model, so \"a person did it\" cannot be assumed.",
+      "enum": [
+        "person",
+        "agent"
+      ],
+      "title": "AuthorKind",
+      "type": "string"
+    },
+    "Authorship": {
+      "additionalProperties": false,
+      "description": "Identity of whoever produced a change set.\n\n`tool` is separate from `author_id` because \"an agent did this\" and \"which agent build did\nthis\" are different facts, and a release six months old is only reproducible if the second one\nwas written down.",
+      "properties": {
+        "author_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Author Id",
+          "type": "string"
+        },
+        "author_kind": {
+          "$ref": "#/$defs/AuthorKind"
+        },
+        "tool": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tool"
+        }
+      },
+      "required": [
+        "author_id",
+        "author_kind"
+      ],
+      "title": "Authorship",
+      "type": "object"
+    },
+    "ChangeKind": {
+      "description": "What changed. `ARCH-TOOL-DATA-001` \u00a76's list, widened only where a field forced it.\n\n\u00a76 names nine changes to distinguish. Several of them fan out once the actual records are in\nview \u2014 \"evidence or qualification changed\" is five independent status dimensions under\nDATA-29, and refusing to fan it out would re-collapse the axis W1 spent a module separating.\nNothing here is invented: every member is the classification of at least one real field, and\n`changes/classification.py` asserts that in both directions.",
+      "enum": [
+        "element_added",
+        "element_removed",
+        "relationship_added",
+        "relationship_removed",
+        "interaction_added",
+        "interaction_removed",
+        "reference_added",
+        "reference_removed",
+        "evidence_link_added",
+        "evidence_link_removed",
+        "notation_binding_added",
+        "notation_binding_removed",
+        "element_renamed",
+        "element_retired",
+        "element_reactivated",
+        "element_replaced",
+        "element_retyped",
+        "relationship_endpoint_changed",
+        "relationship_retyped",
+        "relationship_context_changed",
+        "detail_added",
+        "detail_removed",
+        "detail_family_changed",
+        "interface_contract_changed",
+        "data_schema_changed",
+        "behavior_changed",
+        "deployment_changed",
+        "requirement_applicability_changed",
+        "requirement_verification_changed",
+        "disposition_changed",
+        "implementation_state_changed",
+        "qualification_changed",
+        "acceptance_changed",
+        "evidence_review_changed",
+        "interaction_changed",
+        "interaction_participants_changed",
+        "evidence_changed",
+        "evidence_subject_changed",
+        "annotation_changed",
+        "notation_mapping_changed",
+        "binding_resubjected",
+        "view_membership_changed",
+        "display_name_changed",
+        "layout_link_changed",
+        "projection_provenance_changed",
+        "schema_version_changed",
+        "profile_version_changed",
+        "collection_membership",
+        "record_identity",
+        "reported_as_a_whole",
+        "digest_restamped",
+        "container",
+        "field_modified"
+      ],
+      "title": "ChangeKind",
+      "type": "string"
+    },
+    "ChangeNature": {
+      "description": "Whether a change is architecture or presentation. `projections.md`, all seven.\n\nThe first three are governed content and carry the narrative; the last four are provenance\nabout how the architecture was drawn, published or rendered, and never do.",
+      "enum": [
+        "canonical_semantic",
+        "view_membership",
+        "notation_mapping",
+        "layout_only",
+        "renderer_toolchain",
+        "style_theme_only",
+        "publication_navigation_only"
+      ],
+      "title": "ChangeNature",
+      "type": "string"
+    },
+    "ClaimOutcome": {
+      "additionalProperties": false,
+      "properties": {
+        "claim": {
+          "$ref": "#/$defs/ValidationClaim"
+        },
+        "status": {
+          "$ref": "#/$defs/ClaimStatus"
+        },
+        "scope": {
+          "minLength": 1,
+          "title": "Scope",
+          "type": "string"
+        },
+        "checked_by": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+            "type": "string"
+          },
+          "title": "Checked By",
+          "type": "array"
+        },
+        "diagnostic_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Diagnostic Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "claim",
+        "status",
+        "scope"
+      ],
+      "title": "ClaimOutcome",
+      "type": "object"
+    },
+    "ClaimStatus": {
+      "enum": [
+        "passed",
+        "failed",
+        "not_checked",
+        "not_fully_checked",
+        "not_established",
+        "not_implemented"
+      ],
+      "title": "ClaimStatus",
+      "type": "string"
+    },
+    "Diagnostic": {
+      "additionalProperties": false,
+      "properties": {
+        "diagnostic_id": {
+          "minLength": 1,
+          "title": "Diagnostic Id",
+          "type": "string"
+        },
+        "code": {
+          "title": "Code",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "category": {
+          "$ref": "#/$defs/DiagnosticCategory"
+        },
+        "message": {
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "canonical_object_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Canonical Object Id"
+        },
+        "relationship_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Relationship Id"
+        },
+        "field_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Field Path"
+        },
+        "source_location": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SourceLocation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "notation_object_id": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notation Object Id"
+        },
+        "rule_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rule Id"
+        },
+        "context": {
+          "default": [],
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Context",
+          "type": "array"
+        },
+        "remediation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Remediation"
+        }
+      },
+      "required": [
+        "diagnostic_id",
+        "code",
+        "severity",
+        "category",
+        "message"
+      ],
+      "title": "Diagnostic",
+      "type": "object"
+    },
+    "DiagnosticCategory": {
+      "description": "Who emitted it. `ARCH-TOOL-CORE-001` \u00a76, all nine.",
+      "enum": [
+        "authoring_parse",
+        "record_validation",
+        "cross_record_validation",
+        "graph_analysis",
+        "release_coherence",
+        "notation_mapping",
+        "schema_interoperability",
+        "rendering",
+        "engineering_qualification"
+      ],
+      "title": "DiagnosticCategory",
+      "type": "string"
+    },
+    "FieldChange": {
+      "additionalProperties": false,
+      "description": "One field of one record, and what changing it means.\n\n`before` and `after` are canonical JSON strings rather than `object`, for two reasons that\nhappen to agree: `CompiledRecord` forbids a mutable container at any depth, and rendering the\nvalues any other way would be a second canonicalization competing with the digest's. They are\n`domain.semantics.canonical_value` output, which is the digest's own spelling.",
+      "properties": {
+        "collection": {
+          "title": "Collection",
+          "type": "string"
+        },
+        "identity": {
+          "title": "Identity",
+          "type": "string"
+        },
+        "field_path": {
+          "title": "Field Path",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ChangeKind"
+        },
+        "nature": {
+          "$ref": "#/$defs/ChangeNature"
+        },
+        "before": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Before"
+        },
+        "after": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "After"
+        }
+      },
+      "required": [
+        "collection",
+        "identity",
+        "field_path",
+        "kind",
+        "nature"
+      ],
+      "title": "FieldChange",
+      "type": "object"
+    },
+    "GraphPathResult": {
+      "additionalProperties": false,
+      "description": "One explainable path, with the provenance that makes it re-derivable (CORE-28).",
+      "properties": {
+        "release_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Release Id",
+          "type": "string"
+        },
+        "policy_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "policy_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "start": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Start",
+          "type": "string"
+        },
+        "end": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "End",
+          "type": "string"
+        },
+        "node_ids": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+            "type": "string"
+          },
+          "title": "Node Ids",
+          "type": "array"
+        },
+        "relationship_ids": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+            "type": "string"
+          },
+          "title": "Relationship Ids",
+          "type": "array"
+        },
+        "relationship_types": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+            "type": "string"
+          },
+          "title": "Relationship Types",
+          "type": "array"
+        },
+        "depth": {
+          "title": "Depth",
+          "type": "integer"
+        },
+        "classification": {
+          "$ref": "#/$defs/PathClassification"
+        }
+      },
+      "required": [
+        "release_id",
+        "policy_id",
+        "policy_version",
+        "start",
+        "end",
+        "node_ids",
+        "relationship_ids",
+        "relationship_types",
+        "depth",
+        "classification"
+      ],
+      "title": "GraphPathResult",
+      "type": "object"
+    },
+    "ModelChanges": {
+      "additionalProperties": false,
+      "description": "Every change between two models, semantic and presentational.\n\nBoth digests are carried so a reader can tell apart the two cases that look alike from\noutside: \"nothing changed\" and \"only what the digest cannot see changed\". An alias edit is the\nsecond, and it is the purest layout-only case the current schema can express.",
+      "properties": {
+        "model_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Model Id",
+          "type": "string"
+        },
+        "base_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Base Digest",
+          "type": "string"
+        },
+        "candidate_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Candidate Digest",
+          "type": "string"
+        },
+        "hash_algorithm_version": {
+          "title": "Hash Algorithm Version",
+          "type": "string"
+        },
+        "records": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/RecordChange"
+          },
+          "title": "Records",
+          "type": "array"
+        }
+      },
+      "required": [
+        "model_id",
+        "base_digest",
+        "candidate_digest",
+        "hash_algorithm_version"
+      ],
+      "title": "ModelChanges",
+      "type": "object"
+    },
+    "PathClassification": {
+      "description": "What a path means. Every member states a traversal; none states a consequence.",
+      "enum": [
+        "potentially_affected",
+        "traced",
+        "contained_by"
+      ],
+      "title": "PathClassification",
+      "type": "string"
+    },
+    "RecordChange": {
+      "additionalProperties": false,
+      "description": "One record that appeared, vanished or changed, and every kind that describes it.\n\n`kinds` is a tuple, not a single value. `UpdateElement` can move `name` and `description`\ntogether, and that is two facts rather than an argument about which one wins: a total order\nover kinds is something no contract establishes, and the first time somebody edits `name` and\n`source_element_id` together a precedence rule would hide an endpoint change behind a rename.\nThat is the shape of reasoning that turns a rename into a retire-plus-add, so there is none.\n\n`natures` is stored rather than derived from `fields`, because an added or removed record has\nno changed fields and still has a nature \u2014 a notation binding appearing is a mapping change.\nDeriving would make the presence case a special case at every reader.",
+      "properties": {
+        "collection": {
+          "title": "Collection",
+          "type": "string"
+        },
+        "identity": {
+          "title": "Identity",
+          "type": "string"
+        },
+        "kinds": {
+          "items": {
+            "$ref": "#/$defs/ChangeKind"
+          },
+          "title": "Kinds",
+          "type": "array"
+        },
+        "natures": {
+          "items": {
+            "$ref": "#/$defs/ChangeNature"
+          },
+          "title": "Natures",
+          "type": "array"
+        },
+        "fields": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/FieldChange"
+          },
+          "title": "Fields",
+          "type": "array"
+        }
+      },
+      "required": [
+        "collection",
+        "identity",
+        "kinds",
+        "natures"
+      ],
+      "title": "RecordChange",
+      "type": "object"
+    },
+    "Review": {
+      "additionalProperties": false,
+      "description": "One reviewer's decision on one change set (DATA-38, the `review` step).\n\n`reviewed_at` is injected by the caller's clock rather than read inline, for the reason\nCORE-51 gives about `published_at`: a fault-injection test of the lifecycle has to be\ndeterministic.",
+      "properties": {
+        "reviewer": {
+          "$ref": "#/$defs/Authorship"
+        },
+        "decision": {
+          "$ref": "#/$defs/ReviewDecision"
+        },
+        "reviewed_at": {
+          "format": "date-time",
+          "title": "Reviewed At",
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        }
+      },
+      "required": [
+        "reviewer",
+        "decision",
+        "reviewed_at"
+      ],
+      "title": "Review",
+      "type": "object"
+    },
+    "ReviewDecision": {
+      "description": "What a reviewer concluded. Three answers, because two would force \"not yet\" into \"no\".",
+      "enum": [
+        "approved",
+        "changes_requested",
+        "rejected"
+      ],
+      "title": "ReviewDecision",
+      "type": "string"
+    },
+    "Severity": {
+      "enum": [
+        "error",
+        "warning",
+        "info"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "SourceLocation": {
+      "additionalProperties": false,
+      "description": "Where in the authored source a diagnostic came from. Populated at W2 (CORE-18).",
+      "properties": {
+        "source_id": {
+          "minLength": 1,
+          "title": "Source Id",
+          "type": "string"
+        },
+        "document_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Document Id"
+        },
+        "semantic_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Semantic Path"
+        },
+        "line": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Line"
+        },
+        "column": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Column"
+        },
+        "end_line": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End Line"
+        },
+        "end_column": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End Column"
+        }
+      },
+      "required": [
+        "source_id"
+      ],
+      "title": "SourceLocation",
+      "type": "object"
+    },
+    "TraversalResult": {
+      "additionalProperties": false,
+      "description": "Every path one traversal found, and whether a cap stopped it finding more.",
+      "properties": {
+        "release_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Release Id",
+          "type": "string"
+        },
+        "policy_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "policy_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "start": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Start",
+          "type": "string"
+        },
+        "classification": {
+          "$ref": "#/$defs/PathClassification"
+        },
+        "paths": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/GraphPathResult"
+          },
+          "title": "Paths",
+          "type": "array"
+        },
+        "truncated": {
+          "default": false,
+          "title": "Truncated",
+          "type": "boolean"
+        },
+        "limit_reached": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Limit Reached"
+        }
+      },
+      "required": [
+        "release_id",
+        "policy_id",
+        "policy_version",
+        "start",
+        "classification"
+      ],
+      "title": "TraversalResult",
+      "type": "object"
+    },
+    "ValidationClaim": {
+      "description": "What correctness is being claimed. PROJ-07, all six.\n\nPassing an XML schema check does not establish that a workflow is operationally correct.\nKeeping these apart is the whole point: a report that says \"valid\" without saying *which*\nclaim it validated is the failure mode DATA-31 exists to prevent.",
+      "enum": [
+        "canonical_structure",
+        "cross_model_semantics",
+        "notation_semantics",
+        "schema_syntax",
+        "renderer",
+        "real_world_correctness"
+      ],
+      "title": "ValidationClaim",
+      "type": "string"
+    },
+    "ValidationClaimReport": {
+      "additionalProperties": false,
+      "properties": {
+        "model_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Model Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "profile_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Profile Version",
+          "type": "string"
+        },
+        "validation_mode": {
+          "$ref": "#/$defs/ValidationMode"
+        },
+        "claims": {
+          "items": {
+            "$ref": "#/$defs/ClaimOutcome"
+          },
+          "title": "Claims",
+          "type": "array"
+        },
+        "diagnostics": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Diagnostic"
+          },
+          "title": "Diagnostics",
+          "type": "array"
+        }
+      },
+      "required": [
+        "model_id",
+        "schema_version",
+        "profile_version",
+        "validation_mode",
+        "claims"
+      ],
+      "title": "ValidationClaimReport",
+      "type": "object"
+    },
+    "ValidationMode": {
+      "enum": [
+        "authoring",
+        "candidate",
+        "release"
+      ],
+      "title": "ValidationMode",
+      "type": "string"
+    }
+  }
+}

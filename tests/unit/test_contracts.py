@@ -17,7 +17,7 @@ from architecture_toolkit.contracts import SCHEMA_FAMILIES, emit, emittable
 @pytest.mark.unit
 @pytest.mark.requirement("CORE-12")
 def test_every_family_is_versioned_and_declares_its_requirements() -> None:
-    assert len(SCHEMA_FAMILIES) == 7
+    assert len(SCHEMA_FAMILIES) == 8
     for family in SCHEMA_FAMILIES:
         assert re.fullmatch(r"urn:architecture-toolkit:[a-z-]+:v\d+", family.schema_id)
         assert family.requirements

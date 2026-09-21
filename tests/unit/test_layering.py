@@ -272,3 +272,43 @@ def test_only_one_call_in_the_toolkit_asks_delta_for_the_latest_version() -> Non
         if (count := latest_version_calls(path.read_text()))
     }
     assert offenders == {"storage/delta.py": 1}, offenders
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("DATA-26")
+def test_the_change_layer_is_imported_only_by_the_cli() -> None:
+    """The half `changes-not-imported-by-lower-layers.yml` cannot state, for the same reason.
+
+    The import direction is why `changes/` exists as its own package: `queries/` imports
+    `releases/`, so a change record living in `releases/` could not carry a `TraversalResult`
+    without a cycle, and DATA-26 requires it to carry one. A single import the other way would
+    break that quietly, surfacing as an import error in whichever module loaded first rather than
+    as a design question.
+    """
+    package = "architecture_toolkit.changes"
+    # Both composition roots, not layers: the CLI, and the schema emitter, which has to name the
+    # records of every family in order to generate their contracts.
+    allowed = {SRC / "cli.py", SRC / "contracts.py"}
+    leaked = {
+        path.relative_to(SRC).as_posix()
+        for path in SRC.rglob("*.py")
+        if path not in allowed
+        and not path.is_relative_to(SRC / "changes")
+        and any(module.startswith(package) for module in runtime_imports(path))
+    }
+    assert not leaked, f"{package} imported below the change layer: {leaked}"
+    assert any(module.startswith(package) for module in runtime_imports(SRC / "cli.py")), (
+        "cli.py no longer imports the change layer; the guard above has become vacuous"
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("DATA-26")
+def test_the_change_layer_really_does_reach_both_packages_it_was_created_for() -> None:
+    """Otherwise the package boundary above guards a separation nothing needed."""
+    reached = {
+        module for path in (SRC / "changes").rglob("*.py") for module in runtime_imports(path)
+    }
+
+    assert any(module.startswith("architecture_toolkit.queries") for module in reached)
+    assert any(module.startswith("architecture_toolkit.releases") for module in reached)

@@ -5,7 +5,21 @@ import json
 from importlib.metadata import version
 from pathlib import Path
 
+from pydantic import ValidationError
+
+from architecture_toolkit.changes.errors import ChangeError
+from architecture_toolkit.changes.operations import ArchitectureOperations
+from architecture_toolkit.changes.record import (
+    ArchitectureChangeSet,
+    AuthorKind,
+    Authorship,
+    ReviewDecision,
+)
+from architecture_toolkit.changes.records import ModelChanges
+from architecture_toolkit.changes.releases import diff_releases
 from architecture_toolkit.contracts import SCHEMA_FAMILIES, emit, emittable
+from architecture_toolkit.domain.commands import CHANGE_SET_ADAPTER, CommandError
+from architecture_toolkit.domain.semantics import MODEL_COLLECTIONS
 from architecture_toolkit.queries.algorithms import (
     components,
     condensation,
@@ -31,7 +45,7 @@ from architecture_toolkit.releases.errors import (
 )
 from architecture_toolkit.releases.manifest import ArchitectureRelease
 from architecture_toolkit.releases.provenance import source_bundle, source_revision
-from architecture_toolkit.releases.publication import PublicationRequest, publish
+from architecture_toolkit.releases.publication import PublicationRequest, persist, publish
 from architecture_toolkit.releases.recovery import discard, orphans, resume
 from architecture_toolkit.releases.retention import probe_readability, vacuum_table
 from architecture_toolkit.releases.store import DEFAULT_STORE_ROOT, ReleaseStore
@@ -39,6 +53,7 @@ from architecture_toolkit.storage import delta
 from architecture_toolkit.storage.constraints import apply_constraints, declared_constraints
 from architecture_toolkit.storage.schemas import TABLE_IDS
 from architecture_toolkit.validation.authoring import validate_source_text
+from architecture_toolkit.validation.release import alternative_line_breaks, chain_breaks
 from architecture_toolkit.validation.render import render_diagnostics, render_report
 
 # Exit codes are part of the interface. Four, and no more:
@@ -186,6 +201,62 @@ def main() -> int:
     )
     analysis.add_argument("--format", choices=("human", "json"), default="human")
 
+    # -- DATA-38: the lifecycle verbs -------------------------------------------------------------
+    # `validate` and `publish` are already registered above; these are the other six. Flat, like
+    # every other command here, because a lifecycle whose steps sit at two different levels of the
+    # command tree is harder to read than one extra name at the top.
+    baseline = sub.add_parser("baseline", help="Print the model a release holds, as authored YAML")
+    baseline.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
+    baseline.add_argument("--release", help="Defaults to the current release")
+    baseline.add_argument("--format", choices=("summary", "json"), default="summary")
+
+    apply_change = sub.add_parser(
+        "change", help="Apply a typed change set to a release and report what it would do"
+    )
+    apply_change.add_argument("change_set", type=Path, help="A JSON change set (CORE-10)")
+    apply_change.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
+    apply_change.add_argument("--release", help="Defaults to the current release")
+    apply_change.add_argument("--format", choices=("human", "json"), default="human")
+
+    difference = sub.add_parser("diff", help="Explain what changed between two releases")
+    difference.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
+    difference.add_argument("--base", required=True)
+    difference.add_argument("--candidate", required=True)
+    difference.add_argument(
+        "--include-presentation",
+        action="store_true",
+        help="Also print layout and display changes, which are never part of the narrative.",
+    )
+    difference.add_argument("--format", choices=("human", "json"), default="human")
+
+    reviewing = sub.add_parser("review", help="Record a decision on a change report")
+    reviewing.add_argument("change_report", type=Path, help="A change report written by `diff`")
+    reviewing.add_argument(
+        "--decision", choices=tuple(item.value for item in ReviewDecision), required=True
+    )
+    reviewing.add_argument("--reviewer", required=True)
+    reviewing.add_argument("--note")
+    reviewing.add_argument("--into", type=Path, help="Where to write the reviewed report")
+
+    staging = sub.add_parser(
+        "persist", help="Stage a release and write its manifest without exposing it"
+    )
+    staging.add_argument("source", type=Path)
+    staging.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
+    staging.add_argument(
+        "--expect-parent",
+        default=_UNSET,
+        help="The release the candidate was built against; omit only for the first release.",
+    )
+    staging.add_argument("--release-id", help="Defaults to the next rel-NNNN in the store.")
+    staging.add_argument("--scenario", help="Publish as a design alternative under this id")
+    staging.add_argument("--baseline", help="The release this alternative is derived from")
+
+    outputting = sub.add_parser("output", help="Reserved: distribute a release's outputs (W8)")
+    outputting.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
+    outputting.add_argument("--release", help="Defaults to the current release")
+    outputting.add_argument("--format", choices=("human", "json"), default="human")
+
     sub.add_parser("build", help="Reserved: full projection pipeline is not implemented")
     args = parser.parse_args()
 
@@ -290,6 +361,52 @@ def main() -> int:
             output=args.format,
         )
 
+    if args.command == "baseline":
+        return _baseline(parser, store_root=args.store, release_id=args.release, output=args.format)
+
+    if args.command == "change":
+        return _change(
+            parser,
+            args.change_set,
+            store_root=args.store,
+            release_id=args.release,
+            output=args.format,
+        )
+
+    if args.command == "diff":
+        return _diff(
+            parser,
+            store_root=args.store,
+            base=args.base,
+            candidate=args.candidate,
+            include_presentation=args.include_presentation,
+            output=args.format,
+        )
+
+    if args.command == "review":
+        return _review(
+            parser,
+            args.change_report,
+            decision=args.decision,
+            reviewer=args.reviewer,
+            note=args.note,
+            into=args.into,
+        )
+
+    if args.command == "persist":
+        return _persist(
+            parser,
+            args.source,
+            store_root=args.store,
+            expected_parent=args.expect_parent,
+            release_id=args.release_id,
+            scenario_id=args.scenario,
+            baseline_release_id=args.baseline,
+        )
+
+    if args.command == "output":
+        return _output(parser, store_root=args.store, release_id=args.release, output=args.format)
+
     parser.exit(EXIT_USAGE, "Not implemented: follow docs/implementation-contract.md.\n")
     return EXIT_USAGE
 
@@ -365,6 +482,37 @@ def _publish(
     preserve_source: bool = True,
 ) -> int:
     """Validate a source, then publish it as the next release of its model."""
+    return _stage_or_publish(
+        parser,
+        source,
+        store_root=store_root,
+        expected_parent=expected_parent,
+        release_id=release_id,
+        preserve_source=preserve_source,
+        scenario_id=None,
+        baseline_release_id=None,
+        expose=True,
+    )
+
+
+def _stage_or_publish(
+    parser: argparse.ArgumentParser,
+    source: Path,
+    *,
+    store_root: Path,
+    expected_parent: object,
+    release_id: str | None,
+    preserve_source: bool,
+    scenario_id: str | None,
+    baseline_release_id: str | None,
+    expose: bool,
+) -> int:
+    """`publish` and `persist` differ in the eighth protocol line and in nothing else.
+
+    One body rather than two, because two would eventually validate a source differently depending
+    on which verb an operator typed — and the whole point of the split is that the *only* thing
+    that differs is whether the current pointer moves.
+    """
     try:
         text = source.read_text(encoding="utf-8")
     except OSError as unreadable:
@@ -398,24 +546,28 @@ def _publish(
         source_bundle=source_bundle(
             source_id=str(source), text=text, revision=source_revision(source)
         ),
+        scenario_id=scenario_id,
+        baseline_release_id=baseline_release_id,
+    )
+    request = PublicationRequest(
+        store=store,
+        candidate=candidate,
+        expected_parent=parent,
+        source_text=text,
+        preserve_source=preserve_source,
     )
     try:
-        manifest = publish(
-            PublicationRequest(
-                store=store,
-                candidate=candidate,
-                expected_parent=parent,
-                source_text=text,
-                preserve_source=preserve_source,
-            )
-        )
-    except ReleaseError as refused:
+        manifest = publish(request) if expose else persist(request)
+    except (ReleaseError, ValidationError) as refused:
         print(f"{type(refused).__name__}: {refused}")
         return EXIT_DIAGNOSTICS
 
     reused = sum(1 for ref in manifest.tables if _reused(store, manifest, ref.table_id))
-    print(f"published {manifest.release_id} ({len(manifest.tables)} tables, {reused} reused)")
+    verb = "published" if expose else "persisted"
+    print(f"{verb} {manifest.release_id} ({len(manifest.tables)} tables, {reused} reused)")
     print(f"model digest {manifest.model_digest}")
+    if not expose:
+        print(f"not current: {store.current_id() or 'nothing'} still is; `resume` completes it")
     return EXIT_OK
 
 
@@ -451,11 +603,24 @@ def _releases(*, store_root: Path, verify: bool) -> int:
     if not verify:
         return EXIT_OK
 
-    findings = probe_readability(store)
+    # Three questions, not one. Storage answers "do the pinned versions still read back";
+    # `chain_breaks` answers "is the parent chain navigable" (DATA-21); `alternative_line_breaks`
+    # answers "is every design alternative derived rather than descended" (DATA-28). The first two
+    # were written at W4 and reachable only from their own tests until now.
+    manifests = [store.read_manifest(release_id) for release_id in ids]
+    findings = (
+        probe_readability(store)
+        + chain_breaks(
+            (item.release_id, item.parent_release_id, item.model_id) for item in manifests
+        )
+        + alternative_line_breaks(
+            (item.release_id, item.parent_release_id, item.scenario_id) for item in manifests
+        )
+    )
     if findings:
         print(render_diagnostics(findings, source=str(store_root)))
         return EXIT_DIAGNOSTICS
-    print(f"every pinned version of {len(ids)} release(s) reads back")
+    print(f"every pinned version of {len(ids)} release(s) reads back, and the chain is navigable")
     return EXIT_OK
 
 
@@ -927,3 +1092,214 @@ def _impact(
     if result.truncated:
         print(f"  truncated at {result.limit_reached}; raise it on the policy to see more")
     return EXIT_OK
+
+
+# -- DATA-38: the lifecycle handlers --------------------------------------------------------------
+
+
+_CLI_AUTHOR = Authorship(
+    author_id="architecture-cli",
+    author_kind=AuthorKind.AGENT,
+    tool="architecture-toolkit",
+)
+"""Who a change report says produced it when it came from the command line.
+
+Named rather than left blank: DATA-26 asks for authorship, and "the CLI ran" is a true answer where
+"unknown" would be an invented one.
+"""
+
+
+def _operations(store_root: Path) -> ArchitectureOperations:
+    return ArchitectureOperations(store=_store_at(store_root))
+
+
+def _baseline(
+    parser: argparse.ArgumentParser, *, store_root: Path, release_id: str | None, output: str
+) -> int:
+    """`load baseline`. What an operator is about to change, read back from the release itself."""
+    try:
+        model = _operations(store_root).baseline(release_id)
+    except (ChangeError, UnknownReleaseError) as refused:
+        parser.exit(EXIT_USAGE, f"{refused.args[0]}\n")
+        return EXIT_USAGE
+    if output == "json":
+        print(model.model_dump_json(indent=2))
+        return EXIT_OK
+    print(f"{model.model_id}  schema {model.schema_version}  profile {model.profile_version}")
+    for name, _ in MODEL_COLLECTIONS:
+        print(f"  {len(getattr(model, name)):4d}  {name}")
+    return EXIT_OK
+
+
+def _change(
+    parser: argparse.ArgumentParser,
+    change_set_path: Path,
+    *,
+    store_root: Path,
+    release_id: str | None,
+    output: str,
+) -> int:
+    """`apply typed change set` then `validate` then `preview semantic diff` — the dry run.
+
+    Nothing is written. The whole point of the first four lifecycle steps is that an operator sees
+    what a change does before deciding to keep it, so this command has no way to keep it.
+    """
+    operations = _operations(store_root)
+    try:
+        change_set = CHANGE_SET_ADAPTER.validate_json(change_set_path.read_text())
+    except (OSError, ValidationError) as refused:
+        parser.exit(EXIT_USAGE, f"{change_set_path}: {refused}\n")
+        return EXIT_USAGE
+    try:
+        baseline = operations.baseline(release_id)
+        candidate = operations.change(baseline, change_set)
+    except (ChangeError, CommandError, UnknownReleaseError) as refused:
+        parser.exit(EXIT_USAGE, f"{refused.args[0]}\n")
+        return EXIT_USAGE
+
+    report = operations.validate(candidate)
+    changes = operations.diff(baseline, candidate)
+    if output == "json":
+        print(
+            operations.change_set(
+                change_set_id=change_set.change_set_id,
+                changes=changes,
+                authored_by=_CLI_AUTHOR,
+                base_release_id=operations.manifest(release_id).release_id,
+                command_change_set_id=change_set.change_set_id,
+                validation=report,
+                impact=operations.impact(changes),
+            ).model_dump_json(indent=2)
+        )
+    else:
+        _print_changes(changes, include_presentation=True)
+        print(render_report(report, source=str(change_set_path)))
+    return EXIT_DIAGNOSTICS if report.hard_errors else EXIT_OK
+
+
+def _diff(
+    parser: argparse.ArgumentParser,
+    *,
+    store_root: Path,
+    base: str,
+    candidate: str,
+    include_presentation: bool,
+    output: str,
+) -> int:
+    """`preview semantic diff` between two published releases (DATA-26)."""
+    store = _store_at(store_root)
+    try:
+        changes = diff_releases(store, store.read_manifest(base), store.read_manifest(candidate))
+    except (ChangeError, ReleaseError, UnknownReleaseError) as refused:
+        parser.exit(EXIT_USAGE, f"{refused.args[0]}\n")
+        return EXIT_USAGE
+    if output == "json":
+        print(changes.model_dump_json(indent=2))
+        return EXIT_OK
+    print(f"{base} -> {candidate}")
+    _print_changes(changes, include_presentation=include_presentation)
+    return EXIT_OK
+
+
+def _print_changes(changes: ModelChanges, *, include_presentation: bool) -> None:
+    """The narrative first, and presentation below a line that says what it is.
+
+    Never interleaved. The hard gate is that a layout edit does not read as a redesign, and a
+    single list sorted by identity would put one next to the other with nothing to tell them apart.
+    """
+    if changes.is_empty:
+        print("  no semantic change")
+        return
+    for record in changes.narrative:
+        kinds = ", ".join(kind.value for kind in record.kinds)
+        print(f"  {record.collection}.{record.identity}  {kinds}")
+        for field_change in record.fields:
+            print(f"      {field_change.field_path}: {field_change.before} -> {field_change.after}")
+    if not changes.narrative:
+        print("  no semantic change")
+    if include_presentation and changes.presentation:
+        print(f"  -- presentation only ({len(changes.presentation)}), not architectural change --")
+        for record in changes.presentation:
+            for field_change in record.fields:
+                print(
+                    f"      {record.collection}.{record.identity}.{field_change.field_path}: "
+                    f"{field_change.nature.value}"
+                )
+
+
+def _review(
+    parser: argparse.ArgumentParser,
+    report_path: Path,
+    *,
+    decision: str,
+    reviewer: str,
+    note: str | None,
+    into: Path | None,
+) -> int:
+    """`obtain required review`. Records a decision on a change report and writes it back."""
+    try:
+        change_set = ArchitectureChangeSet.model_validate_json(report_path.read_text())
+    except (OSError, ValidationError) as refused:
+        parser.exit(EXIT_USAGE, f"{report_path}: {refused}\n")
+        return EXIT_USAGE
+    reviewed = ArchitectureOperations(store=_store_at(DEFAULT_STORE_ROOT)).review(
+        change_set,
+        reviewer=Authorship(author_id=reviewer, author_kind=AuthorKind.PERSON),
+        decision=ReviewDecision(decision),
+        note=note,
+    )
+    destination = into or report_path
+    destination.write_text(reviewed.model_dump_json(indent=2))
+    print(f"{reviewed.change_set_id}: {decision} by {reviewer} -> {destination}")
+    return EXIT_OK
+
+
+def _persist(
+    parser: argparse.ArgumentParser,
+    source: Path,
+    *,
+    store_root: Path,
+    expected_parent: str | None,
+    release_id: str | None,
+    scenario_id: str | None,
+    baseline_release_id: str | None,
+) -> int:
+    """`persist` — everything but the pointer move (DATA-38).
+
+    The manifest is written and the release is not current. `resume` finishes it, `discard`
+    abandons it, and `releases` marks it as an orphan until one of those happens.
+    """
+    if (scenario_id is None) is not (baseline_release_id is None):
+        parser.exit(
+            EXIT_USAGE,
+            "--scenario and --baseline are set together: an alternative needs both, and a "
+            "release on the baseline line needs neither.\n",
+        )
+        return EXIT_USAGE
+    return _stage_or_publish(
+        parser,
+        source,
+        store_root=store_root,
+        expected_parent=expected_parent,
+        release_id=release_id,
+        preserve_source=True,
+        scenario_id=scenario_id,
+        baseline_release_id=baseline_release_id,
+        expose=False,
+    )
+
+
+def _output(
+    parser: argparse.ArgumentParser, *, store_root: Path, release_id: str | None, output: str
+) -> int:
+    """`generate outputs`. Typed and truthful until W8 implements it (PROJ-35)."""
+    try:
+        pending = _operations(store_root).output(release_id)
+    except (ChangeError, UnknownReleaseError) as refused:
+        parser.exit(EXIT_USAGE, f"{refused.args[0]}\n")
+        return EXIT_USAGE
+    if output == "json":
+        print(json.dumps({"release_id": pending.release_id, "reason": pending.reason}, indent=2))
+    else:
+        print(f"{pending.release_id}: not implemented — {pending.reason}")
+    return EXIT_USAGE

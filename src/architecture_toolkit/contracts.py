@@ -32,6 +32,9 @@ from typing import Any
 from pydantic import BaseModel, TypeAdapter
 from pydantic.json_schema import GenerateJsonSchema, JsonSchemaMode, models_json_schema
 
+from architecture_toolkit.changes.alternatives import AlternativeComparison
+from architecture_toolkit.changes.record import ArchitectureChangeSet
+from architecture_toolkit.changes.records import FieldChange, ModelChanges, RecordChange
 from architecture_toolkit.domain.commands import ChangeSet
 from architecture_toolkit.domain.details import (
     BehaviorDetail,
@@ -184,6 +187,28 @@ SCHEMA_FAMILIES: tuple[SchemaFamily, ...] = (
             ReachabilityEdge,
             ReductionEdge,
             ReleaseComparison,
+        ),
+    ),
+    SchemaFamily(
+        family_id="change-record",
+        version=1,
+        title="Semantic change record",
+        description=(
+            "What changed between two architecture releases and why: the published change set "
+            "with its authorship, rationale, decision references, classified field-level changes, "
+            "validation results and impact analysis, plus the comparison of a design alternative "
+            "with its baseline (DATA-26, DATA-28)."
+        ),
+        path="schemas/change-record.schema.json",
+        requirements=frozenset({"CORE-12", "DATA-26", "DATA-28"}),
+        # Multi-root, like `validation-report`: a change narrative and an alternative comparison
+        # are different documents, and DATA-28 turns on their not being interchangeable.
+        roots=(
+            ArchitectureChangeSet,
+            ModelChanges,
+            RecordChange,
+            FieldChange,
+            AlternativeComparison,
         ),
     ),
 )

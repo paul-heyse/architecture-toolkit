@@ -1,0 +1,42 @@
+id: changes-not-imported-by-lower-layers
+snapshots:
+  from architecture_toolkit.changes import model_changes:
+    labels:
+    - source: architecture_toolkit.changes
+      style: primary
+      start: 5
+      end: 33
+    - source: from architecture_toolkit.changes import model_changes
+      style: secondary
+      start: 0
+      end: 54
+  from architecture_toolkit.changes.record import ArchitectureChangeSet:
+    labels:
+    - source: architecture_toolkit.changes.record
+      style: primary
+      start: 5
+      end: 40
+    - source: from architecture_toolkit.changes.record import ArchitectureChangeSet
+      style: secondary
+      start: 0
+      end: 69
+  import architecture_toolkit.changes:
+    labels:
+    - source: architecture_toolkit.changes
+      style: primary
+      start: 7
+      end: 35
+    - source: import architecture_toolkit.changes
+      style: secondary
+      start: 0
+      end: 35
+  import architecture_toolkit.changes.diff as diff:
+    labels:
+    - source: architecture_toolkit.changes.diff
+      style: primary
+      start: 7
+      end: 40
+    - source: import architecture_toolkit.changes.diff as diff
+      style: secondary
+      start: 0
+      end: 48
