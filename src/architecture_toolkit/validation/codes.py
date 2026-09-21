@@ -442,6 +442,18 @@ _ALL: tuple[DiagnosticCodeSpec, ...] = (
         category=_RECORD,
         summary="A validation failure the normalizer has no specific code for.",
     ),
+    # -- generated notation documents (W7a, CORE-42) ------------------------------------------
+    _spec(
+        "CORE.SCHEMA.NOTATION_DOCUMENT_INVALID",
+        CodeArea.SCHEMA,
+        category=DiagnosticCategory.SCHEMA_INTEROPERABILITY,
+        claim=ValidationClaim.SCHEMA_SYNTAX,
+        summary="A generated notation document does not satisfy its pinned standards schema.",
+        remediation=(
+            "The generator produced XML the standard does not allow. Fix the mapping profile or "
+            "the generator; never relax the schema, which is the standard's own text."
+        ),
+    ),
 )
 
 CODES: Mapping[str, DiagnosticCodeSpec] = {spec.code: spec for spec in _ALL}

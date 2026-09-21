@@ -4,6 +4,8 @@ This is one of the two properties `docs/plans/w7a-generator-foundations.md` says
 The other is C14N digest stability, which lives with the XML layer.
 """
 
+import json
+
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
@@ -45,12 +47,17 @@ def test_authored_order_is_not_generated_order(data: st.DataObject) -> None:
     confusion this toolkit exists to prevent, arriving through the back door.
     """
     model = data.draw(coherent_models())
-    shuffled = model.model_copy(
-        update={
-            "elements": tuple(data.draw(st.permutations(list(model.elements)))),
-            "relationships": tuple(data.draw(st.permutations(list(model.relationships)))),
-        }
-    )
+    # Rebuilt through validation rather than `model_copy(update=...)`, which
+    # `rules/no-validation-bypass.yml` forbids: CORE-10 says a candidate comes from the validated
+    # path, and a test that took the shortcut would be demonstrating the property on an object the
+    # toolkit would never actually produce.
+    reordered = dict(model.model_dump(mode="json"))
+    reordered["elements"] = list(data.draw(st.permutations(list(reordered["elements"]))))
+    reordered["relationships"] = list(data.draw(st.permutations(list(reordered["relationships"]))))
+    # `model_validate_json` rather than `model_validate`: the records are strict, so a `list`
+    # is not a `tuple`, and JSON is the boundary where that coercion is intended. It is the same
+    # route `tests/unit/test_rules.py` takes to build a model from plain data.
+    shuffled = Model.model_validate_json(json.dumps(reordered))
 
     assert model_digest(shuffled) == model_digest(model), "the shuffle changed semantic identity"
     assert render(environment(), SUMMARY, summary_of(shuffled)) == render(

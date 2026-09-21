@@ -5,6 +5,16 @@ message: XML parsing must keep entity resolution, DTD loading and network access
 note: |
   CORE-40 requires an explicit no-network, no-DTD, no-external-entity, no-recovery parser
   baseline, and CORE-41 resolves schemas only through a reviewed checksummed local resolver.
+
+  `recover=True` was missing until W7a although CORE-40 names "no recovery for canonical
+  validation" outright. A recovering parser returns a tree for malformed input, so a
+  generator defect that produced unbalanced XML would be validated, digested and published
+  as whatever libxml2 guessed the author meant.
+
+  These four patterns are prohibitive: they catch the unsafe spelling of each flag. What
+  makes the baseline positive is `projections/xml.py::_secure_parser`, the one place a
+  parser is constructed, and the behavioural tests in `tests/unit/test_xml_layer.py` that
+  prove an external entity is not expanded and an unpinned schema reference is refused.
 files:
   - "src/**/*.py"
   - "scripts/**/*.py"
@@ -21,4 +31,7 @@ rule:
         selector: keyword_argument
     - pattern:
         context: f(huge_tree=True)
+        selector: keyword_argument
+    - pattern:
+        context: f(recover=True)
         selector: keyword_argument
