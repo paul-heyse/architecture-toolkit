@@ -8,6 +8,7 @@ nav:
       - Core/domain: contracts/core.md
       - Data/releases: contracts/data.md
       - Projections/publishing: contracts/projections.md
+  - CLI reference: cli.md
   - Agent handoff: agent-handoff.md
   - Plans:
       - Overview: plans/index.md

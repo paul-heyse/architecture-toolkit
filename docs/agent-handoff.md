@@ -196,6 +196,7 @@ uv run pyrefly check
 uv run pyrefly coverage check --strict --fail-under 100
 uv run pytest
 uv run python scripts/check_schema.py
+uv run python scripts/check_cli_docs.py
 uv run python scripts/check_plan_coverage.py
 uv run python scripts/check_boundaries.py
 ast-grep scan

@@ -12,6 +12,7 @@ the executable contracts and qualification boundaries for building them.
 ```sh
 uv python install 3.14.7
 uv sync --locked --all-groups
+uv run architecture --help                                   # every verb
 uv run architecture doctor
 uv run architecture validate examples/minimal/model.yaml
 uv run pytest
@@ -19,6 +20,8 @@ uv run python scripts/bootstrap_tools.py
 uv run python scripts/qualify_tools.py
 uv run --group docs mkdocs build --strict
 ```
+
+The full command surface is generated into [docs/cli.md](docs/cli.md).
 
 Use uv 0.12.7. All Python commands share **one project, one lockfile and one `.venv`**.
 Vendor runtimes stay under ignored `.tools/`; generated/local runtime data stays under
