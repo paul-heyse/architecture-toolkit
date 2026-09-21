@@ -59,9 +59,14 @@ EXAMPLE = Path(__file__).resolve().parents[2] / "examples" / "minimal" / "model.
 
 
 def _view() -> ViewDefinition:
-    """The view every view case starts from. Explicit membership, so a filter case can differ."""
+    """A *second* view, added beside the one the example already declares.
+
+    `view-2`, not `view-1`: the example carries `view-1`, so building one with that id would
+    replace it rather than add it, and `VIEW_ADDED`/`VIEW_REMOVED` would go undemonstrated while
+    every case still appeared in the corpus. Explicit membership, so a filter case can differ.
+    """
     return ViewDefinition(
-        view_id="view-1",
+        view_id="view-2",
         model_id="sample-service",
         view_type=ViewType.SYSTEM_CONTEXT,
         notation=Notation.C4,
@@ -373,10 +378,13 @@ def corpus(base: Model) -> Iterator[tuple[str, Model]]:
             }
         ),
     )
+    # A *different* view, not `view-1`: the example's binding already names that one, so setting
+    # it would be a no-op edit and `VIEW_MEMBERSHIP_CHANGED` would go undemonstrated while this
+    # case still appeared in the corpus.
     yield (
-        "view membership",
+        "binding view membership",
         base.model_validate(
-            dict(base) | {"notation_bindings": (with_field(binding, view_id="view-1"),)}
+            dict(base) | {"notation_bindings": (with_field(binding, view_id="view-2"),)}
         ),
     )
     yield (
@@ -423,12 +431,12 @@ def reversed_corpus(base: Model) -> Iterator[tuple[str, Model, Model]]:
 def view_corpus(base: Model) -> Iterator[tuple[str, Model, Model]]:
     """Every view case, against a baseline that already has a view.
 
-    Separate from `corpus` because those cases all compare against the example, which declares no
-    view — so an edited view would read as a view *added* and nine kinds would go undemonstrated
-    while the suite passed. The example stays free of a record it does not otherwise need, and
-    `view added` and `view removed` fall out as the two ends of this same pair.
+    Separate from `corpus` because those cases need a baseline that differs from the example by
+    one view. The example declares `view-1`, so this adds `view-2` beside it: comparing against
+    the example alone would make every edit read as a view *added*, and adding a `view-1` would
+    make the add read as a *change*. Both ends — added and removed — fall out of the same pair.
     """
-    with_view = base.model_validate(dict(base) | {"views": (_view(),)})
+    with_view = base.model_validate(dict(base) | {"views": (*base.views, _view())})
     yield "view added", base, with_view
     yield "view removed", with_view, base
 
@@ -460,7 +468,7 @@ def view_corpus(base: Model) -> Iterator[tuple[str, Model, Model]]:
         ("view publication", {"publication_state": PublicationState.PUBLISHED}),
     ):
         edited = with_view.model_validate(
-            dict(with_view) | {"views": (with_field(_view(), **changes),)}
+            dict(with_view) | {"views": (*base.views, with_field(_view(), **changes))}
         )
         yield label, with_view, edited
 
@@ -539,7 +547,7 @@ def test_each_category_data_26_names_is_produced_by_the_case_that_should_produce
     assert ChangeKind.REQUIREMENT_APPLICABILITY_CHANGED in by_case["requirement applicability"]
     assert ChangeKind.QUALIFICATION_CHANGED in by_case["status qualification"]
     assert ChangeKind.EVIDENCE_CHANGED in by_case["reference retitled"]
-    assert ChangeKind.VIEW_MEMBERSHIP_CHANGED in by_case["view membership"]
+    assert ChangeKind.VIEW_MEMBERSHIP_CHANGED in by_case["binding view membership"]
     assert ChangeKind.LAYOUT_LINK_CHANGED in by_case["layout link"]
 
 

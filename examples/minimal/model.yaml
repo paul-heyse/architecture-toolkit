@@ -194,3 +194,23 @@ notation_bindings:
     notation_type: bpmn:Process
     notation_object_id: Process_ReviewRequest
     mapping_profile_version: "1.0.0"
+    # Which view this object appears in is semantic governed content; where it sits in that view
+    # is not. The binding names the view; the view names its members.
+    view_id: view-1
+
+views:
+  # One C4 system-context view. Explicit membership, because the point of a canonical view is
+  # that a person decided what belongs in it — an induced or derived view is a later wave's
+  # concern once there is a generator to disagree with.
+  - view_id: view-1
+    model_id: sample-service
+    view_type: system_context
+    notation: c4
+    scope: system-1
+    audience: platform engineering
+    title: Request handling in context
+    description: The billing platform and what it exchanges with, for an engineering audience.
+    membership_policy: explicit
+    included_element_ids: [system-1, component-1, interface-1, role-1]
+    included_relationship_ids: [rel-1, rel-2]
+    publication_state: published
