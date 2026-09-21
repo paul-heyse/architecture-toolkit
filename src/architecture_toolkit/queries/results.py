@@ -41,7 +41,6 @@ __all__ = [
     "PathClassification",
     "ReachabilityEdge",
     "ReductionEdge",
-    "ReleaseComparison",
     "TraversalResult",
 ]
 
@@ -166,34 +165,3 @@ class ReductionEdge(CompiledRecord):
     source: ElementId
     target: ElementId
     relationship_ids: tuple[RelationshipId, ...]
-
-
-class ReleaseComparison(CompiledRecord):
-    """What changed between two releases, at graph identity (DATA-17).
-
-    Deliberately about identities rather than content: `semantic_delta` in `domain/semantics.py`
-    answers "what changed in this model" and W6 owns the change narrative. This answers the
-    narrower question a graph can answer — which objects and relationships exist on each side.
-    """
-
-    base_release_id: ReleaseId
-    candidate_release_id: ReleaseId
-    added_elements: tuple[ElementId, ...] = ()
-    removed_elements: tuple[ElementId, ...] = ()
-    added_relationships: tuple[RelationshipId, ...] = ()
-    removed_relationships: tuple[RelationshipId, ...] = ()
-    retyped_relationships: tuple[
-        tuple[RelationshipId, RelationshipTypeId, RelationshipTypeId], ...
-    ] = ()
-    """`(relationship_id, base_type, candidate_type)` for a relationship whose type changed while
-    keeping its identity — the one change a bare set difference would report as nothing at all."""
-
-    @property
-    def is_empty(self) -> bool:
-        return not (
-            self.added_elements
-            or self.removed_elements
-            or self.added_relationships
-            or self.removed_relationships
-            or self.retyped_relationships
-        )

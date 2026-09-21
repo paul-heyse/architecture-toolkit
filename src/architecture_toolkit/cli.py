@@ -1447,16 +1447,25 @@ def _diff(
         raise UsageRefusal(refused.args[0]) from refused
     if output == "json":
         print(changes.model_dump_json(indent=2))
-        return EXIT_OK
+        # `--cross-check` used to be a silent no-op here: the JSON branch returned before reaching
+        # it, including in the case where it would have reported a disagreement. A flag a CI job
+        # wires in and that quietly does nothing is worse than no flag.
+        if not cross_check:
+            return EXIT_OK
+        return _cross_check(store, base_manifest, candidate_manifest, narrate=False)
     print(f"{base} -> {candidate}")
     _print_changes(changes, include_presentation=include_presentation)
     if not cross_check:
         return EXIT_OK
-    return _cross_check(store, base_manifest, candidate_manifest)
+    return _cross_check(store, base_manifest, candidate_manifest, narrate=True)
 
 
 def _cross_check(
-    store: ReleaseStore, base: ArchitectureRelease, candidate: ArchitectureRelease
+    store: ReleaseStore,
+    base: ArchitectureRelease,
+    candidate: ArchitectureRelease,
+    *,
+    narrate: bool,
 ) -> int:
     """Two other readings of the same pair, neither of which is the narrative (DATA-57).
 
@@ -1468,9 +1477,14 @@ def _cross_check(
     storage = storage_disagreements(store, base, candidate)
     tables = compared_tables(base, candidate)
     for message in (*engine, *storage):
-        print(f"  DISAGREEMENT {message}")
+        ERR_CONSOLE.print(f"DISAGREEMENT {message}", highlight=False, markup=False)
     if engine or storage:
         return EXIT_DIAGNOSTICS
+    if not narrate:
+        # `--format json` promises pure JSON on stdout — three tests validate it against generated
+        # schemas — so the agreement line is simply not printed rather than moved somewhere a
+        # consumer would have to filter out. A disagreement still reaches stderr and exit 1.
+        return EXIT_OK
     print(
         f"  cross-check: DataFusion agrees, and the Delta change feed agrees over "
         f"{len(tables)} rewritten table(s)"

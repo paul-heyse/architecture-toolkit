@@ -823,3 +823,87 @@ def test_publishing_without_the_required_review_is_refused_from_the_command_line
 
     assert run(monkeypatch, *arguments) == EXIT_OK
     assert store.current_id() == "rel-0002"
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("DATA-57", "DATA-26")
+def test_cross_check_reports_agreement_and_is_not_a_no_op_under_json(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    two_releases: Path,
+) -> None:
+    """The one path that wires both cross-check engines together, and it had no test at all.
+
+    Under `--format json` the flag used to be a silent no-op — the JSON branch returned before
+    reaching the cross-check, including where it would have reported a disagreement. A CI job that
+    wired the flag in got a clean exit either way.
+    """
+    assert (
+        run(
+            monkeypatch,
+            "diff",
+            "--base",
+            "rel-0001",
+            "--candidate",
+            "rel-0002",
+            "--store",
+            str(two_releases),
+            "--cross-check",
+        )
+        == EXIT_OK
+    )
+    printed = capsys.readouterr().out
+    assert "DataFusion agrees" in printed
+    assert "change feed agrees over 1 rewritten table(s)" in printed
+
+    # The JSON branch now runs it too, and still emits pure JSON on stdout.
+    assert (
+        run(
+            monkeypatch,
+            "diff",
+            "--base",
+            "rel-0001",
+            "--candidate",
+            "rel-0002",
+            "--store",
+            str(two_releases),
+            "--cross-check",
+            "--format",
+            "json",
+        )
+        == EXIT_OK
+    )
+    captured = capsys.readouterr()
+    assert json.loads(captured.out)["records"]
+    assert captured.err == ""
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("DATA-57")
+def test_cross_check_reports_a_disagreement_to_stderr_and_exits_one(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    two_releases: Path,
+) -> None:
+    """The half that matters: it can say no. Injected, because honest input always agrees."""
+    monkeypatch.setattr(
+        "architecture_toolkit.changes.audit.net_row_changes",
+        lambda *args, **kwargs: {"added": ("invented-1",), "removed": (), "changed": ()},
+    )
+
+    assert (
+        run(
+            monkeypatch,
+            "diff",
+            "--base",
+            "rel-0001",
+            "--candidate",
+            "rel-0002",
+            "--store",
+            str(two_releases),
+            "--cross-check",
+        )
+        == EXIT_DIAGNOSTICS
+    )
+
+    assert "DISAGREEMENT" in capsys.readouterr().err

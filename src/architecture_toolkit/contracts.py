@@ -55,7 +55,6 @@ from architecture_toolkit.queries.results import (
     GraphPathResult,
     ReachabilityEdge,
     ReductionEdge,
-    ReleaseComparison,
     TraversalResult,
 )
 from architecture_toolkit.releases.manifest import ArchitectureRelease
@@ -186,7 +185,6 @@ SCHEMA_FAMILIES: tuple[SchemaFamily, ...] = (
             CondensationResult,
             ReachabilityEdge,
             ReductionEdge,
-            ReleaseComparison,
         ),
     ),
     SchemaFamily(

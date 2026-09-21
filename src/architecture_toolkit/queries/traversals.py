@@ -12,7 +12,7 @@ split the wave is built on: the traversal says *what is reachable*, and the rele
 *what is known about it*. Both come from the same session, so the two halves cannot describe
 different releases.
 
-`find_containment_cycles` and `compare_architecture_releases` are the other two names DATA-17
+`find_containment_cycles` is the other name DATA-17
 lists; they are structural analyses rather than traversals and live in `queries/algorithms.py`.
 """
 

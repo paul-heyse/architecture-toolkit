@@ -243,3 +243,41 @@ def test_the_storage_cross_check_reports_a_disagreement_it_is_given(
     assert len(found) == 2
     assert any("invented-1" in message for message in found)
     assert all("Delta change feed" in message for message in found)
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("DATA-57")
+def test_the_netted_feed_reports_additions_and_removals_not_only_changes(
+    store: ReleaseStore, example_model: Model, publish_release: Publisher
+) -> None:
+    """Every storage cross-check test renamed something, so two thirds of the netting never ran.
+
+    `net_row_changes` cancels rows identical in `(identity, content_hash)`; what survives is the
+    added, removed and changed sets. A corpus that only ever renames exercises the third arm and
+    leaves the other two asserted by nothing.
+    """
+    from architecture_toolkit.domain.model import Relationship
+
+    base = publish_release("rel-0001", example_model, expected_parent=None)
+    extra = Relationship(
+        relationship_id="rel-9",
+        model_id=example_model.model_id,
+        relationship_type_id="depends_on",
+        source_element_id="system-1",
+        target_element_id="component-1",
+    )
+    widened = example_model.model_validate(
+        dict(example_model) | {"relationships": (*example_model.relationships[1:], extra)}
+    )
+    candidate = publish_release("rel-0002", widened, expected_parent="rel-0001")
+
+    versions = {
+        "base_version": base.table("relationships").delta_version,
+        "candidate_version": candidate.table("relationships").delta_version,
+    }
+    netted = net_row_changes(store, "relationships", "relationship_id", **versions)
+
+    assert netted["added"] == ("rel-9",)
+    assert netted["removed"] == (example_model.relationships[0].relationship_id,)
+    assert netted["changed"] == ()
+    assert storage_disagreements(store, base, candidate) == ()

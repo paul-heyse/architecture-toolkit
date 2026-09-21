@@ -39,12 +39,10 @@ from architecture_toolkit.queries.results import (
     CycleResult,
     ReachabilityEdge,
     ReductionEdge,
-    ReleaseComparison,
 )
 
 __all__ = [
     "ancestors",
-    "compare_architecture_releases",
     "components",
     "condensation",
     "cycles",
@@ -231,38 +229,6 @@ def find_containment_cycles(graph: ArchitectureGraph) -> tuple[CycleResult, ...]
     `graphlib`, cannot.
     """
     return cycles(graph, policy_for("containment.descendants"))
-
-
-def compare_architecture_releases(
-    base: ArchitectureGraph, candidate: ArchitectureGraph
-) -> ReleaseComparison:
-    """What exists on each side, by canonical identity (DATA-17).
-
-    The retyped case is the reason this is not two set differences: a relationship that kept its ID
-    and changed its type is present on both sides and different on each, which a membership
-    comparison reports as no change at all.
-    """
-    base_elements = set(base.node_ids())
-    candidate_elements = set(candidate.node_ids())
-    base_types = {key: base.type_of(edge) for edge in base.edges() for key in (edge[2],)}
-    candidate_types = {
-        key: candidate.type_of(edge) for edge in candidate.edges() for key in (edge[2],)
-    }
-    return ReleaseComparison(
-        base_release_id=base.release_id,
-        candidate_release_id=candidate.release_id,
-        added_elements=tuple(sorted(candidate_elements - base_elements)),
-        removed_elements=tuple(sorted(base_elements - candidate_elements)),
-        added_relationships=tuple(sorted(set(candidate_types) - set(base_types))),
-        removed_relationships=tuple(sorted(set(base_types) - set(candidate_types))),
-        retyped_relationships=tuple(
-            sorted(
-                (key, base_types[key], candidate_types[key])
-                for key in set(base_types) & set(candidate_types)
-                if base_types[key] != candidate_types[key]
-            )
-        ),
-    )
 
 
 def _known(graph: ArchitectureGraph, element_id: ElementId) -> ElementId:

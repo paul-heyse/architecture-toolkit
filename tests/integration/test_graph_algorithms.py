@@ -2,10 +2,9 @@
 
 import pytest
 
-from architecture_toolkit.domain.model import Model, Relationship
+from architecture_toolkit.domain.model import Model
 from architecture_toolkit.queries.algorithms import (
     ancestors,
-    compare_architecture_releases,
     components,
     condensation,
     descendants,
@@ -182,88 +181,3 @@ def test_a_reduction_edge_names_every_relationship_that_backs_it(
 def test_a_reduction_is_refused_where_the_view_is_cyclic() -> None:
     with pytest.raises(GraphError, match="defined only for a DAG"):
         minimum_equivalent(cyclic_containment(), CONTAINMENT)
-
-
-@pytest.mark.integration
-@pytest.mark.requirement("DATA-17")
-def test_comparing_two_releases_reports_a_retyped_relationship(
-    store: ReleaseStore, example_model: Model, publish_release: Publisher
-) -> None:
-    """The case a set difference reports as no change: same identity, different meaning."""
-    base = published_graph(store, example_model, publish_release)
-    retyped = graph_from_rows(
-        release_id="rel-0002",
-        model_id=example_model.model_id,
-        model_digest=DIGEST,
-        nodes=((element.element_id, element.kind_id) for element in example_model.elements),
-        edges=(
-            (
-                relationship.source_element_id,
-                relationship.target_element_id,
-                relationship.relationship_id,
-                "depends_on"
-                if relationship.relationship_id == "rel-1"
-                else relationship.relationship_type_id,
-                relationship.context_id,
-            )
-            for relationship in example_model.relationships
-        ),
-    )
-
-    comparison = compare_architecture_releases(base, retyped)
-
-    assert comparison.retyped_relationships == (("rel-1", "contains", "depends_on"),)
-    assert comparison.added_relationships == ()
-    assert comparison.removed_relationships == ()
-    assert not comparison.is_empty
-
-
-@pytest.mark.integration
-@pytest.mark.requirement("DATA-17")
-def test_comparing_a_release_with_itself_reports_nothing(
-    store: ReleaseStore, example_model: Model, publish_release: Publisher
-) -> None:
-    graph = published_graph(store, example_model, publish_release)
-
-    assert compare_architecture_releases(graph, graph).is_empty
-
-
-@pytest.mark.integration
-@pytest.mark.requirement("DATA-17")
-def test_comparing_releases_reports_an_added_object_and_its_relationship(
-    store: ReleaseStore, example_model: Model, publish_release: Publisher
-) -> None:
-    base = published_graph(store, example_model, publish_release)
-    extra = Relationship(
-        relationship_id="rel-10",
-        model_id=example_model.model_id,
-        relationship_type_id="depends_on",
-        source_element_id="system-1",
-        target_element_id="component-1",
-    )
-    widened = example_model.model_validate(
-        dict(example_model) | {"relationships": (*example_model.relationships, extra)}
-    )
-    candidate = graph_from_rows(
-        release_id="rel-0002",
-        model_id=widened.model_id,
-        model_digest=DIGEST,
-        nodes=((element.element_id, element.kind_id) for element in widened.elements),
-        edges=(
-            (
-                relationship.source_element_id,
-                relationship.target_element_id,
-                relationship.relationship_id,
-                relationship.relationship_type_id,
-                relationship.context_id,
-            )
-            for relationship in widened.relationships
-        ),
-    )
-
-    comparison = compare_architecture_releases(base, candidate)
-
-    assert comparison.added_relationships == ("rel-10",)
-    assert comparison.added_elements == ()
-    assert comparison.base_release_id == "rel-0001"
-    assert comparison.candidate_release_id == "rel-0002"

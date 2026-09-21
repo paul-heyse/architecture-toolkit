@@ -11,7 +11,6 @@ and NetworkX only through `queries/_nx.py` (`rules/graph-networkx-only-in-adapte
 
 from architecture_toolkit.queries.algorithms import (
     ancestors,
-    compare_architecture_releases,
     components,
     condensation,
     cycles,
@@ -68,7 +67,6 @@ from architecture_toolkit.queries.results import (
     PathClassification,
     ReachabilityEdge,
     ReductionEdge,
-    ReleaseComparison,
     TraversalResult,
 )
 from architecture_toolkit.queries.traversals import (
@@ -102,7 +100,6 @@ __all__ = [
     "ReachabilityEdge",
     "RecipeError",
     "ReductionEdge",
-    "ReleaseComparison",
     "ReleaseContext",
     "ReleaseQueryExecutor",
     "ReleaseScope",
@@ -115,7 +112,6 @@ __all__ = [
     "ancestors",
     "build_graph",
     "capture",
-    "compare_architecture_releases",
     "components",
     "condensation",
     "cycles",
