@@ -7,11 +7,15 @@ be caught here.
 
 import json
 import re
+from typing import get_args
 
 import pytest
 from jsonschema import Draft202012Validator
+from pydantic import BaseModel
 
 from architecture_toolkit.contracts import SCHEMA_FAMILIES, emit, emittable
+from architecture_toolkit.domain.model import Model
+from architecture_toolkit.domain.semantics import MODEL_COLLECTIONS
 
 
 @pytest.mark.unit
@@ -22,6 +26,34 @@ def test_every_family_is_versioned_and_declares_its_requirements() -> None:
         assert re.fullmatch(r"urn:architecture-toolkit:[a-z-]+:v\d+", family.schema_id)
         assert family.requirements
         assert family.path.startswith("schemas/")
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("CORE-12", "DATA-03")
+def test_every_top_level_record_type_is_a_root_a_consumer_can_reference() -> None:
+    """`element-detail` lists its roots by hand, and nothing related that list to `Model`.
+
+    `authoring-model` would still cover a forgotten record, because Pydantic emits every nested
+    class into `$defs` — so the omission is invisible in the one place a reader would look. What
+    breaks is the thing this family exists for: its description says the shapes are "emitted
+    separately so a consumer can reference one variant without pulling in the whole model", and a
+    record that is not a root cannot be referenced that way.
+
+    Top-level collection item types only. A nested value object like `StatusDimensions` is
+    legitimately `$defs`-only; a record with its own identity is not.
+    """
+    detail = next(f for f in SCHEMA_FAMILIES if f.family_id == "element-detail")
+    items = {
+        argument
+        for name in {name for name, _ in MODEL_COLLECTIONS}
+        for argument in get_args(Model.model_fields[name].annotation)
+        if isinstance(argument, type) and issubclass(argument, BaseModel)
+    }
+
+    assert items, "no collection item types were found; the derivation stopped working"
+    assert items <= set(detail.roots), sorted(
+        record.__name__ for record in items - set(detail.roots)
+    )
 
 
 @pytest.mark.unit

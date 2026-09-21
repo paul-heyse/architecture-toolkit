@@ -28,6 +28,7 @@ from architecture_toolkit.domain.model import Element, Model, Relationship
 from architecture_toolkit.domain.semantics import (
     COLLECTION_ORDER,
     EXCLUDED_FIELDS,
+    MODEL_COLLECTIONS,
     PREIMAGE_PREFIX,
     SEMANTIC_HASH_VERSION,
     CollectionPolicy,
@@ -95,6 +96,22 @@ def tuple_fields(root: type[BaseModel]) -> set[tuple[type[BaseModel], str]]:
 def test_every_collection_reachable_from_the_model_declares_its_order() -> None:
     """The W2 plan's risk note: order is decided per field, not globally. This makes it so."""
     assert tuple_fields(Model) == set(COLLECTION_ORDER)
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("CORE-21", "DATA-27")
+def test_model_collections_names_every_top_level_collection_and_no_other() -> None:
+    """The half of `MODEL_COLLECTIONS` that is hand-written, which nothing checked.
+
+    Its *keys* come from `COLLECTION_ORDER`, so a wrong key is an import-time `KeyError`. Its
+    *names* are a literal tuple, so a collection added to `Model` and to `COLLECTION_ORDER` and
+    forgotten here failed nothing at all — and `MODEL_COLLECTIONS` is what `stamp_digests`,
+    `semantic_delta`, `PRESENCE_RULES` and the identity-delta recipe all iterate.
+
+    `==` rather than `>=` on purpose: the subset direction is the one that already held.
+    """
+    declared = {name for cls, name in COLLECTION_ORDER if cls is Model}
+    assert {name for name, _ in MODEL_COLLECTIONS} == declared
 
 
 @pytest.mark.unit

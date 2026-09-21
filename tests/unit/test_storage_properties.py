@@ -29,6 +29,7 @@ from architecture_toolkit.domain.authoring import parse_model, parse_source
 from architecture_toolkit.domain.commands import ChangeSet, RenameElement, build_candidate
 from architecture_toolkit.domain.model import Model
 from architecture_toolkit.domain.semantics import (
+    MODEL_COLLECTIONS,
     collection_digest,
     model_digest,
     stamp_digests,
@@ -156,14 +157,13 @@ def test_a_table_digest_is_the_domain_digest_of_the_records_it_encodes() -> None
     table_set = compile_tables(model)
     digests = table_set_digests(table_set)
 
-    for table_id, records in (
-        ("relationships", stamped.relationships),
-        ("interactions", stamped.interactions),
-        ("references", stamped.references),
-        ("reference_links", stamped.reference_links),
-        ("notation_bindings", stamped.notation_bindings),
-    ):
-        assert digests[table_id] == collection_digest(records)
+    # Derived from `MODEL_COLLECTIONS` rather than listed, so a seventh collection is covered the
+    # day it is declared instead of the day somebody remembers this list. `elements` is excluded
+    # for the reason in the docstring, and asserted separately below.
+    covered = [name for name, _ in MODEL_COLLECTIONS if name != "elements"]
+    assert covered, "every collection was excluded; the derivation stopped covering anything"
+    for table_id in covered:
+        assert digests[table_id] == collection_digest(getattr(stamped, table_id))
 
     without_detail = tuple(
         element.model_validate(dict(element) | {"detail": None}) for element in stamped.elements

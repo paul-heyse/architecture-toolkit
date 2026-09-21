@@ -9,7 +9,9 @@ from pydantic import StringConstraints, TypeAdapter
 
 from architecture_toolkit.domain import identifiers
 from architecture_toolkit.domain.model import Model
+from architecture_toolkit.domain.semantics import MODEL_COLLECTIONS
 from tests.strategies import DEFERRED_GROUPS
+from tests.strategies.authoring import UNORDERED_COLLECTIONS
 from tests.strategies.domain import elements, status_dimensions
 from tests.strategies.ids import STRATEGY_BY_ALIAS
 from tests.strategies.relations import coherent_models
@@ -106,6 +108,18 @@ def test_the_unbuilt_strategy_groups_are_recorded_not_omitted() -> None:
     for reason in DEFERRED_GROUPS.values():
         assert reason.startswith("W")
     assert "releases" not in DEFERRED_GROUPS, "the release strategies landed at W4"
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("CORE-21", "CORE-45")
+def test_the_reformatter_shuffles_every_unordered_top_level_collection() -> None:
+    """`reformatted` proves presentation invariance by shuffling what is semantically unordered.
+
+    A collection missing from `UNORDERED_COLLECTIONS` is not an error anywhere — it just never
+    gets shuffled, so the CORE-21 property quietly stops covering it. `>=` because the tuple also
+    names `extensions`, which is nested rather than top level.
+    """
+    assert set(UNORDERED_COLLECTIONS) >= {name for name, _ in MODEL_COLLECTIONS}
 
 
 @pytest.mark.unit

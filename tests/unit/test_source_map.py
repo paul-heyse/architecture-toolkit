@@ -10,6 +10,7 @@ from hypothesis import given, settings
 
 from architecture_toolkit.domain.authoring import LoadedSource, parse_source
 from architecture_toolkit.domain.authoring.plain import IDENTITY_KEYS
+from architecture_toolkit.domain.semantics import MODEL_COLLECTIONS
 from architecture_toolkit.domain.source import (
     SourceEntry,
     SourceLocation,
@@ -132,14 +133,7 @@ def test_positions_are_one_based_and_carry_extents(example: LoadedSource) -> Non
 @pytest.mark.requirement("CORE-18")
 def test_identity_paths_cover_every_record_in_the_example(example: LoadedSource) -> None:
     source_map = example.source_map
-    for collection, key in (
-        ("elements", "element_id"),
-        ("relationships", "relationship_id"),
-        ("interactions", "interaction_id"),
-        ("references", "reference_id"),
-        ("reference_links", "link_id"),
-        ("notation_bindings", "binding_id"),
-    ):
+    for collection, key in MODEL_COLLECTIONS:
         records = example.data[collection]
         assert isinstance(records, tuple)
         for index, record in enumerate(records):
@@ -160,7 +154,10 @@ def test_identity_paths_cover_every_record_in_the_example(example: LoadedSource)
     moved = source_map.lookup("interactions[0].moved_object_ids[0]")
     assert moved is not None
     assert moved.identity_path == "interactions.handoff-1.moved_object_ids.0"
-    assert "element_id" in IDENTITY_KEYS
+    # Every top-level collection's identity field must be an identity key, or a diagnostic
+    # addressed at one of its records silently loses its source location. `>=` because
+    # `IDENTITY_KEYS` also covers nested records — fields, nodes, transitions.
+    assert set(IDENTITY_KEYS) >= {key for _, key in MODEL_COLLECTIONS}
     # A mention of an identity inside another record is not a record path.
     assert source_map.record_paths["process-1"] == ("elements.process-1",)
     assert "triage" not in source_map.record_paths

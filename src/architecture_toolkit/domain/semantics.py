@@ -44,8 +44,6 @@ from architecture_toolkit.domain.details import (
 )
 from architecture_toolkit.domain.identifiers import SemanticDigest
 from architecture_toolkit.domain.model import Element, Interaction, Model, Relationship
-from architecture_toolkit.domain.notation import NotationBinding
-from architecture_toolkit.domain.references import Reference, ReferenceLink
 
 __all__ = [
     "COLLECTION_ORDER",
@@ -310,10 +308,15 @@ class SemanticDelta(CompiledRecord):
         return all(delta.is_empty for delta in self.collections)
 
 
-_Records = Element | Relationship | Interaction | Reference | ReferenceLink | NotationBinding
+def _by_identity(records: Iterable[CompiledRecord], key: str) -> dict[str, SemanticDigest]:
+    """Digest every record in one collection, keyed by its identity.
 
-
-def _by_identity(records: Iterable[_Records], key: str) -> dict[str, SemanticDigest]:
+    Typed as `CompiledRecord` rather than as a union of the six collection item types. There used
+    to be a `_Records` union here, and it was decoration: its only caller passes
+    `getattr(base, name)`, whose type is `Any`, so no checker ever compared an argument against
+    it. A union that cannot fail is a comment, and this one would have gone stale the first time
+    a seventh collection arrived without anybody noticing.
+    """
     return {str(getattr(record, key)): record_digest(record) for record in records}
 
 

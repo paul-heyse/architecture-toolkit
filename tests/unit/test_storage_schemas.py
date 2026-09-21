@@ -7,6 +7,7 @@ import pytest
 
 from architecture_toolkit.domain.details import ElementDetail
 from architecture_toolkit.domain.registry import DetailFamily
+from architecture_toolkit.domain.semantics import MODEL_COLLECTIONS
 from architecture_toolkit.storage.errors import UnknownTableError
 from architecture_toolkit.storage.schemas import (
     BASELINE_TYPES,
@@ -44,10 +45,9 @@ def walk_fields(schema: pa.Schema) -> Iterator[pa.Field]:
 
 @pytest.mark.unit
 @pytest.mark.requirement("DATA-10")
-def test_the_registry_holds_exactly_the_eleven_declared_tables() -> None:
+def test_the_registry_holds_exactly_the_declared_tables() -> None:
     assert list(TABLE_SCHEMAS) == IDS
-    assert len(IDS) == 11
-    assert len(set(IDS)) == 11
+    assert len(set(IDS)) == len(IDS)
     assert schema_for("elements") is TABLE_SCHEMAS["elements"]
     with pytest.raises(UnknownTableError):
         schema_for("no_such_table")
@@ -55,11 +55,27 @@ def test_the_registry_holds_exactly_the_eleven_declared_tables() -> None:
 
 @pytest.mark.unit
 @pytest.mark.requirement("DATA-10")
-def test_the_six_independent_collections_come_before_the_five_details() -> None:
-    """`TABLE_IDS` order is what W4 pins digests in, so it is asserted rather than assumed."""
+def test_the_independent_collections_come_before_the_details_in_model_field_order() -> None:
+    """`TABLE_IDS` order is what W4 pins digests in, so it is asserted rather than assumed.
+
+    Stated as three properties that each cross-check two registries, rather than as the two
+    magic numbers this used to hold (`roles[6:] == [DETAIL] * 5`). A literal count is a
+    transcription: it has to be re-derived by hand every time a collection or a detail family
+    arrives, and it says nothing about *which* tables are where.
+
+    The last assertion is deliberately a **prefix** match. A table may legitimately exist one
+    commit ahead of the `Model` field it will carry — that is how a new collection lands without
+    breaking `queries/recipes.py`'s import-time registry check, which rejects a recipe input
+    naming a table that does not exist yet. A collection with no table still fails.
+    """
     roles = [TABLE_SCHEMAS[table_id].role for table_id in TABLE_IDS]
-    assert roles[6:] == [TableRole.DETAIL] * 5
-    assert TableRole.DETAIL not in roles[:6]
+    details = [t for t, r in zip(TABLE_IDS, roles, strict=True) if r is TableRole.DETAIL]
+    independent = [t for t, r in zip(TABLE_IDS, roles, strict=True) if r is not TableRole.DETAIL]
+
+    assert details, "no detail table was found; the split stopped meaning anything"
+    assert list(TABLE_IDS[len(TABLE_IDS) - len(details) :]) == details
+    assert set(details) == set(DETAIL_TABLE_BY_FAMILY.values())
+    assert [name for name, _ in MODEL_COLLECTIONS] == independent[: len(MODEL_COLLECTIONS)]
 
 
 @pytest.mark.unit
