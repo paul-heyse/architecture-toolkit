@@ -8,6 +8,7 @@ that dropped the relationships pass.
 import pytest
 
 from architecture_toolkit.domain.model import Model, Relationship
+from architecture_toolkit.domain.status import TechnicalQualification
 from architecture_toolkit.queries.context import ReleaseContext
 from architecture_toolkit.queries.errors import GraphError
 from architecture_toolkit.queries.graph import ArchitectureGraph, build_graph
@@ -25,6 +26,23 @@ from tests.integration.conftest import Publisher
 def graph_of(store: ReleaseStore, model: Model, publish_release: Publisher) -> ArchitectureGraph:
     manifest = publish_release("rel-0001", model, expected_parent=None)
     return build_graph(ReleaseContext.for_release(store, manifest))
+
+
+def qualify(model: Model, element_id: str, state: TechnicalQualification) -> Model:
+    """Set one element's technical qualification, leaving every other dimension alone."""
+    victim = next(element for element in model.elements if element.element_id == element_id)
+    status = victim.status.model_validate(dict(victim.status) | {"technical_qualification": state})
+    return model.model_validate(
+        dict(model)
+        | {
+            "elements": tuple(
+                element.model_validate(dict(element) | {"status": status})
+                if element.element_id == element_id
+                else element
+                for element in model.elements
+            )
+        }
+    )
 
 
 def with_parallel_dependency(model: Model) -> Model:
@@ -224,6 +242,44 @@ def test_unverified_dependencies_join_the_traversal_to_the_release_it_came_from(
     assert "schema-1" in result.reached
     assert all(path.relationship_ids for path in result.paths)
     assert result.policy_id == "dependencies.direct"
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("DATA-17")
+def test_a_qualified_dependency_is_not_reported_as_unverified(
+    store: ReleaseStore, example_model: Model, publish_release: Publisher
+) -> None:
+    """The discriminating half, which the case above cannot check.
+
+    Every element in the example is `not_qualified`, so a filter that returned everything
+    unconditionally would pass that test. Here `schema-1` is qualified and `interface-1` depends on
+    it, so the honest answer is empty — and `QUALIFICATION_FAILED` is checked in the same place,
+    because something that failed qualification *was* verified and is a different fact from
+    something nobody has looked at.
+    """
+    manifest = publish_release(
+        "rel-0001",
+        qualify(example_model, "schema-1", TechnicalQualification.QUALIFIED),
+        expected_parent=None,
+    )
+    context = ReleaseContext.for_release(store, manifest)
+    graph = build_graph(context)
+
+    assert find_unverified_dependencies(graph, context, "interface-1").reached == ()
+    assert "schema-1" in graph.traverse(policy_for("dependencies.direct"), "interface-1").reached
+
+    failed = publish_release(
+        "rel-0002",
+        qualify(example_model, "schema-1", TechnicalQualification.QUALIFICATION_FAILED),
+        expected_parent="rel-0001",
+    )
+    failed_context = ReleaseContext.for_release(store, failed)
+    assert (
+        find_unverified_dependencies(
+            build_graph(failed_context), failed_context, "interface-1"
+        ).reached
+        == ()
+    )
 
 
 @pytest.mark.integration
