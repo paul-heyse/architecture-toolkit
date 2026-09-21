@@ -15,6 +15,7 @@ table stripped of every key produces identical records and identical digests.
 """
 
 from collections.abc import Mapping
+from pathlib import Path
 
 import pyarrow as pa
 
@@ -33,7 +34,18 @@ __all__ = [
     "read_model",
     "read_table_set",
     "storage_schema_version_of",
+    "table_locations",
 ]
+
+
+def table_locations(store: ReleaseStore, manifest: ArchitectureRelease) -> Mapping[TableId, Path]:
+    """Where each table this release pins actually lives.
+
+    Separate from `provider_for` because W5 builds providers by name — the ladder has four rungs
+    and a release-scoped query context may select any of them — and both callers must resolve
+    locations the same way. One expression, so a second reader cannot resolve a different path.
+    """
+    return {ref.table_id: store.resolve(ref.uri) for ref in manifest.tables}
 
 
 def provider_for(
@@ -45,9 +57,7 @@ def provider_for(
     provider that resolved a path by convention could resolve a wrong one, and would make a
     manifest's `uri` decorative.
     """
-    return MaterializedPyArrowSnapshotProvider(
-        {ref.table_id: store.resolve(ref.uri) for ref in manifest.tables}
-    )
+    return MaterializedPyArrowSnapshotProvider(table_locations(store, manifest))
 
 
 def read_table_set(
