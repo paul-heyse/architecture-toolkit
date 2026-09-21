@@ -45,11 +45,18 @@ from architecture_toolkit.changes.kinds import (
     ChangeRule,
     Traversal,
 )
+from architecture_toolkit.changes.operations import (
+    IMPACT_POLICY,
+    ArchitectureOperations,
+    OutputNotImplemented,
+)
 from architecture_toolkit.changes.record import (
     MAX_RATIONALE,
     ArchitectureChangeSet,
     AuthorKind,
     Authorship,
+    Review,
+    ReviewDecision,
 )
 from architecture_toolkit.changes.records import FieldChange, ModelChanges, RecordChange
 from architecture_toolkit.changes.releases import (
@@ -60,6 +67,7 @@ from architecture_toolkit.changes.releases import (
 
 __all__ = [
     "CHANGE_CLASSIFICATION",
+    "IMPACT_POLICY",
     "MAX_RATIONALE",
     "NARRATIVE_NATURES",
     "NEVER_EMITTED",
@@ -68,6 +76,7 @@ __all__ = [
     "UNREACHABLE_NATURES",
     "AlternativeComparison",
     "ArchitectureChangeSet",
+    "ArchitectureOperations",
     "AuthorKind",
     "Authorship",
     "ChangeError",
@@ -79,7 +88,10 @@ __all__ = [
     "FieldChange",
     "LineageError",
     "ModelChanges",
+    "OutputNotImplemented",
     "RecordChange",
+    "Review",
+    "ReviewDecision",
     "ReviewError",
     "Traversal",
     "compare_alternative",

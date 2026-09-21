@@ -26,7 +26,7 @@ import, and "impact-analysis results" would have become a locally-invented summa
 from enum import StrEnum
 from typing import Self
 
-from pydantic import Field, model_validator
+from pydantic import AwareDatetime, Field, model_validator
 
 from architecture_toolkit.changes.kinds import ChangeKind
 from architecture_toolkit.changes.records import ModelChanges, RecordChange
@@ -40,7 +40,14 @@ from architecture_toolkit.domain.identifiers import (
 from architecture_toolkit.queries.results import TraversalResult
 from architecture_toolkit.validation.claims import ValidationClaimReport
 
-__all__ = ["MAX_RATIONALE", "ArchitectureChangeSet", "AuthorKind", "Authorship"]
+__all__ = [
+    "MAX_RATIONALE",
+    "ArchitectureChangeSet",
+    "AuthorKind",
+    "Authorship",
+    "Review",
+    "ReviewDecision",
+]
 
 MAX_RATIONALE = 2000
 """Long enough for a paragraph naming the decision, short enough not to become the decision."""
@@ -66,6 +73,32 @@ class Authorship(CompiledRecord):
     tool: str | None = Field(default=None, max_length=200)
 
 
+class ReviewDecision(StrEnum):
+    """What a reviewer concluded. Three answers, because two would force "not yet" into "no"."""
+
+    APPROVED = "approved"
+    CHANGES_REQUESTED = "changes_requested"
+    REJECTED = "rejected"
+
+
+class Review(CompiledRecord):
+    """One reviewer's decision on one change set (DATA-38, the `review` step).
+
+    `reviewed_at` is injected by the caller's clock rather than read inline, for the reason
+    CORE-51 gives about `published_at`: a fault-injection test of the lifecycle has to be
+    deterministic.
+    """
+
+    reviewer: Authorship
+    decision: ReviewDecision
+    reviewed_at: AwareDatetime
+    note: str | None = Field(default=None, max_length=MAX_RATIONALE)
+
+    @property
+    def is_approval(self) -> bool:
+        return self.decision is ReviewDecision.APPROVED
+
+
 class ArchitectureChangeSet(CompiledRecord):
     """What changed between two architecture releases, why, and with what consequences.
 
@@ -88,6 +121,7 @@ class ArchitectureChangeSet(CompiledRecord):
     changes: ModelChanges
     validation: ValidationClaimReport | None = None
     impact: tuple[TraversalResult, ...] = ()
+    review: Review | None = None
 
     @model_validator(mode="after")
     def the_narrative_describes_this_model(self) -> Self:
@@ -113,6 +147,21 @@ class ArchitectureChangeSet(CompiledRecord):
             )
             raise ValueError(message)
         return self
+
+    @property
+    def is_approved(self) -> bool:
+        """Whether a reviewer has approved this change set. Absent review is not approval."""
+        return self.review is not None and self.review.is_approval
+
+    @property
+    def has_hard_errors(self) -> bool:
+        """Whether validation found something that must not be published.
+
+        `None` means validation has not run, which is not the same as having passed — so this is
+        `False` and `ArchitectureOperations.publish` checks for a report separately. Conflating
+        "clean" with "unexamined" is how an unvalidated model reaches a release.
+        """
+        return self.validation is not None and bool(self.validation.hard_errors)
 
     @property
     def is_preview(self) -> bool:

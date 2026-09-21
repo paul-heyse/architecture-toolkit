@@ -23,7 +23,7 @@ the read-back makes them verified, and the pointer makes them visible — all at
 layer, which is what DATA-20 insists this is.
 """
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -55,12 +55,14 @@ from architecture_toolkit.validation.pipeline import validate_model
 from architecture_toolkit.validation.release import digest_mismatches, row_count_mismatches
 
 __all__ = [
+    "PERSIST_STEPS",
     "STEPS",
     "STEP_ORDER",
     "DeltaPublisher",
     "PublicationRequest",
     "PublicationState",
     "Step",
+    "persist",
     "publish",
     "verify_against_storage",
 ]
@@ -396,6 +398,28 @@ STEPS: Final[Mapping[str, Step]] = {
 }
 
 
+PERSIST_STEPS: Final[tuple[str, ...]] = STEP_ORDER[:-1]
+"""Everything up to, and not including, the atomic pointer move (DATA-38).
+
+The protocol's eighth line is what exposes a release. Stopping before it leaves a manifest written
+and unexposed — the state `recovery.resume` already knows how to finish and `recovery.discard`
+already knows how to abandon — which is what makes `persist` and `publish` two operations rather
+than one with a flag. DATA-24 permits exactly this state after a crash; DATA-38 asks for it as a
+step somebody can take on purpose.
+"""
+
+
+def _run(
+    request: PublicationRequest, names: Sequence[str], steps: Mapping[str, Step] | None
+) -> ArchitectureRelease:
+    chosen = STEPS if steps is None else steps
+    state = PublicationState(request=request)
+    with publication_lock(request.store.lock_path):
+        for name in names:
+            state = chosen[name](state)
+    return state.require_manifest()
+
+
 def publish(
     request: PublicationRequest, *, steps: Mapping[str, Step] | None = None
 ) -> ArchitectureRelease:
@@ -405,12 +429,20 @@ def publish(
     DATA-24's hard gate is proved: fail each named stage in turn and assert the current pointer
     still resolves to the previous complete release.
     """
-    chosen = STEPS if steps is None else steps
-    state = PublicationState(request=request)
-    with publication_lock(request.store.lock_path):
-        for name in STEP_ORDER:
-            state = chosen[name](state)
-    return state.require_manifest()
+    return _run(request, STEP_ORDER, steps)
+
+
+def persist(
+    request: PublicationRequest, *, steps: Mapping[str, Step] | None = None
+) -> ArchitectureRelease:
+    """Stage, read back, verify and write the manifest — and stop before exposing it (DATA-38).
+
+    The returned manifest is not current and `store.current_id()` still names whatever it named
+    before. `recovery.resume` moves the pointer afterwards, re-verifying against storage with the
+    same code the sixth step uses; a second implementation of "does this manifest match storage"
+    would be a second definition of correct.
+    """
+    return _run(request, PERSIST_STEPS, steps)
 
 
 def _change_set_id(request: PublicationRequest) -> str | None:
