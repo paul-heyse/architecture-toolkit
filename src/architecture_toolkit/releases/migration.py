@@ -35,6 +35,7 @@ from architecture_toolkit.releases.errors import MigrationError
 from architecture_toolkit.releases.manifest import ArchitectureRelease
 from architecture_toolkit.releases.store import ReleaseStore
 from architecture_toolkit.storage import delta
+from architecture_toolkit.storage.mappings import mapping_for
 
 __all__ = [
     "MIGRATIONS",
@@ -46,6 +47,16 @@ __all__ = [
 ]
 
 type Transform = Callable[[TableId, pa.Table], pa.Table]
+
+
+def _unchanged(table_id: TableId, table: pa.Table) -> pa.Table:
+    """The identity transform, and the default.
+
+    A migration that only adds a table rewrites nothing, and saying that with an empty `tables`
+    tuple is clearer than requiring every such declaration to supply a function it never calls.
+    """
+    del table_id
+    return table
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,8 +72,30 @@ class Migration:
     from_storage_schema_version: str
     to_storage_schema_version: str
     description: str
-    tables: tuple[TableId, ...]
-    transform: Transform
+    tables: tuple[TableId, ...] = ()
+    transform: Transform = _unchanged
+    added_tables: tuple[TableId, ...] = ()
+    """Tables this version introduces, which the `from` version's releases never pinned.
+
+    Separate from `tables`, and that separation is the design rather than bookkeeping. A
+    `Transform` takes the existing table and returns the new one — for a table being added there
+    is no existing one to take, and `apply_migration` cannot even find it, because it looks the
+    old version up through `manifest.table(table_id)` and the old manifest never pinned it.
+
+    More importantly the content is not a matter of choice. A release published before the table
+    existed had no rows for it, so the only honest content is the declared schema with zero rows.
+    Inventing rows would be fabricating architecture, which is why this is a declaration rather
+    than a second transform hook.
+    """
+
+    def __post_init__(self) -> None:
+        overlap = sorted(set(self.tables) & set(self.added_tables))
+        if overlap:
+            message = f"migration {self.migration_id!r} both rewrites and adds {overlap}"
+            raise MigrationError(message)
+        if not self.tables and not self.added_tables:
+            message = f"migration {self.migration_id!r} declares no table to rewrite or add"
+            raise MigrationError(message)
 
     def applies_to(self, manifest: ArchitectureRelease) -> bool:
         return manifest.generator.storage_schema_version == self.from_storage_schema_version
@@ -73,11 +106,22 @@ class MigrationResult:
     """What a migration did, per table: the version before and the version it wrote."""
 
     migration_id: str
-    versions: Mapping[TableId, tuple[int, int]]
+    versions: Mapping[TableId, tuple[int | None, int]]
+    """`(before, after)` per table. `before` is `None` for a table this migration created.
+
+    `None` rather than `-1` or `0`: a table that did not exist has no previous version, and every
+    reader is now forced to say what it does about that rather than comparing against a number
+    that looks like a real Delta version.
+    """
 
     @property
     def migrated_tables(self) -> tuple[TableId, ...]:
         return tuple(sorted(self.versions))
+
+    @property
+    def created_tables(self) -> tuple[TableId, ...]:
+        """The tables this migration brought into existence, as opposed to rewrote."""
+        return tuple(sorted(name for name, (before, _) in self.versions.items() if before is None))
 
 
 MIGRATIONS: Final[Mapping[str, Migration]] = MappingProxyType({})
@@ -128,7 +172,20 @@ def apply_migration(
         "storage_schema_version": migration.to_storage_schema_version,
         "migrated_from": migration.from_storage_schema_version,
     }
-    versions: dict[TableId, tuple[int, int]] = {}
+    versions: dict[TableId, tuple[int | None, int]] = {}
+    for table_id in migration.added_tables:
+        # Not `manifest.table(table_id)`: the old manifest never pinned this, which is the whole
+        # point. `to_arrow(())` rather than the bare schema, because `TableMapping.to_arrow`
+        # attaches the self-describing metadata, so a migration-created table is byte-identical
+        # to a publication-created one.
+        location = store.table_location(table_id)
+        empty = mapping_for(table_id).to_arrow(())
+        versions[table_id] = (
+            None,
+            delta.write_snapshot(
+                location, empty, commit_metadata=metadata, schema_mode="overwrite"
+            ),
+        )
     for table_id in migration.tables:
         ref = manifest.table(table_id)
         location = store.resolve(ref.uri)

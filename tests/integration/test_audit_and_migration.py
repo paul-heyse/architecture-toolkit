@@ -23,7 +23,7 @@ from architecture_toolkit.storage.constraints import (
     apply_constraints,
     columns_of,
 )
-from architecture_toolkit.storage.schemas import TABLE_IDS
+from architecture_toolkit.storage.schemas import STORAGE_SCHEMA_VERSION, TABLE_IDS, schema_for
 from tests.integration.conftest import Publisher, rename_first_element
 
 # -- DATA-57: history and CDF are storage evidence ------------------------------------------------
@@ -158,13 +158,27 @@ def _add_a_column(table_id: str, table: pa.Table) -> pa.Table:
     )
 
 
+# `from` is read from the constant rather than written as "1.0.0", so this fixture keeps
+# exercising the machinery after a real migration moves `STORAGE_SCHEMA_VERSION`. Pinning the
+# literal would make every future bump break three tests that have nothing to do with the bump:
+# `applies_to` would start returning False and the migration would refuse a release it was
+# written for. `to` is a sentinel nobody will ever declare, so this cannot collide with a real
+# step or be found by `migration_for`.
 SYNTHETIC = Migration(
-    migration_id="synthetic-1.0.0-to-1.1.0",
-    from_storage_schema_version="1.0.0",
-    to_storage_schema_version="1.1.0",
+    migration_id="synthetic-add-a-column",
+    from_storage_schema_version=STORAGE_SCHEMA_VERSION,
+    to_storage_schema_version="9.9.9",
     description="Adds a nullable note column to the references table.",
     tables=("references",),
     transform=_add_a_column,
+)
+
+SYNTHETIC_ADDITION = Migration(
+    migration_id="synthetic-add-a-table",
+    from_storage_schema_version=STORAGE_SCHEMA_VERSION,
+    to_storage_schema_version="9.9.9",
+    description="Introduces a table the earlier version's releases never pinned.",
+    added_tables=("notation_bindings",),
 )
 
 
@@ -174,7 +188,69 @@ def test_no_migration_is_declared_because_no_schema_has_changed() -> None:
     """The honest state. `STORAGE_SCHEMA_VERSION` has only ever been 1.0.0."""
     assert MIGRATIONS == {}
     with pytest.raises(MigrationError, match="no declared migration"):
-        migration_for("1.0.0", "1.1.0")
+        migration_for(STORAGE_SCHEMA_VERSION, "9.9.9")
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("DATA-56")
+def test_a_migration_cannot_both_rewrite_and_create_one_table() -> None:
+    """The two lists answer different questions, so an overlap is a contradiction.
+
+    `tables` says "this table exists and its shape changes"; `added_tables` says "this table did
+    not exist". A migration claiming both about one table has no meaning `apply_migration` could
+    act on, and the ambiguity would surface as whichever loop happened to run second.
+    """
+    with pytest.raises(MigrationError, match="both rewrites and adds"):
+        Migration(
+            migration_id="contradictory",
+            from_storage_schema_version=STORAGE_SCHEMA_VERSION,
+            to_storage_schema_version="9.9.9",
+            description="Claims a table is both rewritten and new.",
+            tables=("references",),
+            added_tables=("references",),
+        )
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("DATA-56")
+def test_a_migration_that_touches_nothing_is_refused() -> None:
+    """A declared step that changes no table is a version bump pretending to be a migration."""
+    with pytest.raises(MigrationError, match="no table to rewrite or add"):
+        Migration(
+            migration_id="empty",
+            from_storage_schema_version=STORAGE_SCHEMA_VERSION,
+            to_storage_schema_version="9.9.9",
+            description="Declares nothing.",
+        )
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("DATA-56")
+def test_a_migration_can_create_a_table_the_old_manifest_never_pinned(
+    store: ReleaseStore, example_model: Model, publish_release: Publisher
+) -> None:
+    """The case `apply_migration` could not express until W7a needed it.
+
+    Every other migration path reads the old version through `manifest.table(table_id)`, which
+    raises `KeyError` for an id the old manifest never carried. A table being *added* has no old
+    version by definition — which is why `before` is `None` rather than a number that would look
+    like a real Delta version — and no transform, because a release published before the table
+    existed had no rows for it. The only honest content is the declared schema with zero rows;
+    inventing rows would be fabricating architecture.
+    """
+    manifest = publish_release("rel-0001", example_model, expected_parent=None)
+    result = apply_migration(store, SYNTHETIC_ADDITION, manifest)
+
+    assert result.created_tables == ("notation_bindings",)
+    before, after = result.versions["notation_bindings"]
+    assert before is None
+    assert after >= 0
+
+    written = delta.read_version(store.table_location("notation_bindings"), version=after)
+    assert written.num_rows == 0
+    assert written.schema.names == list(schema_for("notation_bindings").schema.names), (
+        "an added table must carry the declared schema, not an empty one"
+    )
 
 
 @pytest.mark.integration
@@ -237,6 +313,8 @@ def test_a_migration_records_what_it_was_in_the_commit(
     apply_migration(store, SYNTHETIC, manifest)
     location = store.resolve(manifest.table("references").uri)
     entry = delta.history(location, version=delta.tip(location))[0]
-    assert entry["migration_id"] == "synthetic-1.0.0-to-1.1.0"
-    assert entry["storage_schema_version"] == "1.1.0"
-    assert entry["migrated_from"] == "1.0.0"
+    # Read from the declaration rather than retyped, so the fixture's version independence is not
+    # undone here by three string literals.
+    assert entry["migration_id"] == SYNTHETIC.migration_id
+    assert entry["storage_schema_version"] == SYNTHETIC.to_storage_schema_version
+    assert entry["migrated_from"] == SYNTHETIC.from_storage_schema_version
