@@ -12,7 +12,7 @@ from rich.table import Table
 
 from architecture_toolkit.changes.alternatives import compare_alternative
 from architecture_toolkit.changes.audit import compared_tables, storage_disagreements
-from architecture_toolkit.changes.errors import ChangeError
+from architecture_toolkit.changes.errors import ChangeError, ReviewError
 from architecture_toolkit.changes.operations import ArchitectureOperations
 from architecture_toolkit.changes.record import (
     ArchitectureChangeSet,
@@ -66,12 +66,6 @@ from architecture_toolkit.releases.manifest import ArchitectureRelease
 from architecture_toolkit.releases.provenance import source_bundle, source_revision
 from architecture_toolkit.releases.publication import (
     PublicationRequest,
-)
-from architecture_toolkit.releases.publication import (
-    persist as persist_release,
-)
-from architecture_toolkit.releases.publication import (
-    publish as publish_release,
 )
 from architecture_toolkit.releases.recovery import (
     discard as discard_release,
@@ -256,6 +250,16 @@ def publish(
     baseline: Annotated[
         str | None, typer.Option(help="The release this alternative is derived from.")
     ] = None,
+    change_report: Annotated[
+        Path | None,
+        typer.Option(help="A change report from `change --format json`, optionally reviewed."),
+    ] = None,
+    require_review: Annotated[
+        bool,
+        typer.Option(
+            "--require-review", help="Refuse unless the change report carries an approval."
+        ),
+    ] = False,
 ) -> None:
     """Publish a source model as a coherent release."""
     raise typer.Exit(
@@ -267,6 +271,8 @@ def publish(
             preserve_source=not no_source_snapshot,
             scenario_id=scenario,
             baseline_release_id=baseline,
+            change_report=change_report,
+            require_review=require_review,
             expose=True,
         )
     )
@@ -292,6 +298,10 @@ def persist(
     baseline: Annotated[
         str | None, typer.Option(help="The release this alternative is derived from.")
     ] = None,
+    change_report: Annotated[
+        Path | None,
+        typer.Option(help="A change report from `change --format json`, optionally reviewed."),
+    ] = None,
 ) -> None:
     """Stage a release and write its manifest without exposing it."""
     raise typer.Exit(
@@ -302,6 +312,7 @@ def persist(
             release_id=release_id,
             scenario_id=scenario,
             baseline_release_id=baseline,
+            change_report=change_report,
         )
     )
 
@@ -488,10 +499,29 @@ def change(
     store: StoreOption = DEFAULT_STORE_ROOT,
     release: ReleaseOption = None,
     output: FormatOption = Format.HUMAN,
+    rationale: Annotated[
+        str | None,
+        typer.Option(help="Why this change was made. A sentence; Notion owns the narrative."),
+    ] = None,
+    author: Annotated[
+        str | None, typer.Option(help="Who made it. Defaults to the CLI itself.")
+    ] = None,
+    decision: Annotated[
+        list[str] | None,
+        typer.Option("--decision", help="A Reference id justifying it. Repeatable."),
+    ] = None,
 ) -> None:
     """Apply a typed change set to a release and report what it would do."""
     raise typer.Exit(
-        code=_change(change_set, store_root=store, release_id=release, output=output.value)
+        code=_change(
+            change_set,
+            store_root=store,
+            release_id=release,
+            output=output.value,
+            rationale=rationale,
+            author=author,
+            decisions=tuple(decision or ()),
+        )
     )
 
 
@@ -654,6 +684,8 @@ def _stage_or_publish(
     preserve_source: bool,
     scenario_id: str | None,
     baseline_release_id: str | None,
+    change_report: Path | None,
+    require_review: bool,
     expose: bool,
 ) -> int:
     """`publish` and `persist` differ in the eighth protocol line and in nothing else.
@@ -661,6 +693,11 @@ def _stage_or_publish(
     One body rather than two, because two would eventually validate a source differently depending
     on which verb an operator typed — and the whole point of the split is that the *only* thing
     that differs is whether the current pointer moves.
+
+    Both go through `ArchitectureOperations`, which is what makes DATA-38's *"through a small API
+    and CLI"* true of the second half of the lifecycle. Before this they called the publication
+    protocol directly, so `change_report_digest` was never written by any CLI path, the hard-error
+    refusal and the review gate never ran, and `architecture review` wrote a file no verb consumed.
     """
     try:
         text = source.read_text(encoding="utf-8")
@@ -705,10 +742,20 @@ def _stage_or_publish(
         source_text=text,
         preserve_source=preserve_source,
     )
+    record = _change_record(change_report)
+    operations = _operations(store_root)
     try:
-        manifest = publish_release(request) if expose else persist_release(request)
+        manifest = (
+            operations.publish(request, change_set=record, require_review=require_review)
+            if expose
+            else operations.persist(request, change_set=record)
+        )
     except (ReleaseError, ValidationError) as refused:
         raise OperationRefused(f"{type(refused).__name__}: {refused}") from refused
+    except ReviewError as refused:
+        raise UsageRefusal(refused.args[0]) from refused
+    except ChangeError as refused:
+        raise OperationRefused(refused.args[0]) from refused
 
     reused = sum(1 for ref in manifest.tables if _reused(store, manifest, ref.table_id))
     verb = "published" if expose else "persisted"
@@ -717,6 +764,20 @@ def _stage_or_publish(
     if not expose:
         print(f"not current: {store.current_id() or 'nothing'} still is; `resume` completes it")
     return EXIT_OK
+
+
+def _change_record(path: Path | None) -> ArchitectureChangeSet | None:
+    """Read the change report a publication is carrying, if it was given one.
+
+    The file `change --format json` writes and `review` annotates. Reading it here is what closes
+    the lifecycle: without it `review`'s output had no consumer at all.
+    """
+    if path is None:
+        return None
+    try:
+        return ArchitectureChangeSet.model_validate_json(path.read_text(encoding="utf-8"))
+    except (OSError, ValidationError) as refused:
+        raise SourceUnreadable(f"{path}: {refused}") from refused
 
 
 def _reused(store: ReleaseStore, manifest: ArchitectureRelease, table_id: str) -> bool:
@@ -1252,6 +1313,17 @@ Named rather than left blank: DATA-26 asks for authorship, and "the CLI ran" is 
 """
 
 
+def _authorship(author: str | None) -> Authorship:
+    """Who a change report says produced it.
+
+    A person when `--author` names one, the CLI itself otherwise. DATA-26 asks for authorship, and
+    "the CLI ran" is a true answer where a hardcoded constant on every record is an incomplete one.
+    """
+    if author is None:
+        return _CLI_AUTHOR
+    return Authorship(author_id=author, author_kind=AuthorKind.PERSON)
+
+
 def _operations(store_root: Path) -> ArchitectureOperations:
     return ArchitectureOperations(store=_store_at(store_root))
 
@@ -1277,6 +1349,9 @@ def _change(
     store_root: Path,
     release_id: str | None,
     output: str,
+    rationale: str | None,
+    author: str | None,
+    decisions: tuple[str, ...],
 ) -> int:
     """`apply typed change set` then `validate` then `preview semantic diff` — the dry run.
 
@@ -1299,9 +1374,11 @@ def _change(
     record = operations.change_set(
         change_set_id=change_set.change_set_id,
         changes=changes,
-        authored_by=_CLI_AUTHOR,
+        authored_by=_authorship(author),
         base_release_id=operations.manifest(release_id).release_id,
         command_change_set_id=change_set.change_set_id,
+        rationale=rationale,
+        decision_references=decisions,
         validation=report,
         impact=operations.impact(changes),
     )
@@ -1515,6 +1592,7 @@ def _persist(
     release_id: str | None,
     scenario_id: str | None,
     baseline_release_id: str | None,
+    change_report: Path | None,
 ) -> int:
     """`persist` — everything but the pointer move (DATA-38).
 
@@ -1534,6 +1612,8 @@ def _persist(
         preserve_source=True,
         scenario_id=scenario_id,
         baseline_release_id=baseline_release_id,
+        change_report=change_report,
+        require_review=False,
         expose=False,
     )
 

@@ -643,3 +643,183 @@ def test_compare_refuses_two_releases_on_the_baseline_line(
     )
 
     assert "is not an alternative" in capsys.readouterr().err
+
+
+# -- the lifecycle, end to end -------------------------------------------------------------------
+
+
+@pytest.mark.integration
+@pytest.mark.qualification
+@pytest.mark.requirement("DATA-38", "DATA-26", "DATA-53")
+def test_the_whole_lifecycle_runs_from_the_command_line(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    store: ReleaseStore,
+    example_model: Model,
+    publish_release: Publisher,
+    tmp_path: Path,
+) -> None:
+    """change -> review -> persist -> resume, with the record surviving the whole way.
+
+    Before this the chain was severed: `persist` and `publish` called the publication protocol
+    directly, so `change_report_digest` was never written by any CLI path and `review` produced a
+    file no verb consumed. The assertions below are the ones that would fail if it came apart
+    again — the digest is pinned, the report on disk names the release it describes, and the Delta
+    commit metadata is bound to the change set (DATA-53).
+    """
+    publish_release("rel-0001", example_model, expected_parent=None)
+    report = tmp_path / "report.json"
+
+    # 1. change, with the provenance DATA-26 asks for and the CLI could not supply before.
+    assert (
+        run(
+            monkeypatch,
+            "change",
+            str(change_set_file(tmp_path)),
+            "--store",
+            str(store.root),
+            "--format",
+            "json",
+            "--rationale",
+            "Align the name with the accepted decision.",
+            "--author",
+            "paul",
+            "--decision",
+            "ref-1",
+        )
+        == EXIT_OK
+    )
+    report.write_text(capsys.readouterr().out)
+    previewed = json.loads(report.read_text())
+    assert previewed["rationale"] == "Align the name with the accepted decision."
+    assert previewed["authored_by"]["author_id"] == "paul"
+    assert previewed["decision_references"] == ["ref-1"]
+    assert previewed["new_release_id"] is None
+
+    # 2. review
+    assert (
+        run(
+            monkeypatch,
+            "review",
+            str(report),
+            "--decision",
+            "approved",
+            "--reviewer",
+            "paul",
+            "--store",
+            str(store.root),
+        )
+        == EXIT_OK
+    )
+    capsys.readouterr()
+
+    # 3. persist, carrying the reviewed report
+    source = tmp_path / "model.yaml"
+    source.write_text(
+        (ROOT / "examples" / "minimal" / "model.yaml")
+        .read_text()
+        .replace("name: Handle customer requests", "name: Portfolio Technology Evaluation")
+    )
+    assert (
+        run(
+            monkeypatch,
+            "persist",
+            str(source),
+            "--store",
+            str(store.root),
+            "--expect-parent",
+            "rel-0001",
+            "--change-report",
+            str(report),
+        )
+        == EXIT_OK
+    )
+    capsys.readouterr()
+    assert store.current_id() == "rel-0001"
+
+    # 4. resume exposes it, and the record is pinned to the release it describes.
+    assert run(monkeypatch, "resume", "rel-0002", "--store", str(store.root)) == EXIT_OK
+    published = store.read_manifest("rel-0002")
+    assert published.change_report_digest is not None
+    written = store.artifact_dir("rel-0002") / "change-report.json"
+    assert written.is_file()
+    restored = json.loads(written.read_text())
+    assert restored["new_release_id"] == "rel-0002"
+    assert restored["review"]["decision"] == "approved"
+    assert restored["rationale"] == "Align the name with the accepted decision."
+    # DATA-53: the storage log can be traced back to the change everybody else is reading.
+    assert published.change_set_id == "cs-0001"
+
+
+@pytest.mark.integration
+@pytest.mark.qualification
+@pytest.mark.requirement("DATA-38")
+def test_publishing_without_the_required_review_is_refused_from_the_command_line(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    store: ReleaseStore,
+    example_model: Model,
+    publish_release: Publisher,
+    tmp_path: Path,
+) -> None:
+    """The review gate existed only in Python; `--require-review` is what makes it real.
+
+    Both halves: refused without an approval, and accepted with one — so the refusal is not simply
+    "publish never works when a report is attached".
+    """
+    publish_release("rel-0001", example_model, expected_parent=None)
+    report = tmp_path / "report.json"
+    assert (
+        run(
+            monkeypatch,
+            "change",
+            str(change_set_file(tmp_path)),
+            "--store",
+            str(store.root),
+            "--format",
+            "json",
+        )
+        == EXIT_OK
+    )
+    report.write_text(capsys.readouterr().out)
+
+    source = tmp_path / "model.yaml"
+    source.write_text(
+        (ROOT / "examples" / "minimal" / "model.yaml")
+        .read_text()
+        .replace("name: Handle customer requests", "name: Portfolio Technology Evaluation")
+    )
+    arguments = (
+        "publish",
+        str(source),
+        "--store",
+        str(store.root),
+        "--expect-parent",
+        "rel-0001",
+        "--change-report",
+        str(report),
+        "--require-review",
+    )
+
+    assert run(monkeypatch, *arguments) == EXIT_USAGE
+    assert "an absent review is not an approval" in capsys.readouterr().err
+    assert store.current_id() == "rel-0001"
+
+    assert (
+        run(
+            monkeypatch,
+            "review",
+            str(report),
+            "--decision",
+            "approved",
+            "--reviewer",
+            "paul",
+            "--store",
+            str(store.root),
+        )
+        == EXIT_OK
+    )
+    capsys.readouterr()
+
+    assert run(monkeypatch, *arguments) == EXIT_OK
+    assert store.current_id() == "rel-0002"

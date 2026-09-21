@@ -245,7 +245,18 @@ class ArchitectureOperations:
         published = change_set.model_validate(
             dict(change_set) | {"new_release_id": request.candidate.release_id}
         )
-        return replace(request, change_report=published.model_dump_json(indent=2))
+        # DATA-53 asks Delta commit metadata to bind a table commit to the change set that caused
+        # it, and `publication._change_set_id` reads `request.change_set` — the *command batch*.
+        # A publication carrying only the narrative left that metadata empty, so the storage log
+        # could not be traced back to the change everyone else was reading.
+        candidate = request.candidate
+        if request.change_set is None and published.command_change_set_id is not None:
+            candidate = replace(candidate, change_set_id=published.command_change_set_id)
+        return replace(
+            request,
+            candidate=candidate,
+            change_report=published.model_dump_json(indent=2),
+        )
 
     @staticmethod
     def _refuse_unready(change_set: ArchitectureChangeSet | None, *, require_review: bool) -> None:

@@ -110,6 +110,8 @@ $ architecture publish [OPTIONS] {source}
 * `--no-source-snapshot`: Pin only the source revision and digest; do not copy it into the release.
 * `--scenario <str>`: Publish as a design alternative under this scenario id.
 * `--baseline <str>`: The release this alternative is derived from.
+* `--change-report <path>`: A change report from `change --format json`, optionally reviewed.
+* `--require-review`: Refuse unless the change report carries an approval.
 * `--help`: Show this message and exit.
 
 ## `architecture persist`
@@ -133,6 +135,7 @@ $ architecture persist [OPTIONS] {source}
 * `--release-id <str>`: Defaults to the next rel-NNNN in the store.
 * `--scenario <str>`: Publish as a design alternative under this scenario id.
 * `--baseline <str>`: The release this alternative is derived from.
+* `--change-report <path>`: A change report from `change --format json`, optionally reviewed.
 * `--help`: Show this message and exit.
 
 ## `architecture releases`
@@ -406,6 +409,9 @@ $ architecture change [OPTIONS] {change_set}
 * `--store <path>`: Release store root.  [default: .runtime/releases]
 * `--release <str>`: Defaults to the current release.
 * `--format <human|json>`: How to render the answer.  [default: human]
+* `--rationale <str>`: Why this change was made. A sentence; Notion owns the narrative.
+* `--author <str>`: Who made it. Defaults to the CLI itself.
+* `--decision <str>`: A Reference id justifying it. Repeatable.
 * `--help`: Show this message and exit.
 
 ## `architecture diff`
