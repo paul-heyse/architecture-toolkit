@@ -235,3 +235,81 @@ def test_the_reuse_count_a_publication_reports_is_the_real_one(
     first_pins = dict(store.read_manifest("rel-0001").pinned_versions)
     assert dict(second.pinned_versions) == first_pins
     assert len(first_pins) == len(TABLE_IDS)
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("DATA-21", "DATA-26")
+def test_a_release_published_with_a_change_record_pins_it(
+    store: ReleaseStore, example_model: Model, publish_release: Publisher
+) -> None:
+    """`REQUIRED_WITH_A_CHANGE_RECORD` was read only by the totality union until now.
+
+    W6 moved `change_report_digest` out of `DEFERRED_PINS`, where nothing checked it, into a new
+    list where nothing checked it — while the file read as though coverage had grown. The reason
+    strings in these dicts are only worth writing if something iterates them.
+    """
+    from architecture_toolkit.changes.operations import ArchitectureOperations
+    from architecture_toolkit.changes.record import AuthorKind, Authorship
+
+    publish_release("rel-0001", example_model, expected_parent=None)
+    operations = ArchitectureOperations(store=store, now=lambda: MOMENT)
+    baseline = operations.baseline()
+    victim = baseline.elements[0]
+    candidate = operations.change(
+        baseline,
+        ChangeSet(
+            change_set_id="cs-0001",
+            model_id=baseline.model_id,
+            commands=(RenameElement(element_id=victim.element_id, new_name="Renamed"),),
+        ),
+    )
+    published = operations.publish(
+        PublicationRequest(
+            store=store,
+            candidate=ReleaseCandidate(
+                release_id="rel-0002",
+                model=candidate,
+                source_bundle=source_bundle(source_id="s", text=EXAMPLE.read_text()),
+            ),
+            expected_parent="rel-0001",
+            now=lambda: MOMENT,
+            generator_commit="abc1234",
+        ),
+        change_set=operations.change_set(
+            change_set_id="cs-0001",
+            changes=operations.diff(baseline, candidate),
+            authored_by=Authorship(author_id="agent-01", author_kind=AuthorKind.AGENT),
+            validation=operations.validate(candidate),
+        ),
+    )
+
+    for name, reason in REQUIRED_WITH_A_CHANGE_RECORD.items():
+        assert getattr(published, name) is not None, f"{name} unset: {reason}"
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("DATA-28")
+def test_an_alternative_pins_both_halves_of_its_relation(tmp_path: Path) -> None:
+    """The other dict nothing iterated. Both fields or neither, which the record already refuses."""
+    from architecture_toolkit.domain.authoring import parse_model, parse_source
+
+    scenario_store = ReleaseStore.at(tmp_path / "alternative").initialize()
+    alternative = publish(
+        PublicationRequest(
+            store=scenario_store,
+            candidate=ReleaseCandidate(
+                release_id="rel-0001",
+                model=parse_model(parse_source(EXAMPLE.read_text(), source_id="alt")),
+                source_bundle=source_bundle(source_id="alt", text=EXAMPLE.read_text()),
+                scenario_id="alt-thinner-api",
+                baseline_release_id="rel-0001",
+            ),
+            expected_parent=None,
+            now=lambda: MOMENT,
+            generator_commit="abc1234",
+        )
+    )
+
+    for name, reason in REQUIRED_ON_AN_ALTERNATIVE.items():
+        assert getattr(alternative, name) is not None, f"{name} unset: {reason}"
+    assert alternative.is_alternative

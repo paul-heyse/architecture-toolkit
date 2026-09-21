@@ -265,6 +265,12 @@ class ArchitectureOperations:
                 message = "a review cannot be required of a publication that carries no change set"
                 raise ReviewError(message)
             return
+        if change_set.validation is None:
+            message = (
+                f"change set {change_set.change_set_id!r} carries no validation report; "
+                f"an unexamined model is not a clean one"
+            )
+            raise ChangeError(message)
         if change_set.has_hard_errors:
             report = change_set.validation
             codes = () if report is None else sorted({item.code for item in report.hard_errors})

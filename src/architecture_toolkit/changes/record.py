@@ -158,8 +158,9 @@ class ArchitectureChangeSet(CompiledRecord):
         """Whether validation found something that must not be published.
 
         `None` means validation has not run, which is not the same as having passed — so this is
-        `False` and `ArchitectureOperations.publish` checks for a report separately. Conflating
-        "clean" with "unexamined" is how an unvalidated model reaches a release.
+        `False`, and `ArchitectureOperations._refuse_unready` refuses an unvalidated change set
+        separately. Conflating "clean" with "unexamined" is how an unvalidated model reaches a
+        release, and for one wave this docstring described a check that was not there.
         """
         return self.validation is not None and bool(self.validation.hard_errors)
 

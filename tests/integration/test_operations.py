@@ -171,6 +171,7 @@ def test_publishing_without_the_required_review_is_refused(
         changes=ops.diff(baseline, candidate),
         authored_by=AGENT,
         base_release_id="rel-0001",
+        validation=ops.validate(candidate),
     )
     request = request_for(store, candidate, "rel-0002", "rel-0001")
 
@@ -305,3 +306,36 @@ def test_impact_of_a_presentation_only_change_is_empty(
 
     assert changes.presentation
     assert ops.impact(changes) == ()
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("DATA-38", "DATA-26")
+def test_a_change_set_that_was_never_validated_is_not_publishable(
+    store: ReleaseStore,
+    ops: ArchitectureOperations,
+    example_model: Model,
+    publish_release: Publisher,
+) -> None:
+    """ "Clean" and "unexamined" are different, and for one wave only a docstring said so.
+
+    `has_hard_errors` is `False` when `validation is None`, which is correct — there are no errors
+    because nothing looked. The refusal for the second case has to be separate, and the docstring
+    claiming `publish` made it was describing a check that did not exist.
+    """
+    publish_release("rel-0001", example_model, expected_parent=None)
+    baseline = ops.baseline()
+    candidate = ops.change(baseline, rename_command(baseline, "Renamed"))
+    unexamined = ops.change_set(
+        change_set_id="cs-0001", changes=ops.diff(baseline, candidate), authored_by=AGENT
+    )
+
+    assert not unexamined.has_hard_errors
+    with pytest.raises(ChangeError, match="an unexamined model is not a clean one"):
+        ops.publish(request_for(store, candidate, "rel-0002", "rel-0001"), change_set=unexamined)
+
+    # The positive control: the same change set with a report publishes.
+    examined = unexamined.model_validate(dict(unexamined) | {"validation": ops.validate(candidate)})
+    published = ops.publish(
+        request_for(store, candidate, "rel-0002", "rel-0001"), change_set=examined
+    )
+    assert published.release_id == "rel-0002"

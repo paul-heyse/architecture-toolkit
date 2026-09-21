@@ -148,9 +148,14 @@ relationships:
      source_element_id: system-1, target_element_id: capability-1}
   - {relationship_id: rel-7, model_id: sample-service, relationship_type_id: justifies,
      source_element_id: req-1, target_element_id: system-1}
+  # The one relationship carrying a context. `Relationship.context_id` has been declared since W1,
+  # read by the graph policy since W5 and written by nothing at all — so the context filter had no
+  # data and `relationship_context_changed` could not be produced. A scope label, not a foreign
+  # key: `ContextId` is its own alias and no `Context` record exists to point at yet.
   - {relationship_id: rel-8, model_id: sample-service,
      relationship_type_id: exchanges_data_with,
-     source_element_id: system-1, target_element_id: role-1}
+     source_element_id: system-1, target_element_id: role-1,
+     context_id: customer-onboarding}
 
 interactions:
   - interaction_id: handoff-1

@@ -22,7 +22,11 @@ from pydantic import ValidationError
 from architecture_toolkit.changes.alternatives import compare_alternative
 from architecture_toolkit.changes.errors import LineageError
 from architecture_toolkit.changes.kinds import ChangeKind
-from architecture_toolkit.changes.record import ArchitectureChangeSet
+from architecture_toolkit.changes.record import (
+    ArchitectureChangeSet,
+    AuthorKind,
+    Authorship,
+)
 from architecture_toolkit.changes.releases import diff_releases
 from architecture_toolkit.domain.model import Model
 from architecture_toolkit.releases.candidate import ReleaseCandidate
@@ -233,12 +237,16 @@ def test_an_alternative_comparison_cannot_be_published_as_a_change_set(
     assert not hasattr(comparison, "narrative")
     assert "changes" not in type(comparison).model_fields
     assert "narrative" not in type(comparison).model_fields
-    with pytest.raises(ValidationError):
+    # Everything but `changes` is valid, and `match=` names the refusal being claimed. The bare
+    # `raises(ValidationError)` this replaces was passing partly for the wrong reason: strict mode
+    # was also rejecting `author_kind` as a string, so the test would have stayed green even if an
+    # `AlternativeComparison` had become assignable to `changes`.
+    with pytest.raises(ValidationError, match="instance of ModelChanges"):
         ArchitectureChangeSet.model_validate(
             {
                 "change_set_id": "cs-0001",
                 "model_id": example_model.model_id,
-                "authored_by": {"author_id": "someone", "author_kind": "person"},
+                "authored_by": Authorship(author_id="someone", author_kind=AuthorKind.PERSON),
                 "changes": comparison,
             }
         )

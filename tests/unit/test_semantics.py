@@ -46,7 +46,7 @@ from tests.strategies.relations import full_models
 # that does it. It moved once, at W3, when `Element` and `Relationship` gained DATA-13's
 # `extensions`; nothing had been published, so no migration was owed. The first release is what
 # makes a digest durable.
-EXAMPLE_DIGEST = "sha256:4a5bf6aeba8733864500ba1619e6717799d8053cc66494216f22b4401ed8ee46"
+EXAMPLE_DIGEST = "sha256:b9f6edf3eacb8019a99a613e60c34895e39ea04ca1ec0f2e2d55a871c0400efc"
 
 
 def _model(source: dict[str, Any]) -> Model:

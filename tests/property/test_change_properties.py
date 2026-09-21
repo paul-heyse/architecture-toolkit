@@ -50,6 +50,10 @@ def test_the_field_diff_is_empty_exactly_when_the_record_digests_agree(
     after = {element.element_id: element for element in candidate.elements}
     compared = sorted(set(before) & set(after))
     event(f"elements compared: {'some' if compared else 'none'}")
+    # `event()` reports; it does not gate. The whole body of this property is inside the loop
+    # below, so without this the load-bearing property of the wave would pass green on any draw
+    # that produced no comparable pair — which is the failure this file's own docstring warns of.
+    assert compared, "no element survived the change set; the property examined nothing"
 
     changed = 0
     for element_id in compared:
@@ -77,7 +81,12 @@ def test_every_reported_change_names_a_field_that_really_differs(
     candidate = build_candidate(baseline, change_set)
 
     changes = model_changes(baseline, candidate)
-    event(f"field changes: {'some' if any(r.fields for r in changes.records) else 'none'}")
+    reported = [change for record in changes.records for change in record.fields]
+    event(f"field changes: {'some' if reported else 'none'}")
+    # The same shape as above: a nested loop whose body is the assertion. `change_sets` always
+    # draws at least one command and every command in the library moves a field, so an empty
+    # result here means the differ stopped seeing them rather than that the draw was dull.
+    assert reported or not changes.records, "records changed but no field change was reported"
 
     for record in changes.records:
         for change in record.fields:

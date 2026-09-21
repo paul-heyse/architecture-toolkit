@@ -258,7 +258,12 @@ NEVER_EMITTED: Final[frozenset[ChangeKind]] = frozenset(
 )
 """Kinds that exist so their fields are classified, and that no field change may carry.
 
-Each is a different reason a declared field is not a field-level change, kept apart because the
-reasons are different. A test asserts the differ never produces one, which is what turns four
-comments into a guard.
+Each of the five is a different reason a declared field is not a field-level change, kept apart
+because the reasons are different.
+
+`tests/integration/test_observed_change_kinds.py` asserts the differ produces none of them over a
+corpus that edits one model in every way this vocabulary can express — and, from the other
+direction, that every kind *not* in this set is produced by something. Before that corpus existed
+this docstring claimed a test that did not exist: the only assertions were set algebra over two
+frozen constants, which would have passed with a differ that returned nothing for every input.
 """

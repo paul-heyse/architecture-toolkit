@@ -179,10 +179,11 @@ MUST_BE_NAMED: tuple[tuple[type[BaseModel], str], ...] = (
     (NotationBinding, "projection_artifact_id"),
 )
 
-# Four today: `Element.description`, `Relationship.description`, `Interaction.description`,
-# `Reference.authority`, `ReferenceLink.note`. Raising this is a decision to be argued in a commit
-# message, which is the entire point of pinning it.
-RESIDUAL_CEILING = 6
+# Five today: `Element.description`, `Relationship.description`, `Interaction.description`,
+# `Reference.authority`, `ReferenceLink.note`. Pinned at exactly that, not at a round number with
+# slack in it — a ceiling with a free slot lets one field join the residual without the argument
+# this pin exists to force. Raising it is a decision to be made in a commit message.
+RESIDUAL_CEILING = 5
 
 
 @pytest.mark.unit

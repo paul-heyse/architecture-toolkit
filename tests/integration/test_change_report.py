@@ -59,6 +59,7 @@ def test_publishing_with_a_change_record_writes_it_and_pins_its_digest(
         authored_by=AGENT,
         base_release_id="rel-0001",
         rationale="Align the name with the accepted decision.",
+        validation=ops.validate(candidate),
     )
     assert record.is_preview
 
@@ -132,7 +133,10 @@ def test_the_written_report_is_the_published_change_contract(
             generator_commit="abc1234",
         ),
         change_set=ops.change_set(
-            change_set_id="cs-0001", changes=ops.diff(baseline, candidate), authored_by=AGENT
+            change_set_id="cs-0001",
+            changes=ops.diff(baseline, candidate),
+            authored_by=AGENT,
+            validation=ops.validate(candidate),
         ),
     )
 

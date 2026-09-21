@@ -24,6 +24,13 @@ def _position_of(text: str, needle: str) -> tuple[int, int]:
     raise AssertionError(f"{needle!r} not in text")
 
 
+# These fixtures splice an extra relationship into the example by anchoring on its last line.
+# That couples them to `examples/minimal/model.yaml`, which is the point — the located positions
+# below are line and column numbers in that file — but it means an edit to the example's final
+# relationship shows up here as a test that silently stops inserting anything.
+LAST_RELATIONSHIP_LINE = "     context_id: customer-onboarding}\n"
+
+
 def _resolution(diagnostic: Diagnostic) -> str:
     return dict(diagnostic.context)["location_resolution"]
 
@@ -122,9 +129,9 @@ def test_a_diagnostic_with_no_anchor_resolves_to_the_document_honestly() -> None
     )
     # Appending to the end lands the item in the last sequence; move it under relationships.
     text = text.replace(
-        "     source_element_id: system-1, target_element_id: role-1}\n",
-        "     source_element_id: system-1, target_element_id: role-1}\n"
-        "  - {relationship_id: rel-9, model_id: sample-service, relationship_type_id: contains,\n"
+        LAST_RELATIONSHIP_LINE,
+        LAST_RELATIONSHIP_LINE
+        + "  - {relationship_id: rel-9, model_id: sample-service, relationship_type_id: contains,\n"
         "     source_element_id: component-1, target_element_id: system-1}\n",
         1,
     ).rsplit("  - {relationship_id: rel-9", 1)[0]
@@ -143,9 +150,9 @@ def test_a_diagnostic_with_no_anchor_resolves_to_the_document_honestly() -> None
 def test_a_record_addressed_only_by_identity_resolves_to_the_record() -> None:
     """`single-parent` names the child element and no field: the record is the exact location."""
     text = EXAMPLE.read_text().replace(
-        "     source_element_id: system-1, target_element_id: role-1}\n",
-        "     source_element_id: system-1, target_element_id: role-1}\n"
-        "  - {relationship_id: rel-9, model_id: sample-service, relationship_type_id: contains,\n"
+        LAST_RELATIONSHIP_LINE,
+        LAST_RELATIONSHIP_LINE
+        + "  - {relationship_id: rel-9, model_id: sample-service, relationship_type_id: contains,\n"
         "     source_element_id: capability-1, target_element_id: component-1}\n",
     )
     result = validate_source_text(text, source_id="e.yaml")
