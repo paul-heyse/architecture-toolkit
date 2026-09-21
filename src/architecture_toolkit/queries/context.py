@@ -43,6 +43,7 @@ from datafusion import DataFrame, SessionConfig, SessionContext, SQLOptions
 from datafusion.catalog import Schema
 
 from architecture_toolkit.domain.identifiers import ModelId, ReleaseId, TableId
+from architecture_toolkit.domain.providers import SnapshotProviderDescription
 from architecture_toolkit.queries.errors import QueryError
 from architecture_toolkit.queries.sides import SIDES, Side
 from architecture_toolkit.releases.manifest import ArchitectureRelease
@@ -165,6 +166,10 @@ class ReleaseContext:
         """What the engine says is registered, as `(schema, table)` pairs."""
         return _inventory(self.session)
 
+    def describe(self) -> SnapshotProviderDescription:
+        """Which rung of the provider ladder this context reads through (DATA-49, DATA-51)."""
+        return self.provider.describe()
+
 
 @dataclass(frozen=True, slots=True)
 class ComparisonContext:
@@ -225,6 +230,14 @@ class ComparisonContext:
 
     def registered(self) -> tuple[tuple[str, str], ...]:
         return _inventory(self.session)
+
+    def describe(self) -> SnapshotProviderDescription:
+        """Both sides are built with one provider name, so one description covers the session."""
+        descriptions = {reader.describe() for _, reader in self.providers}
+        if len(descriptions) != 1:
+            message = f"a comparison must read both sides the same way, got {descriptions}"
+            raise QueryError(message)
+        return descriptions.pop()
 
 
 def _scope(manifest: ArchitectureRelease, *, qualifier: str) -> ReleaseScope:
