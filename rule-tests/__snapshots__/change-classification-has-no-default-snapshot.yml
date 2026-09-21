@@ -1,0 +1,58 @@
+id: change-classification-has-no-default
+snapshots:
+  pair = OPTIONAL_RECORD_RULES.get(key, None):
+    labels:
+    - source: OPTIONAL_RECORD_RULES.get
+      style: primary
+      start: 7
+      end: 32
+    - source: OPTIONAL_RECORD_RULES
+      style: secondary
+      start: 7
+      end: 28
+    - source: get
+      style: secondary
+      start: 29
+      end: 32
+  rule = CHANGE_CLASSIFICATION.get(key):
+    labels:
+    - source: CHANGE_CLASSIFICATION.get
+      style: primary
+      start: 7
+      end: 32
+    - source: CHANGE_CLASSIFICATION
+      style: secondary
+      start: 7
+      end: 28
+    - source: get
+      style: secondary
+      start: 29
+      end: 32
+  rule = CHANGE_CLASSIFICATION.get(key, _RESIDUAL):
+    labels:
+    - source: CHANGE_CLASSIFICATION.get
+      style: primary
+      start: 7
+      end: 32
+    - source: CHANGE_CLASSIFICATION
+      style: secondary
+      start: 7
+      end: 28
+    - source: get
+      style: secondary
+      start: 29
+      end: 32
+  rule = PRESENCE_RULES.get((collection, present), _MEMBERS):
+    labels:
+    - source: PRESENCE_RULES.get
+      style: primary
+      start: 7
+      end: 25
+    - source: PRESENCE_RULES
+      style: secondary
+      start: 7
+      end: 21
+    - source: get
+      style: secondary
+      start: 22
+      end: 25

@@ -1,0 +1,13 @@
+id: change-classification-has-no-default
+valid:
+  # Subscripting is the point: an unclassified field raises rather than being answered for.
+  - "rule = CHANGE_CLASSIFICATION[(owner, field_name)]"
+  - "added, removed = OPTIONAL_RECORD_RULES[(owner, field_name)]"
+  # An ordinary mapping read with a default is not the mistake this rule prevents.
+  - "value = counts.get(name, 0)"
+  - "spec = CODES.get(code)"
+invalid:
+  - "rule = CHANGE_CLASSIFICATION.get(key, _RESIDUAL)"
+  - "rule = CHANGE_CLASSIFICATION.get(key)"
+  - "rule = PRESENCE_RULES.get((collection, present), _MEMBERS)"
+  - "pair = OPTIONAL_RECORD_RULES.get(key, None)"

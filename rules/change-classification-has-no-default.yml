@@ -1,0 +1,28 @@
+id: change-classification-has-no-default
+language: python
+severity: error
+message: Subscript the classification table; a default makes its totality test decorative.
+note: |
+  DATA-26. `changes/classification.py` declares what a change to every field of every record is,
+  and `tests/unit/test_change_classification.py` asserts that table total by reflection over
+  `Model`. That assertion only has consequences while an unclassified field has no answer.
+
+  `CHANGE_CLASSIFICATION.get(key, FIELD_MODIFIED)` would hand one back regardless, and the
+  totality test would keep passing while the residual quietly absorbed every field a later wave
+  added — including, eventually, one whose nature decides the layout gate. So the lookup
+  subscripts and lets `KeyError` escape, and this rule keeps it that way structurally rather than
+  by review.
+
+  Scoped to the three tables by name rather than to any `.get`, because reading an ordinary
+  mapping with a default is not the mistake being prevented.
+files:
+  - src/architecture_toolkit/**/*.py
+rule:
+  kind: attribute
+  all:
+    - has:
+        field: object
+        regex: ^(CHANGE_CLASSIFICATION|PRESENCE_RULES|OPTIONAL_RECORD_RULES)$
+    - has:
+        field: attribute
+        regex: ^get$
