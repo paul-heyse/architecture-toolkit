@@ -65,6 +65,7 @@ from architecture_toolkit.domain.references import (
     ReleaseReference,
 )
 from architecture_toolkit.domain.status import StatusDimensions
+from architecture_toolkit.domain.views import ViewDefinition, ViewFilter
 
 __all__ = [
     "CHANGE_CLASSIFICATION",
@@ -130,6 +131,7 @@ CHANGE_CLASSIFICATION: Final[Mapping[tuple[type[BaseModel], str], ChangeRule]] =
         (Model, "references"): _MEMBERS,
         (Model, "reference_links"): _MEMBERS,
         (Model, "notation_bindings"): _MEMBERS,
+        (Model, "views"): _MEMBERS,
         # -- Element --------------------------------------------------------------------------
         (Element, "element_id"): _IDENTITY,
         (Element, "model_id"): _IDENTITY,
@@ -331,6 +333,50 @@ CHANGE_CLASSIFICATION: Final[Mapping[tuple[type[BaseModel], str], ChangeRule]] =
             ChangeKind.PROJECTION_PROVENANCE_CHANGED, _TOOLCHAIN
         ),
         (NotationBinding, "content_hash"): _DIGEST,
+        # -- views (PROJ-03) --------------------------------------------------------------
+        # `projections.md` calls view membership "semantic governed content", which is why a
+        # view is on `Model` at all. Everything below follows from taking that literally: the
+        # *what* of a view is semantic, and only the pointer at a layout profile is not.
+        (ViewDefinition, "view_id"): _IDENTITY,
+        (ViewDefinition, "model_id"): _IDENTITY,
+        (ViewDefinition, "view_type"): _rule(ChangeKind.VIEW_RETYPED),
+        (ViewDefinition, "notation"): _rule(ChangeKind.NOTATION_MAPPING_CHANGED, _MAPPING),
+        (ViewDefinition, "scope"): _rule(ChangeKind.VIEW_SCOPE_CHANGED),
+        # Named rather than left to the residual. `RESIDUAL_CEILING` is pinned at exactly five
+        # "not with slack in it", and three more description-shaped fields would blow it — but
+        # the better reason is that "the view's title changed" is a fact worth naming.
+        (ViewDefinition, "audience"): _rule(ChangeKind.VIEW_METADATA_CHANGED),
+        (ViewDefinition, "title"): _rule(ChangeKind.VIEW_METADATA_CHANGED),
+        (ViewDefinition, "description"): _rule(ChangeKind.VIEW_METADATA_CHANGED),
+        (ViewDefinition, "membership_policy"): _rule(
+            ChangeKind.VIEW_MEMBERSHIP_POLICY_CHANGED, _MEMBERSHIP
+        ),
+        (ViewDefinition, "included_element_ids"): _rule(
+            ChangeKind.VIEW_MEMBERSHIP_CHANGED, _MEMBERSHIP
+        ),
+        (ViewDefinition, "included_relationship_ids"): _rule(
+            ChangeKind.VIEW_MEMBERSHIP_CHANGED, _MEMBERSHIP
+        ),
+        (ViewDefinition, "perspective"): _rule(ChangeKind.VIEW_PERSPECTIVE_CHANGED),
+        # A leaf, like `extensions`: the filter set is compared as one value and reported at
+        # `filter`. Descending would report "the second rule's third value changed", which is
+        # true and useless — a filter is a selection, and what a reader needs to know is that the
+        # selection moved.
+        (ViewDefinition, "filter"): _rule(ChangeKind.VIEW_FILTER_CHANGED, _MEMBERSHIP),
+        # The one layout-only field reachable from `Model`, and therefore the first time the
+        # wave's hard gate — a layout change produces no semantic diff — can be demonstrated
+        # from inside the model rather than argued about. `LAYOUT_ONLY` rather than
+        # `STYLE_THEME_ONLY`: a profile holds direction, spacing and routing as well as style,
+        # and `projections.md` lists layout-only and style/theme-only as separate categories.
+        (ViewDefinition, "layout_profile_id"): _rule(ChangeKind.LAYOUT_PROFILE_CHANGED, _LAYOUT),
+        # Withdrawing a view is a governed decision about what the client sees, so it is
+        # narrative. `PUBLICATION_NAVIGATION_ONLY` is excluded from `NARRATIVE_NATURES`, which
+        # would have hidden it from every change report.
+        (ViewDefinition, "publication_state"): _rule(ChangeKind.VIEW_PUBLICATION_CHANGED),
+        (ViewDefinition, "content_hash"): _DIGEST,
+        (ViewFilter, "filter_mode"): _WHOLE,
+        (ViewFilter, "dimension"): _WHOLE,
+        (ViewFilter, "values"): _WHOLE,
     }
 )
 """Every field of every record reachable from `Model`, and what a change to it is.
@@ -354,6 +400,8 @@ PRESENCE_RULES: Final[Mapping[tuple[str, bool], ChangeRule]] = MappingProxyType(
         ("reference_links", False): _rule(ChangeKind.EVIDENCE_LINK_REMOVED),
         ("notation_bindings", True): _rule(ChangeKind.NOTATION_BINDING_ADDED, _MAPPING),
         ("notation_bindings", False): _rule(ChangeKind.NOTATION_BINDING_REMOVED, _MAPPING),
+        ("views", True): _rule(ChangeKind.VIEW_ADDED, _MEMBERSHIP),
+        ("views", False): _rule(ChangeKind.VIEW_REMOVED, _MEMBERSHIP),
     }
 )
 """An added or removed record, by collection. `True` means present in the candidate.

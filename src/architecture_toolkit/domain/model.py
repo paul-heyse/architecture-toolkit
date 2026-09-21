@@ -47,6 +47,7 @@ from architecture_toolkit.domain.notation import NotationBinding
 from architecture_toolkit.domain.references import Reference, ReferenceLink
 from architecture_toolkit.domain.registry import BASELINE_PROFILE_VERSION
 from architecture_toolkit.domain.status import LifecycleState, StatusDimensions
+from architecture_toolkit.domain.views import ViewDefinition
 
 __all__ = [
     "CURRENT_SCHEMA_VERSION",
@@ -197,3 +198,4 @@ class Model(CompiledRecord):
     references: tuple[Reference, ...] = ()
     reference_links: tuple[ReferenceLink, ...] = ()
     notation_bindings: tuple[NotationBinding, ...] = ()
+    views: tuple[ViewDefinition, ...] = ()

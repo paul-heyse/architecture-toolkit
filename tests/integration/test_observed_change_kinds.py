@@ -35,6 +35,7 @@ from architecture_toolkit.domain.details import (
 )
 from architecture_toolkit.domain.extensions import Extension
 from architecture_toolkit.domain.model import Element, Model, Relationship
+from architecture_toolkit.domain.notation import Notation
 from architecture_toolkit.domain.references import ElementReference, LinkRole
 from architecture_toolkit.domain.status import (
     ClientAcceptance,
@@ -44,8 +45,31 @@ from architecture_toolkit.domain.status import (
     LifecycleState,
     TechnicalQualification,
 )
+from architecture_toolkit.domain.views import (
+    FilterDimension,
+    FilterMode,
+    MembershipPolicy,
+    PublicationState,
+    ViewDefinition,
+    ViewFilter,
+    ViewType,
+)
 
 EXAMPLE = Path(__file__).resolve().parents[2] / "examples" / "minimal" / "model.yaml"
+
+
+def _view() -> ViewDefinition:
+    """The view every view case starts from. Explicit membership, so a filter case can differ."""
+    return ViewDefinition(
+        view_id="view-1",
+        model_id="sample-service",
+        view_type=ViewType.SYSTEM_CONTEXT,
+        notation=Notation.C4,
+        scope="system-1",
+        title="System context",
+        included_element_ids=("system-1",),
+        layout_profile_id="layout-1",
+    )
 
 
 @pytest.fixture(scope="module")
@@ -396,11 +420,57 @@ def reversed_corpus(base: Model) -> Iterator[tuple[str, Model, Model]]:
     yield "reactivated", retired, base
 
 
+def view_corpus(base: Model) -> Iterator[tuple[str, Model, Model]]:
+    """Every view case, against a baseline that already has a view.
+
+    Separate from `corpus` because those cases all compare against the example, which declares no
+    view — so an edited view would read as a view *added* and nine kinds would go undemonstrated
+    while the suite passed. The example stays free of a record it does not otherwise need, and
+    `view added` and `view removed` fall out as the two ends of this same pair.
+    """
+    with_view = base.model_validate(dict(base) | {"views": (_view(),)})
+    yield "view added", base, with_view
+    yield "view removed", with_view, base
+
+    for label, changes in (
+        ("view retyped", {"view_type": ViewType.SYSTEM_LANDSCAPE}),
+        (
+            "view renotated",
+            {"notation": Notation.ARCHIMATE, "view_type": ViewType.ARCHIMATE_LAYERED},
+        ),
+        ("view rescoped", {"scope": "component-1"}),
+        ("view metadata", {"title": "Renamed view"}),
+        ("view membership", {"included_element_ids": ("system-1", "component-1")}),
+        ("view membership policy", {"membership_policy": MembershipPolicy.INDUCED}),
+        ("view perspective", {"perspective": "ownership"}),
+        (
+            "view filter",
+            {
+                "membership_policy": MembershipPolicy.DERIVED,
+                "filter": (
+                    ViewFilter(
+                        filter_mode=FilterMode.INCLUDE,
+                        dimension=FilterDimension.KIND,
+                        values=("software.system",),
+                    ),
+                ),
+            },
+        ),
+        ("view layout profile", {"layout_profile_id": "layout-2"}),
+        ("view publication", {"publication_state": PublicationState.PUBLISHED}),
+    ):
+        edited = with_view.model_validate(
+            dict(with_view) | {"views": (with_field(_view(), **changes),)}
+        )
+        yield label, with_view, edited
+
+
 def pairs(base: Model) -> Iterator[tuple[str, Model, Model]]:
     """Every case, as the pair of models it compares."""
     for label, candidate in corpus(base):
         yield label, base, candidate
     yield from reversed_corpus(base)
+    yield from view_corpus(base)
 
 
 def observed(base: Model) -> dict[ChangeKind, str]:
@@ -486,7 +556,18 @@ def test_only_the_presentation_cases_stay_out_of_the_narrative(base: Model) -> N
         label for label, before, after in pairs(base) if not model_changes(before, after).narrative
     }
 
-    assert presentation_only == {"aliased", "layout link", "projection provenance"}
+    assert presentation_only == {
+        "aliased",
+        "layout link",
+        "projection provenance",
+        # W7a's fourth member, and the first one that is a *layout* change rather than a
+        # renderer-provenance one. `ViewDefinition.layout_profile_id` is the only `LAYOUT_ONLY`
+        # field reachable from `Model`, so this is the wave's hard gate — "a layout-only change
+        # produces no semantic diff" — demonstrated from inside the canonical model rather than
+        # argued from the classification table. Changing which profile lays a view out moves the
+        # model digest and produces no narrative record at all.
+        "view layout profile",
+    }
 
 
 @pytest.mark.integration

@@ -104,10 +104,11 @@ def test_the_unbuilt_strategy_groups_are_recorded_not_omitted() -> None:
     `releases` left this set at W4 when the manifest arrived, which is the point of writing the
     reason down: a reader can tell a deferral from an oversight, and can tell when it ended.
     """
-    assert set(DEFERRED_GROUPS) == {"workflows", "views", "artifacts"}
+    assert set(DEFERRED_GROUPS) == {"workflows", "artifacts"}
     for reason in DEFERRED_GROUPS.values():
         assert reason.startswith("W")
     assert "releases" not in DEFERRED_GROUPS, "the release strategies landed at W4"
+    assert "views" not in DEFERRED_GROUPS, "the view strategies landed at W7a"
 
 
 @pytest.mark.unit

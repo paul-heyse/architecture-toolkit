@@ -47,6 +47,7 @@ from architecture_toolkit.domain.model import Element, Interaction, Model, Relat
 from architecture_toolkit.domain.notation import NotationBinding
 from architecture_toolkit.domain.references import Reference, ReferenceLink
 from architecture_toolkit.domain.registry import Profile
+from architecture_toolkit.domain.views import ViewDefinition
 from architecture_toolkit.queries.recipes import QueryRecipe
 from architecture_toolkit.queries.results import (
     ComponentResult,
@@ -117,6 +118,7 @@ SCHEMA_FAMILIES: tuple[SchemaFamily, ...] = (
             Reference,
             ReferenceLink,
             NotationBinding,
+            ViewDefinition,
             InterfaceDetail,
             DeploymentDetail,
             DataSchemaDetail,

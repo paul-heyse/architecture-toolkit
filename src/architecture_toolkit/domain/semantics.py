@@ -44,6 +44,7 @@ from architecture_toolkit.domain.details import (
 )
 from architecture_toolkit.domain.identifiers import SemanticDigest
 from architecture_toolkit.domain.model import Element, Interaction, Model, Relationship
+from architecture_toolkit.domain.views import ViewDefinition, ViewFilter
 
 __all__ = [
     "COLLECTION_ORDER",
@@ -105,6 +106,15 @@ COLLECTION_ORDER: Final[Mapping[tuple[type[BaseModel], str], CollectionOrder]] =
         (Model, "references"): CollectionOrder(_UNORDERED, ("reference_id",)),
         (Model, "reference_links"): CollectionOrder(_UNORDERED, ("link_id",)),
         (Model, "notation_bindings"): CollectionOrder(_UNORDERED, ("binding_id",)),
+        (Model, "views"): CollectionOrder(_UNORDERED, ("view_id",)),
+        # PROJ-03: membership is a *set* of objects. A view that listed the same members in
+        # another order is the same view, and treating the order as identity would make
+        # reordering a YAML list read as a membership change.
+        (ViewDefinition, "included_element_ids"): CollectionOrder(_UNORDERED),
+        (ViewDefinition, "included_relationship_ids"): CollectionOrder(_UNORDERED),
+        # Filters compose by intersection, so their order does not change what is selected.
+        (ViewDefinition, "filter"): CollectionOrder(_UNORDERED, ("filter_mode", "dimension")),
+        (ViewFilter, "values"): CollectionOrder(_UNORDERED),
         # DATA-04: readable aliases coexist with the stable identity and are not part of it.
         (Element, "aliases"): CollectionOrder(CollectionPolicy.EXCLUDED),
         # DATA-13: extensions are part of identity — a consumer annotation is content the author
@@ -136,6 +146,7 @@ MODEL_COLLECTIONS: Final[tuple[tuple[str, str], ...]] = tuple(
         "references",
         "reference_links",
         "notation_bindings",
+        "views",
     )
 )
 
@@ -261,6 +272,7 @@ def stamp_digests(model: Model) -> Model:
     references = tuple(_stamp_record(record) for record in model.references)
     reference_links = tuple(_stamp_record(record) for record in model.reference_links)
     notation_bindings = tuple(_stamp_record(record) for record in model.notation_bindings)
+    views = tuple(_stamp_record(record) for record in model.views)
     return Model.model_validate(
         dict(model)
         | {
@@ -270,6 +282,7 @@ def stamp_digests(model: Model) -> Model:
             "references": references,
             "reference_links": reference_links,
             "notation_bindings": notation_bindings,
+            "views": views,
         }
     )
 

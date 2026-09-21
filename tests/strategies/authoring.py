@@ -30,6 +30,7 @@ UNORDERED_COLLECTIONS = (
     "references",
     "reference_links",
     "notation_bindings",
+    "views",
     # DATA-13: an extension is identified by `(namespace, key)`, so the order they were written
     # in is presentation like any other unordered collection.
     "extensions",

@@ -44,10 +44,14 @@ from tests.strategies.relations import full_models
 # The digest of `examples/minimal/model.yaml` under hash version 1. A change here means either
 # the algorithm changed — a DATA-56 migration and a version bump, never a silent edit — or a
 # record gained a field, which changes what the preimage covers and must be stated in the commit
-# that does it. It moved once, at W3, when `Element` and `Relationship` gained DATA-13's
-# `extensions`; nothing had been published, so no migration was owed. The first release is what
-# makes a digest durable.
-EXAMPLE_DIGEST = "sha256:b9f6edf3eacb8019a99a613e60c34895e39ea04ca1ec0f2e2d55a871c0400efc"
+# that does it.
+#
+# It has moved twice. At W3, when `Element` and `Relationship` gained DATA-13's `extensions`. And
+# at W7a, when `Model` gained `views`: the example declares none, but the preimage now covers an
+# empty `views` collection where it previously covered nothing, which is a different preimage.
+# Nothing has been published in either case, so no migration was owed and `SEMANTIC_HASH_VERSION`
+# stays at 1 — the first release is what makes a digest durable, and there has not been one.
+EXAMPLE_DIGEST = "sha256:ec02ef56ca041dc37d87beaea52948249a23925ca7f2185f1b9b551c1c8b3d71"
 
 
 def _model(source: dict[str, Any]) -> Model:

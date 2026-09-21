@@ -688,9 +688,7 @@ def compile_tables(model: Model) -> TableSet:
         "references": REFERENCES.to_arrow(stamped.references),
         "reference_links": REFERENCE_LINKS.to_arrow(stamped.reference_links),
         "notation_bindings": NOTATION_BINDINGS.to_arrow(stamped.notation_bindings),
-        # Always written, empty or not: `TABLE_IDS` is what a manifest pins, so a release
-        # with no views still pins a `views` table with the declared schema and zero rows.
-        "views": VIEWS.to_arrow(()),
+        "views": VIEWS.to_arrow(stamped.views),
     }
     for table_id, records in details.items():
         tables[table_id] = mapping_for(table_id).to_arrow(records)
@@ -760,6 +758,7 @@ def assemble_model(table_set: TableSet) -> Model:
         "references": REFERENCES.rows_from_arrow(table_set["references"]),
         "reference_links": REFERENCE_LINKS.rows_from_arrow(table_set["reference_links"]),
         "notation_bindings": NOTATION_BINDINGS.rows_from_arrow(table_set["notation_bindings"]),
+        "views": VIEWS.rows_from_arrow(table_set["views"]),
     }
     _check_model_ids(payload, table_set.model_id)
     return Model.model_validate_json(json.dumps(payload))

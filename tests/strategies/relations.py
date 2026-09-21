@@ -28,6 +28,15 @@ from architecture_toolkit.domain.references import (
     ReleaseReference,
 )
 from architecture_toolkit.domain.registry import BASELINE_PROFILE
+from architecture_toolkit.domain.views import (
+    VIEW_TYPES_BY_NOTATION,
+    FilterDimension,
+    FilterMode,
+    MembershipPolicy,
+    PublicationState,
+    ViewDefinition,
+    ViewFilter,
+)
 from tests.strategies.domain import descriptions, elements, extensions, names, references
 from tests.strategies.ids import element_ids, model_ids, versions
 
@@ -38,6 +47,7 @@ __all__ = [
     "notation_bindings",
     "reference_links",
     "relationships",
+    "views",
 ]
 
 # Drawn from the profile, so a generated relationship type always resolves in the registry.
@@ -169,8 +179,74 @@ def notation_bindings(
 
 
 @st.composite
+def views(
+    draw: st.DrawFn, *, pool: list[Element], relations: list[Relationship], model_id: str
+) -> ViewDefinition:
+    """A view whose members are drawn from the model's own elements and relationships.
+
+    Members come from the pool rather than from free identifiers, because a view naming objects
+    that do not exist is what `validation/rules/views.py` refuses — a strategy that generated one
+    by default would make every property test carry an invalid model.
+
+    Notation is drawn first and the view type from what that notation can express, so the
+    record-local coherence validator never rejects a draw. Filtering after the fact would work and
+    would waste most of them.
+    """
+    notation = draw(st.sampled_from(list(Notation)))
+    view_type = draw(st.sampled_from(sorted(VIEW_TYPES_BY_NOTATION[notation], key=str)))
+    policy = draw(st.sampled_from(list(MembershipPolicy)))
+    rules = draw(
+        st.lists(
+            st.builds(
+                ViewFilter,
+                filter_mode=st.sampled_from(list(FilterMode)),
+                dimension=st.sampled_from(list(FilterDimension)),
+                values=st.lists(names, min_size=1, max_size=2).map(tuple),
+            ),
+            min_size=1 if policy is not MembershipPolicy.EXPLICIT else 0,
+            max_size=0 if policy is MembershipPolicy.EXPLICIT else 2,
+        )
+    )
+    return ViewDefinition(
+        view_id=draw(element_ids),
+        model_id=model_id,
+        view_type=view_type,
+        notation=notation,
+        scope=draw(st.none() | st.sampled_from([element.element_id for element in pool])),
+        audience=draw(descriptions),
+        title=draw(names),
+        description=draw(descriptions),
+        membership_policy=policy,
+        included_element_ids=tuple(
+            draw(
+                st.lists(
+                    st.sampled_from([element.element_id for element in pool]),
+                    max_size=MAX_PER_COLLECTION,
+                    unique=True,
+                )
+            )
+        ),
+        included_relationship_ids=tuple(
+            draw(
+                st.lists(
+                    st.sampled_from([relation.relationship_id for relation in relations]),
+                    max_size=MAX_PER_COLLECTION,
+                    unique=True,
+                )
+            )
+            if relations
+            else []
+        ),
+        perspective=draw(descriptions),
+        filter=tuple(rules),
+        layout_profile_id=draw(st.none() | element_ids),
+        publication_state=draw(st.sampled_from(list(PublicationState))),
+    )
+
+
+@st.composite
 def full_models(draw: st.DrawFn) -> Model:
-    """A coherent model with every one of the six collections populated.
+    """A coherent model with every one of the seven collections populated.
 
     `coherent_models` stays as it is — elements and relationships are what the rule families
     need — and this builds on it for the properties that must cover the whole schema: W2's
@@ -211,6 +287,13 @@ def full_models(draw: st.DrawFn) -> Model:
             unique_by=lambda binding: binding.binding_id,
         )
     )
+    definitions = draw(
+        st.lists(
+            views(pool=pool, relations=relations, model_id=model.model_id),
+            max_size=MAX_PER_COLLECTION,
+            unique_by=lambda view: view.view_id,
+        )
+    )
     return Model.model_validate(
         dict(model)
         | {
@@ -218,5 +301,6 @@ def full_models(draw: st.DrawFn) -> Model:
             "references": tuple(refs),
             "reference_links": tuple(links),
             "notation_bindings": tuple(bindings),
+            "views": tuple(definitions),
         }
     )

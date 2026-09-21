@@ -465,6 +465,14 @@ _SEMANTIC_IDENTITY_DELTA = QueryRecipe(
         "ELSE 'unchanged' END AS change "
         "FROM base.notation_bindings b FULL OUTER JOIN candidate.notation_bindings c "
         "ON b.binding_id = c.binding_id "
+        "UNION ALL "
+        "SELECT 'views' AS collection, COALESCE(b.view_id, c.view_id) AS identity, "
+        "CASE WHEN b.view_id IS NULL THEN 'added' "
+        "WHEN c.view_id IS NULL THEN 'removed' "
+        "WHEN b.content_hash IS DISTINCT FROM c.content_hash THEN 'changed' "
+        "ELSE 'unchanged' END AS change "
+        "FROM base.views b FULL OUTER JOIN candidate.views c "
+        "ON b.view_id = c.view_id "
         "ORDER BY 1, 2"
     ),
     qualification_cases=(

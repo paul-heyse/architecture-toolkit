@@ -130,6 +130,8 @@ class ChangeKind(StrEnum):
     EVIDENCE_LINK_REMOVED = "evidence_link_removed"
     NOTATION_BINDING_ADDED = "notation_binding_added"
     NOTATION_BINDING_REMOVED = "notation_binding_removed"
+    VIEW_ADDED = "view_added"
+    VIEW_REMOVED = "view_removed"
 
     # -- element identity and lifecycle -------------------------------------------------------
     ELEMENT_RENAMED = "element_renamed"
@@ -175,6 +177,14 @@ class ChangeKind(StrEnum):
     NOTATION_MAPPING_CHANGED = "notation_mapping_changed"
     BINDING_RESUBJECTED = "binding_resubjected"
     VIEW_MEMBERSHIP_CHANGED = "view_membership_changed"
+    VIEW_RETYPED = "view_retyped"
+    VIEW_SCOPE_CHANGED = "view_scope_changed"
+    VIEW_METADATA_CHANGED = "view_metadata_changed"
+    VIEW_MEMBERSHIP_POLICY_CHANGED = "view_membership_policy_changed"
+    VIEW_PERSPECTIVE_CHANGED = "view_perspective_changed"
+    VIEW_FILTER_CHANGED = "view_filter_changed"
+    VIEW_PUBLICATION_CHANGED = "view_publication_changed"
+    LAYOUT_PROFILE_CHANGED = "layout_profile_changed"
     DISPLAY_NAME_CHANGED = "display_name_changed"
     LAYOUT_LINK_CHANGED = "layout_link_changed"
     PROJECTION_PROVENANCE_CHANGED = "projection_provenance_changed"

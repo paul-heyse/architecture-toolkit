@@ -12,6 +12,7 @@ from jinja2 import DictLoader, Environment, StrictUndefined, UndefinedError
 from pydantic import BaseModel
 
 from architecture_toolkit.domain.authoring import parse_model, parse_source
+from architecture_toolkit.domain.semantics import model_digest
 from architecture_toolkit.projections.errors import (
     TemplateBundleError,
     TemplateContractError,
@@ -256,4 +257,6 @@ def test_rendering_takes_a_typed_dto_and_hands_the_template_nothing_else() -> No
     output = render(environment(), SUMMARY, summary_of(model))
     assert output.startswith("# sample-service\n")
     assert "| capability-1 |" in output
-    assert "b9f6edf3" in output, "the model digest is on the artifact, so it can be traced back"
+    assert model_digest(model) in output, (
+        "the model digest is on the artifact, so a reader can trace it back to a model"
+    )

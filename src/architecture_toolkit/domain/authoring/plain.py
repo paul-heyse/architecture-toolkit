@@ -38,6 +38,7 @@ IDENTITY_KEYS: Final[tuple[str, ...]] = (
     "reference_id",
     "link_id",
     "binding_id",
+    "view_id",
     "field_id",
     "node_id",
     "transition_id",

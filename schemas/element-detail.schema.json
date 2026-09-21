@@ -552,6 +552,25 @@
       "title": "FieldReference",
       "type": "object"
     },
+    "FilterDimension": {
+      "description": "What a filter may select on: exactly the dimensions the canonical model can answer.\n\nClosed so a filter cannot name something unanswerable. A filter on a dimension the model does\nnot carry would be a view whose membership nobody can recompute, which is the opposite of\n\"membership is semantic governed content\".",
+      "enum": [
+        "kind",
+        "relationship_type",
+        "lifecycle_state",
+        "context"
+      ],
+      "title": "FilterDimension",
+      "type": "string"
+    },
+    "FilterMode": {
+      "enum": [
+        "include",
+        "exclude"
+      ],
+      "title": "FilterMode",
+      "type": "string"
+    },
     "GapState": {
       "description": "Why a dimension has no ordinary value (DATA-41).\n\nShared across all five dimensions, and asserted disjoint from each of them by\n`tests/unit/test_status.py` \u2014 a future vocabulary that added its own `unknown` would shadow\nthis one and silently change what the union resolves to.",
       "enum": [
@@ -852,6 +871,16 @@
       "title": "LinkRole",
       "type": "string"
     },
+    "MembershipPolicy": {
+      "description": "How the member lists were arrived at, which decides what a rule may check.\n\nThree members rather than two, because each buys a different check. `EXPLICIT` means both\nlists were authored and a rule only resolves them. `INDUCED` means the relationships are\nexactly those whose endpoints are both members, so a rule can verify completeness \u2014 the C4\nnorm, and note that `!impliedRelationships false` forbids *inventing* a relationship, not\nincluding one that exists. `DERIVED` means both lists are the materialized answer to `filter`.\nWithout the distinction an `INDUCED` view and a stale `EXPLICIT` one look identical.",
+      "enum": [
+        "explicit",
+        "induced",
+        "derived"
+      ],
+      "title": "MembershipPolicy",
+      "type": "string"
+    },
     "Notation": {
       "description": "The notations `projections.md` schedules. Declared now; generators arrive at W7b.",
       "enum": [
@@ -1005,6 +1034,16 @@
         "observer"
       ],
       "title": "ParticipantRole",
+      "type": "string"
+    },
+    "PublicationState": {
+      "description": "Whether a release publishes this view. Not the same question as lifecycle.",
+      "enum": [
+        "draft",
+        "published",
+        "withdrawn"
+      ],
+      "title": "PublicationState",
       "type": "string"
     },
     "Reference": {
@@ -1538,6 +1577,199 @@
         "not_established"
       ],
       "title": "VerificationMethod",
+      "type": "string"
+    },
+    "ViewDefinition": {
+      "additionalProperties": false,
+      "description": "One view: its purpose, its audience, its semantic membership and its layout profile.",
+      "properties": {
+        "view_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "View Id",
+          "type": "string"
+        },
+        "model_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Model Id",
+          "type": "string"
+        },
+        "view_type": {
+          "$ref": "#/$defs/ViewType"
+        },
+        "notation": {
+          "$ref": "#/$defs/Notation"
+        },
+        "scope": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scope"
+        },
+        "audience": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Audience"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "membership_policy": {
+          "$ref": "#/$defs/MembershipPolicy",
+          "default": "explicit"
+        },
+        "included_element_ids": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+            "type": "string"
+          },
+          "title": "Included Element Ids",
+          "type": "array"
+        },
+        "included_relationship_ids": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+            "type": "string"
+          },
+          "title": "Included Relationship Ids",
+          "type": "array"
+        },
+        "perspective": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Perspective"
+        },
+        "filter": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ViewFilter"
+          },
+          "title": "Filter",
+          "type": "array"
+        },
+        "layout_profile_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Layout Profile Id"
+        },
+        "publication_state": {
+          "$ref": "#/$defs/PublicationState",
+          "default": "draft"
+        },
+        "content_hash": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Hash"
+        }
+      },
+      "required": [
+        "view_id",
+        "model_id",
+        "view_type",
+        "notation",
+        "title"
+      ],
+      "title": "ViewDefinition",
+      "type": "object"
+    },
+    "ViewFilter": {
+      "additionalProperties": false,
+      "description": "One selection rule. Several compose by intersection, in declaration order.",
+      "properties": {
+        "filter_mode": {
+          "$ref": "#/$defs/FilterMode"
+        },
+        "dimension": {
+          "$ref": "#/$defs/FilterDimension"
+        },
+        "values": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": [
+        "filter_mode",
+        "dimension",
+        "values"
+      ],
+      "title": "ViewFilter",
+      "type": "object"
+    },
+    "ViewType": {
+      "description": "The view kinds `projections.md` schedules, and no others.\n\nC4's code-level diagram is absent deliberately: PROJ-08 excludes it as a maintained output,\nand a vocabulary that cannot name it cannot grow one by accident.",
+      "enum": [
+        "system_landscape",
+        "system_context",
+        "container",
+        "component",
+        "deployment",
+        "dynamic",
+        "archimate_layered",
+        "archimate_viewpoint",
+        "bpmn_process",
+        "bpmn_collaboration",
+        "uml_sequence",
+        "uml_state",
+        "uml_class",
+        "erd"
+      ],
+      "title": "ViewType",
       "type": "string"
     }
   }

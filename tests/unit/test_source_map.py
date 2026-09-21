@@ -133,7 +133,12 @@ def test_positions_are_one_based_and_carry_extents(example: LoadedSource) -> Non
 @pytest.mark.requirement("CORE-18")
 def test_identity_paths_cover_every_record_in_the_example(example: LoadedSource) -> None:
     source_map = example.source_map
-    for collection, key in MODEL_COLLECTIONS:
+    # Every collection the example *declares*. A collection can exist on `Model` one commit
+    # before the example carries one — that is how a new collection lands — so the loop is over
+    # what is there, with a floor below it so it cannot quietly cover nothing.
+    declared = [(name, key) for name, key in MODEL_COLLECTIONS if name in example.data]
+    assert len(declared) >= 6, f"the example stopped exercising most collections: {declared}"
+    for collection, key in declared:
         records = example.data[collection]
         assert isinstance(records, tuple)
         for index, record in enumerate(records):
