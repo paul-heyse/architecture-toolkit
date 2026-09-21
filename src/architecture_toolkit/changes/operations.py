@@ -65,9 +65,10 @@ class OutputNotImplemented:
     """What `output` returns until W8 completes it (DATA-38, PROJ-35).
 
     A typed result rather than a bare exit, because `docs/plans/w8-portal-export.md` says W8 will
-    *"replace the typed not-implemented diagnostic"* and expects one to exist. The `build` verb's
-    older untyped stub is left alone rather than quietly normalised; that inconsistency is recorded
-    in the wave plan.
+    *"replace the typed not-implemented diagnostic"* and expects one to exist. `build` had the
+    same shape of stub and was normalised at W7a: it generates a real projection now, through
+    `projections/pipeline.py` rather than through this API, because DATA-38 names eight
+    operations and projecting a release is not one of them.
     """
 
     release_id: ReleaseId

@@ -37,7 +37,7 @@ $ architecture [OPTIONS] COMMAND [ARGS]...
 * `compare`: Compare a design alternative with the...
 * `review`: Record a decision on a change report.
 * `output`: Reserved: distribute a release&#x27;s outputs...
-* `build`: Reserved: the full projection pipeline is...
+* `build`: Generate a release&#x27;s projections and...
 
 ## `architecture doctor`
 
@@ -495,7 +495,7 @@ $ architecture output [OPTIONS]
 
 ## `architecture build`
 
-Reserved: the full projection pipeline is not implemented.
+Generate a release&#x27;s projections and record where each came from.
 
 **Usage**:
 
@@ -505,4 +505,9 @@ $ architecture build [OPTIONS]
 
 **Options**:
 
+* `--store <path>`: Release store root.  [default: .runtime/releases]
+* `--release <str>`: Defaults to the current release.
+* `--view <str>`: Reserved for W7b&#x27;s per-view generators.
+* `--into <path>`: Write the generated source under this root.
+* `--format <human|json>`: How to render the answer.  [default: human]
 * `--help`: Show this message and exit.

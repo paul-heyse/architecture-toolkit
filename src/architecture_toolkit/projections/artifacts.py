@@ -113,7 +113,15 @@ class ProjectionArtifact(ManifestRecord):
     view — PROJ-18 defers exchange diagram geometry — so requiring a view here would force every
     such generator to invent one."""
 
-    notation: Notation
+    notation: Notation | None = None
+    """`None` for a notation-neutral text artifact.
+
+    `projections.md` §22 names generated Markdown as a Jinja output alongside Structurizr DSL and
+    PlantUML, and Markdown maps to no notation — it is a format, not a modelling language. Naming
+    one anyway would put a false fact in a provenance record, which is the one kind of record that
+    must not contain any. Every artifact W7b generates has a real notation.
+    """
+
     notation_version: str = Field(min_length=1)
     generator_version: str = Field(min_length=1)
     mapping_profile_version: ProfileVersion

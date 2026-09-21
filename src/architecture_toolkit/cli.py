@@ -41,6 +41,8 @@ from architecture_toolkit.contracts import SCHEMA_FAMILIES, emit, emittable
 from architecture_toolkit.domain.commands import CHANGE_SET_ADAPTER, CommandError
 from architecture_toolkit.domain.model import Model
 from architecture_toolkit.domain.semantics import MODEL_COLLECTIONS
+from architecture_toolkit.projections.errors import ProjectionError
+from architecture_toolkit.projections.pipeline import build_summary
 from architecture_toolkit.queries.algorithms import (
     components,
     condensation,
@@ -619,9 +621,23 @@ def output(
 
 
 @app.command()
-def build() -> None:
-    """Reserved: the full projection pipeline is not implemented."""
-    raise UsageRefusal("Not implemented: follow docs/implementation-contract.md.")
+def build(
+    store: StoreOption = DEFAULT_STORE_ROOT,
+    release: ReleaseOption = None,
+    view: Annotated[
+        str | None, typer.Option("--view", help="Reserved for W7b's per-view generators.")
+    ] = None,
+    into: Annotated[
+        Path | None, typer.Option("--into", help="Write the generated source under this root.")
+    ] = None,
+    format: FormatOption = Format.HUMAN,
+) -> None:
+    """Generate a release's projections and record where each came from."""
+    raise typer.Exit(
+        code=_build(
+            store_root=store, release_id=release, view_id=view, into=into, output=format.value
+        )
+    )
 
 
 def _schema(*, family_id: str | None, write: bool) -> int:
@@ -1649,6 +1665,54 @@ def _persist(
         require_review=False,
         expose=False,
     )
+
+
+def _build(
+    *,
+    store_root: Path,
+    release_id: str | None,
+    view_id: str | None,
+    into: Path | None,
+    output: str,
+) -> int:
+    """`build`. The projection pipeline, for the one projection W7a generates.
+
+    Calls `projections/pipeline.py` directly rather than `ArchitectureOperations`: DATA-38 names
+    eight lifecycle operations and generating a projection is not one of them — a release can be
+    projected any number of times without the lifecycle advancing.
+    """
+    store = _store_at(store_root)
+    try:
+        manifest = _operations(store_root).manifest(release_id)
+        built = build_summary(store, manifest, into=into, view_id=view_id)
+    except (ChangeError, UnknownReleaseError) as refused:
+        raise UsageRefusal(refused.args[0]) from refused
+    except ProjectionError as refused:
+        raise OperationRefused(refused.args[0]) from refused
+
+    artifact = built.artifact
+    if output == "json":
+        print(artifact.model_dump_json(indent=2, exclude_none=True))
+        return EXIT_OK
+
+    OUT_CONSOLE.print(f"built {artifact.projection_artifact_id}")
+    _print_table(
+        ["field", "value"],
+        [
+            {"field": name, "value": value}
+            for name, value in (
+                ("release", artifact.release_id),
+                ("locator", artifact.generated_source_locator),
+                ("semantic input", artifact.semantic_input_digest),
+                ("source digest", artifact.generated_source_digest),
+                ("template bundle", artifact.template_bundle_digest or "-"),
+                ("generator", artifact.generator_version),
+            )
+        ],
+    )
+    if into is None:
+        OUT_CONSOLE.print("nothing written; pass --into to write the generated source")
+    return EXIT_OK
 
 
 def _output(*, store_root: Path, release_id: str | None, output: str) -> int:

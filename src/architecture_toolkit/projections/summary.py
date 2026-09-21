@@ -22,7 +22,7 @@ from architecture_toolkit.domain.details import RequirementDetail, VerificationM
 from architecture_toolkit.domain.model import Model
 from architecture_toolkit.domain.semantics import model_digest
 
-__all__ = ["ElementRow", "ModelSummary", "RelationshipRow", "summary_of"]
+__all__ = ["ElementRow", "ModelSummary", "RelationshipRow", "ViewRow", "summary_of"]
 
 
 class _Row(BaseModel, frozen=True, strict=True, extra="forbid"):
@@ -45,6 +45,16 @@ class RelationshipRow(_Row):
     context_id: str | None = None
 
 
+class ViewRow(_Row):
+    view_id: str
+    title: str
+    view_type: str
+    notation: str
+    publication_state: str
+    member_count: int
+    scope: str | None = None
+
+
 class ModelSummary(_Row):
     """Everything the model-summary template may see, and nothing else."""
 
@@ -54,6 +64,7 @@ class ModelSummary(_Row):
     model_digest: str
     elements: tuple[ElementRow, ...] = ()
     relationships: tuple[RelationshipRow, ...] = ()
+    views: tuple[ViewRow, ...] = ()
     unverified_requirement_ids: tuple[str, ...] = ()
     generated_note: str = Field(min_length=1)
 
@@ -114,6 +125,26 @@ def summary_of(model: Model) -> ModelSummary:
                     for relation in model.relationships
                 ),
                 key=lambda row: row.relationship_id,
+            )
+        ),
+        views=tuple(
+            sorted(
+                (
+                    ViewRow(
+                        view_id=view.view_id,
+                        title=view.title,
+                        view_type=view.view_type.value,
+                        notation=view.notation.value,
+                        publication_state=view.publication_state.value,
+                        # Computed here rather than in the template: `member_count` is a property
+                        # on the record and a template that reached for it would be reaching past
+                        # the DTO, which is what CORE-32 exists to prevent.
+                        member_count=view.member_count,
+                        scope=view.scope,
+                    )
+                    for view in model.views
+                ),
+                key=lambda row: row.view_id,
             )
         ),
         unverified_requirement_ids=unverified,

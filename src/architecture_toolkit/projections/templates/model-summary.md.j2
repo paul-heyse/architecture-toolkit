@@ -20,6 +20,16 @@
 {%- for relationship in relationships %}
 {{ m.row([relationship.relationship_id, relationship.relationship_type_id, relationship.source_element_id, relationship.target_element_id]) }}
 {%- endfor %}
+## Views
+
+{% if views %}
+{{ m.header(["ID", "Title", "Type", "Notation", "Members", "State"]) }}
+{%- for view in views %}
+{{ m.row([view.view_id, view.title | md_escape, view.view_type, view.notation, view.member_count | string, view.publication_state]) }}
+{%- endfor %}
+{% else %}
+This model defines no views.
+{% endif %}
 {% if unverified_requirement_ids %}
 
 ## Requirements with no established verification
