@@ -89,6 +89,37 @@ The fallback, if a future stub release misreports more of the surface than this,
 partial stubs under `typings/pyarrow/` on the Pyrefly `search-path`, which outranks site
 packages. It is not needed today and is not carried speculatively.
 
+### types-networkx
+
+`types-networkx` is version-matched to the locked networkx, so unlike `pyarrow-stubs` it is not
+stale. It is *imprecise*, in the one place this toolkit depends on most: `MultiDiGraph` carries no
+key type parameter, so every declaration involving a multigraph edge key had to choose something
+and chose `int`. CORE-23 makes ours a canonical relationship ID.
+
+Four divergences are pinned, three of them by a suppression in `queries/_nx.py` — the only module
+that imports NetworkX, kept that way by `rules/graph-networkx-only-in-adapter.yml` and a layering
+test, so the `Any` boundary is answered once rather than at every call site:
+
+| declaration | stub says | runtime does |
+| --- | --- | --- |
+| `subgraph_view` `filter_edge` | `Callable[[_Node, _Node, int], bool]` | the key is whatever was used — a relationship ID |
+| `all_simple_edge_paths` | yields node lists or pairs | yields `(source, target, key)` triples for a multigraph |
+| `Graph.add_edges_from` | `_EdgePlus` stops at three-tuples | accepts the documented `(u, v, key, data)` form |
+| `transitive_closure` | returns `Graph`, whose `edges` view takes no `keys` | returns a `MultiDiGraph` |
+
+Each is asserted twice in `tests/qualification/test_networkx_stub.py`: the runtime truth, so the
+workaround is known to be necessary, and the stub's own declared text, so a corrected stub fails
+and the suppression is removed on purpose. `tests/static/networkx_surface.py` pins what the adapter
+returns — which matters more here than usual, because a suppression is a place the checker was told
+to stop looking, so the outputs of the functions containing them are pinned where it is still
+looking.
+
+The repository holds ten narrow `# pyrefly: ignore[...]` comments in total. Four are in `src`: one
+in `storage/interchange.py` and three in `queries/_nx.py`. The other six are in tests — one in
+`tests/static/pyarrow_surface.py`, one in `tests/qualification/test_networkx_stub.py`, and four
+where a unit test deliberately does the thing the checker forbids in order to assert that it is
+forbidden at run time too. There is still no baseline file (CORE-60).
+
 ## DataFusion / Delta compatibility
 
 The current qualified baseline materializes a specifically selected Delta version to PyArrow before

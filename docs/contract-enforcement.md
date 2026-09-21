@@ -87,6 +87,8 @@ behaviour changed.
 | `secure-xml-parser` | CORE-40, CORE-41 |
 | `ruamel-only-in-authoring` | CORE-17 — `ruamel` imports are confined to `domain/authoring/`; the exclusion glob is proven by `tests/unit/test_layering.py` |
 | `releases-no-direct-delta` | DATA-20, DATA-51 — the release layer reaches Delta only through `storage/delta.py`, so the application protocol and the storage engine stay in different places |
+| `graph-networkx-only-in-adapter` | CORE-22, CORE-24, DATA-16 — NetworkX is confined to `queries/_nx.py`, which is where the narrow `types-networkx` suppressions live; the exclusion glob is proven by `tests/unit/test_layering.py` |
+| `queries-builtins-first` | DATA-50 — no UDF, UDAF, UDWF or UDTF without a recorded capability gap; paired with a runtime check that a release context registers nothing beyond DataFusion's own functions |
 
 Each wave adds the rules for the boundaries it introduces; see `docs/plans/`.
 
@@ -103,6 +105,9 @@ ones most likely to be quietly skipped, so each is paired with an executable gua
 | DATA-33 | No overlapping dataframe, database, orchestration or ORM layer | `check_boundaries.py` reads the resolved `uv.lock`, not `pyproject.toml`, so a transitive pull is caught |
 | DATA-35 | One Python project, one lock, one environment; application code is Python-only | tracked-payload check rejects a committed `.venv/`; the lock is the single resolution source |
 | DATA-36 | Notion owns narrative, Git owns executable contracts, Delta stays host-local, Dropbox gets dated exports | private-marker scan over `git ls-files`; tracked-payload check rejects `.runtime/`, `.tools/`, `.context/` |
+| CORE-25 | `nx.freeze` is a partial structural guard; attribute dictionaries stay mutable | `tests/qualification/test_networkx_stub.py` measures both halves against NetworkX itself — a frozen graph refuses a node, and a write through a filtered view reaches the base graph |
+| DATA-50 | DataFusion built-ins first; a custom function needs a demonstrated gap | `queries-builtins-first` catches the call; `tests/integration/test_builtins_first.py` catches the registration by any path, by comparing a release context against a bare `SessionContext` |
+| DATA-17 | Reachability is never reported as certain failure | `tests/unit/test_result_vocabulary.py` parses `queries/results.py` with `ast` and scans every classification's name, value and documentation for a word that claims a consequence |
 | CORE-08 | Published records are deeply immutable, not merely frozen | a static scan over every `CompiledRecord` subclass, plus a hashability check that catches a mutable type nested inside another record. `frozen=True` alone does not stop a `dict` field being mutated through the model, which a test demonstrates |
 | CORE-09 | No normal flow bypasses validation | `no-validation-bypass`, now covering source, tests and scripts |
 | CORE-11 | Every Pydantic failure maps to a stable code | the map is total over all 104 `pydantic_core.ErrorType` members, asserted in both directions, so a library upgrade fails a test rather than degrading a report |

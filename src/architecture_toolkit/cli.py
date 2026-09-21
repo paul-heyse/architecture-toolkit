@@ -6,6 +6,13 @@ from importlib.metadata import version
 from pathlib import Path
 
 from architecture_toolkit.contracts import SCHEMA_FAMILIES, emit, emittable
+from architecture_toolkit.queries.context import ReleaseContext
+from architecture_toolkit.queries.errors import QueryError
+from architecture_toolkit.queries.execution import execute
+from architecture_toolkit.queries.graph import build_graph
+from architecture_toolkit.queries.plans import capture
+from architecture_toolkit.queries.policy import POLICIES, policy_for
+from architecture_toolkit.queries.recipes import RECIPES, ParameterSpec, QueryRecipe, recipe_for
 from architecture_toolkit.releases.archive import write_archive
 from architecture_toolkit.releases.candidate import ReleaseCandidate, next_release_id
 from architecture_toolkit.releases.errors import (
@@ -105,6 +112,36 @@ def main() -> int:
         "--apply", action="store_true", help="Actually delete; the default is a dry run."
     )
 
+    recipes = sub.add_parser("recipes", help="List the versioned query recipes, or describe one")
+    recipes.add_argument("recipe_id", nargs="?", help="Describe this recipe instead of listing all")
+
+    query = sub.add_parser("query", help="Run one query recipe against a release")
+    query.add_argument("recipe_id")
+    query.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
+    query.add_argument("--release", help="Defaults to the current release.")
+    query.add_argument(
+        "--param",
+        action="append",
+        default=[],
+        metavar="NAME=VALUE",
+        help="Bind one declared parameter. Values are typed by the recipe, never interpolated.",
+    )
+    query.add_argument("--format", choices=("table", "json"), default="table")
+
+    plan = sub.add_parser("plan", help="Show what the engine plans for one recipe")
+    plan.add_argument("recipe_id")
+    plan.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
+    plan.add_argument("--release", help="Defaults to the current release.")
+    plan.add_argument("--param", action="append", default=[], metavar="NAME=VALUE")
+
+    impact = sub.add_parser("impact", help="Bounded, explainable traversal from one object")
+    impact.add_argument("element_id")
+    impact.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
+    impact.add_argument("--release", help="Defaults to the current release.")
+    impact.add_argument(
+        "--policy", default="impact.structural", help="A named policy; `--policy list` shows them."
+    )
+
     sub.add_parser("build", help="Reserved: full projection pipeline is not implemented")
     args = parser.parse_args()
 
@@ -163,6 +200,37 @@ def main() -> int:
 
     if args.command == "vacuum":
         return _vacuum(store_root=args.store, apply=args.apply)
+
+    if args.command == "recipes":
+        return _recipes(parser, args.recipe_id)
+
+    if args.command == "query":
+        return _query(
+            parser,
+            args.recipe_id,
+            store_root=args.store,
+            release_id=args.release,
+            params=args.param,
+            output=args.format,
+        )
+
+    if args.command == "plan":
+        return _plan(
+            parser,
+            args.recipe_id,
+            store_root=args.store,
+            release_id=args.release,
+            params=args.param,
+        )
+
+    if args.command == "impact":
+        return _impact(
+            parser,
+            args.element_id,
+            store_root=args.store,
+            release_id=args.release,
+            policy_id=args.policy,
+        )
 
     parser.exit(EXIT_USAGE, "Not implemented: follow docs/implementation-contract.md.\n")
     return EXIT_USAGE
@@ -448,4 +516,248 @@ def _constraints(*, store_root: Path, apply: bool) -> int:
         print("every row-local constraint is in force")
     elif not apply:
         print("reporting only; pass --apply to add them")
+    return EXIT_OK
+
+
+def _recipes(parser: argparse.ArgumentParser, recipe_id: str | None) -> int:
+    """List the recipes, or print one recipe's whole declared contract."""
+    if recipe_id is None:
+        for recipe in RECIPES.values():
+            binds = ", ".join(spec.name for spec in recipe.parameters) or "-"
+            print(
+                f"{recipe.query_recipe_id:<40} v{recipe.query_recipe_version}  "
+                f"{recipe.release_context:<10} {binds}"
+            )
+        return EXIT_OK
+    try:
+        recipe = recipe_for(recipe_id)
+    except KeyError as unknown:
+        parser.exit(EXIT_USAGE, f"{unknown.args[0]}\n")
+        return EXIT_USAGE
+    print(f"{recipe.query_recipe_id} v{recipe.query_recipe_version}")
+    print(f"  purpose         {recipe.purpose}")
+    print(f"  release context {recipe.release_context}")
+    print(f"  inputs          {', '.join(_input_name(item) for item in recipe.inputs)}")
+    for spec in recipe.parameters:
+        state = "required" if spec.required else "optional"
+        print(f"  parameter       ${spec.name} : {spec.data_type} ({state}) — {spec.purpose}")
+    for column in recipe.output_schema:
+        nullability = "null" if column.nullable else "not null"
+        print(f"  returns         {column.name} : {column.data_type} {nullability}")
+    for case in recipe.qualification_cases:
+        print(f"  qualified by    {case}")
+    print(f"  sql             {recipe.sql}")
+    return EXIT_OK
+
+
+def _input_name(item: object) -> str:
+    table_id = getattr(item, "table_id", "?")
+    side = getattr(item, "side", None)
+    return f"{side}.{table_id}" if side else str(table_id)
+
+
+def _context(
+    parser: argparse.ArgumentParser, store_root: Path, release_id: str | None
+) -> ReleaseContext | None:
+    """Open the named release, or the current one. No current release is a usage error."""
+    store = _store_at(store_root)
+    chosen = release_id if release_id is not None else store.current_id()
+    if chosen is None:
+        parser.exit(EXIT_USAGE, f"No current release in {store_root}; publish one first.\n")
+        return None
+    try:
+        manifest = store.read_manifest(chosen)
+    except UnknownReleaseError as unknown:
+        parser.exit(EXIT_USAGE, f"{unknown.args[0]}\n")
+        return None
+    return ReleaseContext.for_release(store, manifest)
+
+
+def _bound(
+    parser: argparse.ArgumentParser, recipe: QueryRecipe, pairs: list[str]
+) -> dict[str, object] | None:
+    """Type each `NAME=VALUE` by the recipe's own declaration, never by guessing.
+
+    The command line has only strings, so something has to decide that `--param max_depth=5` is an
+    integer. The recipe already says so, which is what makes this a coercion rather than an
+    inference — and `bind_parameters` still refuses anything the declaration does not allow.
+    """
+    declared = {spec.name: spec for spec in recipe.parameters}
+    bound: dict[str, object] = {}
+    for pair in pairs:
+        name, separator, raw = pair.partition("=")
+        if not separator:
+            parser.exit(EXIT_USAGE, f"--param expects NAME=VALUE, got {pair!r}.\n")
+            return None
+        spec = declared.get(name)
+        if spec is None:
+            parser.exit(
+                EXIT_USAGE,
+                f"{recipe.query_recipe_id} declares no parameter {name!r}; "
+                f"it takes {sorted(declared) or 'none'}.\n",
+            )
+            return None
+        value = _typed(parser, spec, raw)
+        if value is None:
+            return None
+        bound[name] = value
+    return bound
+
+
+def _typed(parser: argparse.ArgumentParser, spec: ParameterSpec, raw: str) -> object | None:
+    if spec.data_type == "string":
+        return raw
+    if spec.data_type == "integer":
+        try:
+            return int(raw)
+        except ValueError:
+            parser.exit(EXIT_USAGE, f"${spec.name} is an integer; got {raw!r}.\n")
+            return None
+    if spec.data_type == "boolean":
+        if raw.lower() not in {"true", "false"}:
+            parser.exit(EXIT_USAGE, f"${spec.name} is a boolean; got {raw!r}.\n")
+            return None
+        return raw.lower() == "true"
+    parser.exit(EXIT_USAGE, f"${spec.name} is a {spec.data_type}, which --param cannot supply.\n")
+    return None
+
+
+def _query(
+    parser: argparse.ArgumentParser,
+    recipe_id: str,
+    *,
+    store_root: Path,
+    release_id: str | None,
+    params: list[str],
+    output: str,
+) -> int:
+    try:
+        recipe = recipe_for(recipe_id)
+    except KeyError as unknown:
+        parser.exit(EXIT_USAGE, f"{unknown.args[0]}\n")
+        return EXIT_USAGE
+    if recipe.release_context != "single":
+        parser.exit(
+            EXIT_USAGE,
+            f"{recipe_id} compares two releases; the CLI runs single-release recipes.\n",
+        )
+        return EXIT_USAGE
+    context = _context(parser, store_root, release_id)
+    if context is None:
+        return EXIT_USAGE
+    bound = _bound(parser, recipe, params)
+    if bound is None:
+        return EXIT_USAGE
+    try:
+        result = execute(recipe, context, bound)
+    except QueryError as refused:
+        parser.exit(EXIT_USAGE, f"{refused.args[0]}\n")
+        return EXIT_USAGE
+    rows = result.table.to_pylist()
+    if output == "json":
+        print(json.dumps(rows, indent=2, default=str))
+        return EXIT_OK
+    print(f"{recipe.query_recipe_id} v{recipe.query_recipe_version} on {result.release_ids[0]}")
+    _print_table([column.name for column in recipe.output_schema], rows)
+    return EXIT_OK
+
+
+def _print_table(columns: list[str], rows: list[dict[str, object]]) -> None:
+    if not rows:
+        print("(no rows)")
+        return
+    widths = {
+        column: max(len(column), *(len(str(row[column])) for row in rows)) for column in columns
+    }
+    print("  ".join(column.ljust(widths[column]) for column in columns))
+    for row in rows:
+        print("  ".join(str(row[column]).ljust(widths[column]) for column in columns))
+
+
+def _plan(
+    parser: argparse.ArgumentParser,
+    recipe_id: str,
+    *,
+    store_root: Path,
+    release_id: str | None,
+    params: list[str],
+) -> int:
+    """The three plans plus the provenance DATA-49 asks to be recorded alongside them."""
+    try:
+        recipe = recipe_for(recipe_id)
+    except KeyError as unknown:
+        parser.exit(EXIT_USAGE, f"{unknown.args[0]}\n")
+        return EXIT_USAGE
+    if recipe.release_context != "single":
+        parser.exit(EXIT_USAGE, f"{recipe_id} compares two releases; the CLI plans one.\n")
+        return EXIT_USAGE
+    context = _context(parser, store_root, release_id)
+    if context is None:
+        return EXIT_USAGE
+    bound = _bound(parser, recipe, params)
+    if bound is None:
+        return EXIT_USAGE
+    try:
+        evidence = capture(recipe, context, bound)
+    except QueryError as refused:
+        parser.exit(EXIT_USAGE, f"{refused.args[0]}\n")
+        return EXIT_USAGE
+    print(
+        f"{evidence.query_recipe_id} v{evidence.query_recipe_version} on "
+        f"{', '.join(evidence.release_ids)} | datafusion {evidence.datafusion_version} | "
+        f"{evidence.materialization} provider | {evidence.row_count} row(s)"
+    )
+    for label, plan in (
+        ("logical", evidence.logical_plan),
+        ("optimized", evidence.optimized_logical_plan),
+        ("physical", evidence.physical_plan),
+    ):
+        print(f"\n--- {label} ---")
+        print(plan.rstrip())
+    print("\nEngine plans are diagnostics, never part of semantic identity (DATA-49).")
+    return EXIT_OK
+
+
+def _impact(
+    parser: argparse.ArgumentParser,
+    element_id: str,
+    *,
+    store_root: Path,
+    release_id: str | None,
+    policy_id: str,
+) -> int:
+    """A bounded traversal, printed with the path that justifies every result (CORE-28)."""
+    if policy_id == "list":
+        for policy in POLICIES.values():
+            print(f"{policy.policy_id:<36} {policy.direction.value:<8} {policy.purpose}")
+        return EXIT_OK
+    try:
+        policy = policy_for(policy_id)
+    except KeyError as unknown:
+        parser.exit(EXIT_USAGE, f"{unknown.args[0]}\n")
+        return EXIT_USAGE
+    context = _context(parser, store_root, release_id)
+    if context is None:
+        return EXIT_USAGE
+    try:
+        result = build_graph(context).traverse(policy, element_id)
+    except QueryError as refused:
+        parser.exit(EXIT_USAGE, f"{refused.args[0]}\n")
+        return EXIT_USAGE
+    print(
+        f"{result.start} under {result.policy_id} v{result.policy_version} "
+        f"on {result.release_id}: {len(result.reached)} object(s) {result.classification.value}"
+    )
+    for path in result.paths:
+        steps = " -> ".join(
+            f"{relationship} ({type_id})"
+            for relationship, type_id in zip(
+                path.relationship_ids, path.relationship_types, strict=True
+            )
+        )
+        print(f"  {path.end:<24} depth {path.depth}  {steps}")
+    if not result.paths:
+        print("  (nothing reachable under this policy)")
+    if result.truncated:
+        print(f"  truncated at {result.limit_reached}; raise it on the policy to see more")
     return EXIT_OK

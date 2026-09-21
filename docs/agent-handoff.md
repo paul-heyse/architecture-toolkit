@@ -35,6 +35,12 @@ Implemented:
   per-table idempotency, manifest-driven retention, explicit migrations and milestone
   archives (W4);
 - the full SnapshotProvider ladder, with the materialized provider still the default (W4);
+- release-scoped queries: one read-only DataFusion session per manifest, explicit `base.`/
+  `candidate.` comparison namespaces, five versioned query recipes with declared parameter and
+  result contracts, and plan evidence held outside semantic identity (W5);
+- the private NetworkX projection built from that same session: the `ArchitectureGraph` facade,
+  versioned `GraphPolicy` traversals checked against the profile, explainable bounded paths and
+  the cycle, component, condensation, closure and reduction analyses (W5);
 - explicit-version Delta -> PyArrow -> DataFusion materialized adapter;
 - synthetic examples and basic qualification tests;
 - checksummed local Java/vendor bootstrap;
@@ -42,7 +48,7 @@ Implemented:
 - MkDocs documentation scaffold and two-platform CI.
 
 Not implemented:
-- semantic diff/scenarios/GraphPolicy facade;
+- semantic diff and scenario comparison;
 - generated ArchiMate/C4/BPMN/UML/ERD projections;
 - interactive/offline portal integration.
 

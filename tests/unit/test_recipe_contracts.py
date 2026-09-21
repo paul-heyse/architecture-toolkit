@@ -99,25 +99,26 @@ def test_declared_parameters_and_sql_placeholders_agree(recipe_id: str) -> None:
 
 @pytest.mark.unit
 @pytest.mark.requirement("DATA-48", "DATA-15")
-@pytest.mark.parametrize("recipe_id", sorted(RECIPES))
-def test_a_recursive_recipe_declares_a_required_depth_bound(recipe_id: str) -> None:
+def test_every_recursive_recipe_declares_a_required_depth_bound() -> None:
     """Measured, not assumed: an unbounded recursion over a cyclic edge set does not terminate.
 
     `tests/qualification/test_datafusion_surface.py` pins that behaviour against DataFusion 54.
     This is the structural consequence — the bound is part of the recipe's contract, so a second
-    recursive recipe cannot be added without one.
+    recursive recipe cannot be added without one. Not parametrized over every recipe, because a
+    skip for each non-recursive one would put four skipped outcomes into the requirement evidence
+    for a requirement that is otherwise entirely passed.
     """
-    recipe = RECIPES[recipe_id]
-    if not recipe.is_recursive:
-        pytest.skip(f"{recipe_id} is not recursive")
+    recursive = [recipe for recipe in RECIPES.values() if recipe.is_recursive]
+    assert recursive, "no recipe recurses; this guard has become vacuous"
 
-    bounds = [
-        spec
-        for spec in recipe.parameters
-        if spec.data_type == "integer" and spec.required and f"${spec.name}" in recipe.sql
-    ]
-    assert bounds, f"{recipe_id} recurses without a required integer bound"
-    assert any("depth" in spec.name for spec in bounds)
+    for recipe in recursive:
+        bounds = [
+            spec
+            for spec in recipe.parameters
+            if spec.data_type == "integer" and spec.required and f"${spec.name}" in recipe.sql
+        ]
+        assert bounds, f"{recipe.query_recipe_id} recurses without a required integer bound"
+        assert any("depth" in spec.name for spec in bounds)
 
 
 @pytest.mark.unit
