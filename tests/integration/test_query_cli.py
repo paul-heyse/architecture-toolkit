@@ -161,7 +161,7 @@ def test_a_comparison_recipe_is_refused_on_the_single_release_command(
         )
 
     assert exit_code.value.code == EXIT_USAGE
-    assert "compares two releases" in capsys.readouterr().err
+    assert "name them with --base and --candidate" in capsys.readouterr().err
 
 
 @pytest.mark.integration
@@ -231,4 +231,4 @@ def test_a_store_with_no_current_release_is_a_usage_error(
         run(monkeypatch, "query", "capability_coverage_matrix", "--store", str(tmp_path))
 
     assert exit_code.value.code == EXIT_USAGE
-    assert "No current release" in capsys.readouterr().err
+    assert "no current release" in capsys.readouterr().err

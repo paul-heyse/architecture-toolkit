@@ -106,9 +106,22 @@ class SnapshotProvider(Protocol):
 
 @runtime_checkable
 class QueryExecutor(Protocol):
-    """Runs a versioned query recipe against one release (W5, DATA-48)."""
+    """Runs a versioned query recipe against one release (W5, DATA-48).
 
-    def execute(self, recipe_id: str, *, release_id: str) -> object: ...
+    Typed against `domain/capsules.py` for the same two reasons `SnapshotProvider` is: `domain/`
+    may not import pyarrow, and the executor's caller should not have to care whether the rows
+    arrive as a pyarrow table or anything else exporting the Arrow C data interface. The `object`
+    this declared until W5.1 contradicted CORE-58's own "Protocols exchange typed DTOs rather than
+    arbitrary dictionaries" — an untyped return is the widest dictionary of all.
+
+    `release_id` is a parameter rather than a constructed context because the caller with a release
+    id is the one that has a problem: `cli.py` had resolve-release-then-run written out three
+    times. `queries/execution.py::ReleaseQueryExecutor` is the implementation, and it carries the
+    provenance — recipe version, release ids, row count — on its own richer result for callers
+    holding the concrete type.
+    """
+
+    def execute(self, recipe_id: str, *, release_id: str) -> ArrowStreamExportable: ...
 
 
 @runtime_checkable

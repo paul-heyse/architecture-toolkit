@@ -6,10 +6,8 @@ from importlib.metadata import version
 from pathlib import Path
 
 from architecture_toolkit.contracts import SCHEMA_FAMILIES, emit, emittable
-from architecture_toolkit.queries.context import ReleaseContext
 from architecture_toolkit.queries.errors import QueryError
-from architecture_toolkit.queries.execution import execute
-from architecture_toolkit.queries.graph import build_graph
+from architecture_toolkit.queries.execution import ReleaseQueryExecutor
 from architecture_toolkit.queries.plans import capture
 from architecture_toolkit.queries.policy import POLICIES, policy_for
 from architecture_toolkit.queries.recipes import RECIPES, ParameterSpec, QueryRecipe, recipe_for
@@ -558,21 +556,26 @@ def _input_name(item: object) -> str:
     return f"{side}.{table_id}" if side else str(table_id)
 
 
-def _context(
+def _executor(
     parser: argparse.ArgumentParser, store_root: Path, release_id: str | None
-) -> ReleaseContext | None:
-    """Open the named release, or the current one. No current release is a usage error."""
-    store = _store_at(store_root)
-    chosen = release_id if release_id is not None else store.current_id()
-    if chosen is None:
-        parser.exit(EXIT_USAGE, f"No current release in {store_root}; publish one first.\n")
-        return None
+) -> tuple[ReleaseQueryExecutor, str] | None:
+    """One executor and the release it will read, or a usage error naming what is missing.
+
+    Every query command needs the same two things, and each of them used to resolve them inline.
+    The executor also caches the context, so `impact` builds one session rather than two when it
+    queries and traverses.
+    """
+    executor = ReleaseQueryExecutor(_store_at(store_root))
     try:
-        manifest = store.read_manifest(chosen)
+        chosen = release_id if release_id is not None else executor.current()
+        executor.context_for(chosen)
+    except QueryError as missing:
+        parser.exit(EXIT_USAGE, f"{missing.args[0]}.\n")
+        return None
     except UnknownReleaseError as unknown:
         parser.exit(EXIT_USAGE, f"{unknown.args[0]}\n")
         return None
-    return ReleaseContext.for_release(store, manifest)
+    return executor, chosen
 
 
 def _bound(
@@ -638,20 +641,15 @@ def _query(
     except KeyError as unknown:
         parser.exit(EXIT_USAGE, f"{unknown.args[0]}\n")
         return EXIT_USAGE
-    if recipe.release_context != "single":
-        parser.exit(
-            EXIT_USAGE,
-            f"{recipe_id} compares two releases; the CLI runs single-release recipes.\n",
-        )
+    opened = _executor(parser, store_root, release_id)
+    if opened is None:
         return EXIT_USAGE
-    context = _context(parser, store_root, release_id)
-    if context is None:
-        return EXIT_USAGE
+    executor, chosen = opened
     bound = _bound(parser, recipe, params)
     if bound is None:
         return EXIT_USAGE
     try:
-        result = execute(recipe, context, bound)
+        result = executor.answer(recipe_id, release_id=chosen, parameters=bound)
     except QueryError as refused:
         parser.exit(EXIT_USAGE, f"{refused.args[0]}\n")
         return EXIT_USAGE
@@ -693,14 +691,15 @@ def _plan(
     if recipe.release_context != "single":
         parser.exit(EXIT_USAGE, f"{recipe_id} compares two releases; the CLI plans one.\n")
         return EXIT_USAGE
-    context = _context(parser, store_root, release_id)
-    if context is None:
+    opened = _executor(parser, store_root, release_id)
+    if opened is None:
         return EXIT_USAGE
+    executor, chosen = opened
     bound = _bound(parser, recipe, params)
     if bound is None:
         return EXIT_USAGE
     try:
-        evidence = capture(recipe, context, bound)
+        evidence = capture(recipe, executor.context_for(chosen), bound)
     except QueryError as refused:
         parser.exit(EXIT_USAGE, f"{refused.args[0]}\n")
         return EXIT_USAGE
@@ -738,11 +737,12 @@ def _impact(
     except KeyError as unknown:
         parser.exit(EXIT_USAGE, f"{unknown.args[0]}\n")
         return EXIT_USAGE
-    context = _context(parser, store_root, release_id)
-    if context is None:
+    opened = _executor(parser, store_root, release_id)
+    if opened is None:
         return EXIT_USAGE
+    executor, chosen = opened
     try:
-        result = build_graph(context).traverse(policy, element_id)
+        result = executor.graph_for(chosen).traverse(policy, element_id)
     except QueryError as refused:
         parser.exit(EXIT_USAGE, f"{refused.args[0]}\n")
         return EXIT_USAGE

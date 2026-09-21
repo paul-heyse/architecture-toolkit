@@ -38,7 +38,11 @@ from architecture_toolkit.queries.errors import (
     UnknownPolicyError,
     UnknownRecipeError,
 )
-from architecture_toolkit.queries.execution import QueryResult, execute
+from architecture_toolkit.queries.execution import (
+    QueryResult,
+    ReleaseQueryExecutor,
+    execute,
+)
 from architecture_toolkit.queries.graph import ArchitectureGraph, build_graph, graph_from_rows
 from architecture_toolkit.queries.plans import PlanEvidence, capture, write_evidence
 from architecture_toolkit.queries.policy import (
@@ -100,6 +104,7 @@ __all__ = [
     "ReductionEdge",
     "ReleaseComparison",
     "ReleaseContext",
+    "ReleaseQueryExecutor",
     "ReleaseScope",
     "ResultContractError",
     "Side",
