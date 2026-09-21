@@ -8,6 +8,7 @@ from typing import Annotated, Final
 
 import typer
 from pydantic import ValidationError
+from rich.table import Table
 
 from architecture_toolkit.changes.alternatives import compare_alternative
 from architecture_toolkit.changes.audit import compared_tables, storage_disagreements
@@ -27,6 +28,7 @@ from architecture_toolkit.cli_errors import (
     EXIT_OK,
     EXIT_UNREADABLE,
     EXIT_USAGE,
+    OUT_CONSOLE,
     CommandRefused,
     DiagnosticsFound,
     OperationRefused,
@@ -310,9 +312,10 @@ def releases(
     verify: Annotated[
         bool, typer.Option("--verify", help="Read every pinned version back.")
     ] = False,
+    output: FormatOption = Format.HUMAN,
 ) -> None:
     """List published releases and whether they resolve."""
-    raise typer.Exit(code=_releases(store_root=store, verify=verify))
+    raise typer.Exit(code=_releases(store_root=store, verify=verify, output=output.value))
 
 
 @app.command()
@@ -373,9 +376,10 @@ def vacuum(
 @app.command()
 def recipes(
     recipe_id: Annotated[str | None, typer.Argument(help="Describe one recipe.")] = None,
+    output: FormatOption = Format.HUMAN,
 ) -> None:
     """List the versioned query recipes, or describe one."""
-    raise typer.Exit(code=_recipes(recipe_id))
+    raise typer.Exit(code=_recipes(recipe_id, output=output.value))
 
 
 @app.command()
@@ -726,25 +730,52 @@ def _reused(store: ReleaseStore, manifest: ArchitectureRelease, table_id: str) -
     return previous.delta_version == manifest.table(table_id).delta_version
 
 
-def _releases(*, store_root: Path, verify: bool) -> int:
-    """List what has been published, and optionally prove each one still resolves."""
+def _releases(*, store_root: Path, verify: bool, output: str) -> int:
+    """List what has been published, and optionally prove each one still resolves.
+
+    The JSON form exists because "which releases are here and which is current" is a question a
+    script asks far more often than a person does, and parsing the `*`/`!` markers back out of the
+    human rendering is exactly the kind of thing a machine-readable path is for.
+    """
     store = _store_at(store_root)
     current = store.current_id()
     ids = store.release_ids()
-    if not ids:
+    stranded = set(orphans(store))
+    if output == "json":
+        print(
+            json.dumps(
+                [
+                    {
+                        "release_id": release_id,
+                        "model_id": store.read_manifest(release_id).model_id,
+                        "published_at": store.read_manifest(release_id).published_at.isoformat(),
+                        "is_current": release_id == current,
+                        "is_orphan": release_id in stranded,
+                    }
+                    for release_id in ids
+                ],
+                indent=2,
+            )
+        )
+        if not verify:
+            return EXIT_OK
+    elif not ids:
         print(f"no releases in {store_root}")
         return EXIT_OK
-    stranded = set(orphans(store))
-    for release_id in ids:
-        manifest = store.read_manifest(release_id)
-        marker = "*" if release_id == current else ("!" if release_id in stranded else " ")
-        note = "  (orphan: never became current)" if release_id in stranded else ""
-        print(
-            f"{marker} {release_id}  {manifest.model_id}  {manifest.published_at.isoformat()}{note}"
-        )
-    if stranded:
-        print(f"{len(stranded)} orphan(s); `resume` completes one, `discard` removes it")
-    if not verify:
+    else:
+        for release_id in ids:
+            manifest = store.read_manifest(release_id)
+            marker = "*" if release_id == current else ("!" if release_id in stranded else " ")
+            note = "  (orphan: never became current)" if release_id in stranded else ""
+            print(
+                f"{marker} {release_id}  {manifest.model_id}  "
+                f"{manifest.published_at.isoformat()}{note}"
+            )
+        if stranded:
+            print(f"{len(stranded)} orphan(s); `resume` completes one, `discard` removes it")
+        if not verify:
+            return EXIT_OK
+    if not ids:
         return EXIT_OK
 
     # Three questions, not one. Storage answers "do the pinned versions still read back";
@@ -763,7 +794,10 @@ def _releases(*, store_root: Path, verify: bool) -> int:
     )
     if findings:
         raise DiagnosticsFound(render_diagnostics(findings, source=str(store_root)))
-    print(f"every pinned version of {len(ids)} release(s) reads back, and the chain is navigable")
+    if output != "json":
+        print(
+            f"every pinned version of {len(ids)} release(s) reads back, and the chain is navigable"
+        )
     return EXIT_OK
 
 
@@ -875,8 +909,22 @@ def _constraints(*, store_root: Path, apply: bool) -> int:
     return EXIT_OK
 
 
-def _recipes(recipe_id: str | None) -> int:
-    """List the recipes, or print one recipe's whole declared contract."""
+def _recipes(recipe_id: str | None, *, output: str) -> int:
+    """List the recipes, or print one recipe's whole declared contract.
+
+    The JSON form is the recipe record itself, which is already a published contract root in the
+    `query-contract` family — so a consumer gets the same shape `architecture schema` describes
+    rather than a second, prose-shaped rendering of it.
+    """
+    if output == "json":
+        if recipe_id is None:
+            print(json.dumps([json.loads(r.model_dump_json()) for r in RECIPES.values()], indent=2))
+            return EXIT_OK
+        try:
+            print(recipe_for(recipe_id).model_dump_json(indent=2))
+        except KeyError as unknown:
+            raise UnknownName(unknown.args[0]) from unknown
+        return EXIT_OK
     if recipe_id is None:
         for recipe in RECIPES.values():
             binds = ", ".join(spec.name for spec in recipe.parameters) or "-"
@@ -1075,15 +1123,22 @@ def _analyse(analysis: str, graph: ArchitectureGraph, policy: GraphPolicy) -> li
 
 
 def _print_table(columns: list[str], rows: list[dict[str, object]]) -> None:
+    """Render a result set, letting rich do the column arithmetic.
+
+    `box=None, pad_edge=False` reproduces what the hand-rolled printer emitted — two spaces between
+    left-justified columns, no borders — so the assertions that read this output did not move. What
+    it adds is a header style when a terminal is attached, and eleven fewer lines of width
+    arithmetic to be wrong.
+    """
     if not rows:
-        print("(no rows)")
+        OUT_CONSOLE.print("(no rows)", highlight=False, markup=False)
         return
-    widths = {
-        column: max(len(column), *(len(str(row[column])) for row in rows)) for column in columns
-    }
-    print("  ".join(column.ljust(widths[column]) for column in columns))
+    table = Table(box=None, pad_edge=False, header_style="bold")
+    for column in columns:
+        table.add_column(column, overflow="fold")
     for row in rows:
-        print("  ".join(str(row[column]).ljust(widths[column]) for column in columns))
+        table.add_row(*(str(row[column]) for column in columns))
+    OUT_CONSOLE.print(table)
 
 
 def _plan(

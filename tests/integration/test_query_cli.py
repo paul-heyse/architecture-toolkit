@@ -14,6 +14,7 @@ import pytest
 
 from architecture_toolkit.cli import EXIT_OK, EXIT_USAGE, main
 from architecture_toolkit.domain.model import Model
+from architecture_toolkit.queries.recipes import RECIPES
 from architecture_toolkit.releases.store import ReleaseStore
 from tests.integration.conftest import Publisher, rename_first_element
 
@@ -450,3 +451,58 @@ def test_asking_for_cycles_under_a_policy_that_does_not_report_them_is_refused(
         == EXIT_USAGE
     )
     assert "cycle_handling=skip" in capsys.readouterr().err
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("DATA-38", "CORE-12")
+def test_recipes_json_is_the_published_recipe_contract(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The JSON form is the record itself, not a second prose-shaped rendering of it."""
+    assert run(monkeypatch, "recipes", "--format", "json") == EXIT_OK
+    listed = json.loads(capsys.readouterr().out)
+    assert len(listed) == len(RECIPES)
+
+    assert run(monkeypatch, "recipes", "capability_coverage_matrix", "--format", "json") == EXIT_OK
+    one = json.loads(capsys.readouterr().out)
+
+    contract = json.loads(CONTRACT.read_text(encoding="utf-8"))
+    jsonschema.validate(
+        one,
+        {
+            "$schema": contract["$schema"],
+            "$defs": contract["$defs"],
+            "$ref": "#/$defs/QueryRecipe",
+        },
+    )
+    assert one["query_recipe_id"] == "capability_coverage_matrix"
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("DATA-38")
+def test_one_format_vocabulary_means_the_same_two_words_everywhere(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], published: Path
+) -> None:
+    """`table` and `summary` used to be a third and fourth spelling of one concept.
+
+    Typer validates the enum at parse time, so this is checked by the type rather than by review —
+    and the refusal names the two words that are real.
+    """
+    assert (
+        run(
+            monkeypatch,
+            "query",
+            "capability_coverage_matrix",
+            "--store",
+            str(published),
+            "--format",
+            "table",
+        )
+        == EXIT_USAGE
+    )
+    assert "'table' is not one of 'human', 'json'" in capsys.readouterr().err
+
+    assert run(monkeypatch, "baseline", "--store", str(published), "--format", "summary") == (
+        EXIT_USAGE
+    )
+    assert "'summary' is not one of 'human', 'json'" in capsys.readouterr().err

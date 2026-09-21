@@ -261,3 +261,27 @@ def example_from(root: Path) -> Model:
     current = store.current()
     assert current is not None
     return read_model(store, current)
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("DATA-38")
+def test_releases_json_answers_which_release_is_current_without_parsing_markers(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    store: ReleaseStore,
+    example_model: Model,
+    publish_release: Publisher,
+) -> None:
+    """The human form encodes current-ness as a `*` in column one, which is not an interface."""
+    publish_release("rel-0001", example_model, expected_parent=None)
+    publish_release(
+        "rel-0002", rename_first_element(example_model, "Renamed"), expected_parent="rel-0001"
+    )
+
+    assert run(monkeypatch, "releases", "--store", str(store.root), "--format", "json") == 0
+
+    listed = json.loads(capsys.readouterr().out)
+    assert [item["release_id"] for item in listed] == ["rel-0001", "rel-0002"]
+    assert [item["is_current"] for item in listed] == [False, True]
+    assert not any(item["is_orphan"] for item in listed)
+    assert listed[0]["model_id"] == example_model.model_id
