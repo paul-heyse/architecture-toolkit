@@ -94,11 +94,16 @@ def write_archive(
                 root / _SCHEMAS / source.name, source.read_text(encoding="utf-8")
             )
 
-    report = store.artifact_dir(manifest.release_id) / "validation-report.json"
-    if report.is_file():
-        contents[f"{_REPORTS}/{report.name}"] = _write_text(
-            root / _REPORTS / report.name, report.read_text(encoding="utf-8")
-        )
+    # Both reports, because both are what this module's own docstring and data.md's export list
+    # promise: "the semantic change and validation reports". Only the validation one was copied,
+    # so an archive of a release published with a change record silently lost it — and the digest
+    # the manifest pins would have had nothing in the archive to check against.
+    for name in ("validation-report.json", "change-report.json"):
+        report = store.artifact_dir(manifest.release_id) / name
+        if report.is_file():
+            contents[f"{_REPORTS}/{report.name}"] = _write_text(
+                root / _REPORTS / report.name, report.read_text(encoding="utf-8")
+            )
 
     snapshot = manifest.source_bundle.snapshot_path
     if snapshot is not None:

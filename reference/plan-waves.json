@@ -582,6 +582,15 @@
       "owned_by": "W8",
       "extended_by": [],
       "note": "W7b must write a provenance row at first vendor invocation; W8's PROJ-40 is a completeness check over rows W7b already produced."
+    },
+    {
+      "id": "DATA-26",
+      "owned_by": "W6",
+      "extended_by": [
+        "W7a",
+        "W8"
+      ],
+      "note": "ChangeNature declares seven natures; STYLE_THEME_ONLY and PUBLICATION_NAVIGATION_ONLY are asserted used by nothing, in both directions, by tests/unit/test_change_classification.py. W7a delivers LayoutProfile/LayoutArtifact (PROJ-04) and W8 the portal bundle (PROJ-35), but projections.md pins those by digest rather than making them reachable from Model, so neither wave removes the reservation by default. Whether a style/theme or navigation field enters CHANGE_CLASSIFICATION is a decision each wave has to take, and the assertion is what will ask."
     }
   ],
   "deferred_acceptance": [

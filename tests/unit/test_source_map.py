@@ -62,6 +62,7 @@ def test_plain_data_is_exactly_the_primitive_types(example: LoadedSource) -> Non
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @pytest.mark.requirement("CORE-17", "CORE-45")
 @settings(max_examples=30, deadline=None)
 @given(full_models())

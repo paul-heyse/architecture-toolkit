@@ -85,7 +85,14 @@ class SourceEditReport:
 def edit_and_validate(
     text: str, change_set: ChangeSet, *, source_id: str, profile: Profile = BASELINE_PROFILE
 ) -> SourceEditReport:
-    """CORE-20 end to end: edit the presentation tree, reparse, revalidate, present the diff."""
+    """CORE-20's first three steps: edit the presentation tree, reparse, revalidate.
+
+    Not the fourth. The semantic diff CORE-20 also asks for is `changes/diff.py`, presented by
+    `architecture diff` over two models rather than produced here — this function has only the
+    candidate, and a diff needs a baseline to compare it against. Saying so here because the
+    sentence used to claim all four steps, which made the requirement look wholly evidenced by
+    this module.
+    """
     edit = apply_change_set_to_source(text, change_set, source_id=source_id)
     report = locate_report(validate_model(edit.model, profile=profile), edit.source_map)
     return SourceEditReport(edit=edit, report=report)

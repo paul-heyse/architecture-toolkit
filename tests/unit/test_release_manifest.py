@@ -299,6 +299,7 @@ def test_release_ids_sort_in_publication_order() -> None:
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @pytest.mark.requirement("DATA-21", "CORE-45")
 @settings(max_examples=25, deadline=None)
 @given(data=st.data())

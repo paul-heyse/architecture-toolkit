@@ -100,6 +100,31 @@ not the change narrative.
     tables data.md §12 specifies, so projection provenance participates in releases and queries.
     The W4 manifest already reserved the digest fields.
 
+## What W6 left for this wave
+
+**A canonical `ViewDefinition` on `Model` breaks seven tables at once.** `projections.md` calls
+view membership "semantic governed content", so `ViewDefinition` is the one artifact that may
+belong on `Model` rather than beside it. If it lands there, it breaks — in one commit —
+`CHANGE_CLASSIFICATION` and `COLLECTION_ORDER` (both asserted total by reflection over `Model`),
+`PRESENCE_RULES` and `OPTIONAL_RECORD_RULES`, the `MODEL_COLLECTIONS` literal, `TABLE_IDS` and
+`MAPPINGS` — and it needs the first entry in `releases/migration.py::MIGRATIONS`, which is empty
+and says so. That is the design working rather than failing, but it is better found here than in a
+failing suite.
+
+The layout artifacts are the opposite case. `LayoutProfile`, `LayoutArtifact` and
+`ProjectionArtifact` are pinned by digest from the manifest, not reachable from `Model`, so they do
+*not* break those tables — and `ChangeNature.STYLE_THEME_ONLY` stays unreachable unless this wave
+decides to classify one of their fields. `tests/unit/test_change_classification.py` asserts that
+reservation in both directions, so the decision gets asked either way.
+
+**Four reservations this wave clears**: `CORE.VIEW.UNRESOLVED_MEMBER` in `validation/codes.py`,
+`DEFERRALS[VIEWS]` in `validation/rules/__init__.py` (which changes the claim-report text every
+consumer sees), the note in `validation/rules/profile.py`, and `ProjectionGenerator` in
+`domain/protocols.py` — whose signature CORE-58 asks this wave to fill.
+
+**`build` is this wave's verb.** It is the only CLI command left with an untyped stub;
+`changes/operations.py::PendingOutput` is the typed shape W6 settled on and W8 expects.
+
 ## Hard gate
 
 > Templates do not traverse NetworkX/DataFusion, infer relationships, select semantic view

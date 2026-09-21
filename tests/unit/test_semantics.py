@@ -153,6 +153,7 @@ def test_stored_digests_never_enter_the_preimage(minimal_model_source: dict[str,
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @pytest.mark.requirement("CORE-21", "DATA-27", "CORE-45")
 @given(full_models())
 def test_stamping_is_idempotent_and_digest_invariant(model: Model) -> None:
@@ -180,6 +181,7 @@ def test_aliases_are_not_semantic_identity() -> None:
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @pytest.mark.requirement("CORE-21", "DATA-27")
 @given(full_models())
 def test_reordering_unordered_collections_leaves_the_digest_unchanged(model: Model) -> None:
@@ -273,6 +275,7 @@ def test_the_delta_reports_added_and_removed_identities(
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @pytest.mark.requirement("CORE-21", "DATA-27")
 @settings(max_examples=60, deadline=None)
 @given(data=st.data())

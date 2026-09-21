@@ -86,6 +86,7 @@ def test_chunk_layout_never_changes_the_digest_deterministic() -> None:
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @pytest.mark.requirement("DATA-45", "CORE-45")
 @settings(deadline=None)
 @given(data=st.data())
@@ -107,6 +108,7 @@ def test_chunk_layout_never_changes_the_digest(data: st.DataObject) -> None:
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @pytest.mark.requirement("DATA-45", "CORE-45")
 @settings(deadline=None)
 @given(data=st.data())
@@ -209,6 +211,7 @@ def test_the_canonical_table_is_byte_identical_across_chunkings() -> None:
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @pytest.mark.requirement("DATA-14", "CORE-45")
 @settings(deadline=None)
 @given(full_models())
@@ -221,6 +224,7 @@ def test_a_model_survives_the_arrow_round_trip(model: Model) -> None:
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @pytest.mark.requirement("DATA-14", "DATA-45", "CORE-45")
 @settings(deadline=None)
 @given(full_models())

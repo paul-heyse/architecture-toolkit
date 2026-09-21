@@ -76,6 +76,10 @@ xfail_strict = true
 # fires for `StringConstraints`; `Field(pattern=...)` warns not at all, which is why
 # `tests/unit/test_identifiers.py` separately pins the alias style.
 filterwarnings = ["error::hypothesis.errors.HypothesisWarning"]
+# `slow` is the inner loop: `-m 'not slow'` runs 1069 of 1094 tests in 56s against the full
+# suite's 167s. It means one thing — a property that draws a whole model — and
+# `tests/unit/test_suite_conventions.py` guards both directions, so the marker cannot rot
+# into "tests that annoyed somebody once".
 markers = [
     "unit: isolated behaviour of one module",
     "property: Hypothesis-generated invariant",
@@ -84,7 +88,7 @@ markers = [
     "vendor: an external tool binary is invoked",
     "qualification: evidence for an acceptance requirement",
     "platform: behaviour that genuinely differs by platform",
-    "slow: excluded from the default developer loop",
+    "slow: a Hypothesis property that draws a whole model",
     "requirement(id): acceptance requirement this test evidences, e.g. CORE-49",
 ]
 

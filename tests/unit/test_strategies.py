@@ -72,6 +72,7 @@ def test_generated_elements_are_valid_and_hashable(element: object) -> None:
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @pytest.mark.requirement("CORE-45", "DATA-03")
 @settings(max_examples=40, deadline=None)
 @given(coherent_models())
@@ -84,6 +85,7 @@ def test_generated_models_have_resolving_endpoints(model: Model) -> None:
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @pytest.mark.requirement("CORE-45", "CORE-08")
 @settings(max_examples=40, deadline=None)
 @given(coherent_models())

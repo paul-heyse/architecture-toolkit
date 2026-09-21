@@ -44,6 +44,7 @@ def _rename(baseline: Model, element_id: str, new_name: str) -> Model:
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @pytest.mark.requirement("CORE-10", "DATA-04")
 @settings(max_examples=60, deadline=None)
 @given(data=st.data())
@@ -229,6 +230,7 @@ def test_an_empty_change_set_is_refused() -> None:
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @pytest.mark.requirement("CORE-10")
 @settings(max_examples=40, deadline=None)
 @given(data=st.data())

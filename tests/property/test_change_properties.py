@@ -35,6 +35,7 @@ from tests.strategies.relations import full_models
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @pytest.mark.requirement("DATA-26", "DATA-27")
 @given(data=st.data())
 @settings(suppress_health_check=[HealthCheck.too_slow])
@@ -69,6 +70,7 @@ def test_the_field_diff_is_empty_exactly_when_the_record_digests_agree(
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @pytest.mark.requirement("DATA-26")
 @given(data=st.data())
 @settings(suppress_health_check=[HealthCheck.too_slow])
@@ -96,6 +98,7 @@ def test_every_reported_change_names_a_field_that_really_differs(
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @pytest.mark.requirement("DATA-26", "DATA-27")
 @given(model=full_models())
 def test_a_model_compared_with_itself_reports_nothing_at_all(model: Model) -> None:
@@ -109,6 +112,7 @@ def test_a_model_compared_with_itself_reports_nothing_at_all(model: Model) -> No
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @pytest.mark.requirement("DATA-26", "DATA-04")
 @given(data=st.data())
 def test_an_alias_edit_moves_no_digest_and_is_still_reported(data: st.DataObject) -> None:

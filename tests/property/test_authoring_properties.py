@@ -19,6 +19,7 @@ from tests.strategies.relations import full_models
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @pytest.mark.requirement("CORE-20", "CORE-21", "CORE-45")
 @given(full_models())
 def test_a_rendered_model_reloads_to_the_same_semantic_identity(model: Model) -> None:
@@ -28,6 +29,7 @@ def test_a_rendered_model_reloads_to_the_same_semantic_identity(model: Model) ->
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @pytest.mark.requirement("CORE-20", "CORE-45")
 @settings(max_examples=60, deadline=None)
 @given(data=st.data())
@@ -45,6 +47,7 @@ def test_editing_the_source_equals_applying_the_commands(data: st.DataObject) ->
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @pytest.mark.requirement("CORE-21", "DATA-27", "CORE-45")
 @settings(max_examples=100, deadline=None)
 @given(data=st.data())
@@ -63,6 +66,7 @@ def test_presentation_never_changes_the_semantic_digest(data: st.DataObject) -> 
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @pytest.mark.requirement("CORE-21")
 @settings(max_examples=40, deadline=None)
 @given(data=st.data())

@@ -19,9 +19,9 @@ FIELD_MODIFIED)` would make the totality test decorative — an unclassified fie
 answer regardless, and the test that is supposed to force a decision would still pass.
 `rules/change-classification-has-no-default.yml` enforces the absence structurally.
 
-**A residual that is guarded rather than avoided.** `Reference.authority` and
-`InterfaceDetail.idempotency_description` have no named category in any contract, so
-`FIELD_MODIFIED` is unavoidable. What keeps it from swallowing the table is in
+**A residual that is guarded rather than avoided.** `Reference.authority`, `ReferenceLink.note`
+and the three `description` fields have no named category in any contract, so `FIELD_MODIFIED` is
+unavoidable. What keeps it from swallowing the table is in
 `tests/unit/test_change_classification.py`: a pinned ceiling on how many fields may use it **and**
 a list of fields that must never reach it. A bare count is gameable by adding rows; count plus
 membership is not. It is `CANONICAL_SEMANTIC` so that an unclassified field added by a later wave

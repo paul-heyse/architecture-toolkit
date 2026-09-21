@@ -80,14 +80,30 @@ NARRATIVE_NATURES: Final[frozenset[ChangeNature]] = frozenset(
 
 UNREACHABLE_NATURES: Final[Mapping[ChangeNature, str]] = MappingProxyType(
     {
-        ChangeNature.STYLE_THEME_ONLY: "W7a — no LayoutProfile exists before PROJ-04",
-        ChangeNature.PUBLICATION_NAVIGATION_ONLY: "W8 — no portal bundle exists before PROJ-35",
+        ChangeNature.STYLE_THEME_ONLY: (
+            "unreachable until a record carrying a style or theme field is classified. "
+            "`LayoutProfile` (W7a, PROJ-04) is the candidate, but projections.md pins layout "
+            "artifacts by digest from the manifest rather than making them reachable from "
+            "`Model` — so W7a delivering PROJ-04 does not by itself make this reachable. "
+            "Promoting one into the classification is a decision that wave has to take."
+        ),
+        ChangeNature.PUBLICATION_NAVIGATION_ONLY: (
+            "unreachable until a record carrying portal or navigation state is classified. "
+            "W8 (PROJ-35) builds the portal bundle; the same question applies to it."
+        ),
     }
 )
-"""Declared but unusable, each with the wave that makes it reachable.
+"""Declared but unusable, each with the *condition* that would make it reachable.
 
-The same shape `validation/pipeline.py::_UNREACHABLE` uses: a reserved value pairs with a prose
+The same shape `validation/pipeline.py::_UNREACHABLE` uses — a reserved value pairs with a prose
 scope string rather than a comment, so the reservation can be asserted.
+
+Naming the condition rather than a wave is deliberate, and it is a correction. These used to read
+"W7a — no LayoutProfile exists before PROJ-04", which implies W7a removes the reservation. It very
+likely does not: `projections.md` makes layout artifacts separate records pinned by digest, and the
+classification walk is rooted at `Model`. Under that reading W7a can ship PROJ-04 correctly and
+`test_change_classification.py`'s bidirectional assertion keeps passing — for the wrong reason,
+which is precisely what that test's own docstring says it exists to prevent.
 """
 
 
@@ -191,7 +207,7 @@ class ChangeKind(StrEnum):
     CONTAINER = "container"
 
     # -- the residual -------------------------------------------------------------------------
-    # `Reference.authority`, `InterfaceDetail.idempotency_description` and their kind have no
+    # `Reference.authority`, the three `description` fields and `ReferenceLink.note` have no
     # named category in any contract. A residual is unavoidable; what makes it safe is that it is
     # never a lookup default, that it is `CANONICAL_SEMANTIC` so an unclassified field is noisy
     # rather than silently invisible, and that `tests/unit/test_change_classification.py` pins

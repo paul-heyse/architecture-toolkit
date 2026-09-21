@@ -367,6 +367,7 @@
       "statement": "Record semantic change sets with rationale, authorship, decisions, field-level changes, validation and impact.",
       "contract_ref": "data.change",
       "implementation_areas": [
+        "src/architecture_toolkit/changes",
         "src/architecture_toolkit/releases",
         "src/architecture_toolkit/validation"
       ],
@@ -395,6 +396,7 @@
       "statement": "Give design alternatives separate scenario/model identities and baseline references.",
       "contract_ref": "data.change",
       "implementation_areas": [
+        "src/architecture_toolkit/changes",
         "src/architecture_toolkit/releases",
         "src/architecture_toolkit/validation"
       ],
@@ -535,7 +537,7 @@
       "statement": "Expose baseline/change/validate/diff/review/persist/publish/output operations through a small API and CLI.",
       "contract_ref": "data.operations",
       "implementation_areas": [
-        "src/architecture_toolkit/storage",
+        "src/architecture_toolkit/changes",
         "tests"
       ],
       "verification": [
@@ -1765,6 +1767,7 @@
       "statement": "Round-trip authoring edits reparse/revalidate and present a semantic diff before publication.",
       "contract_ref": "core.authoring",
       "implementation_areas": [
+        "src/architecture_toolkit/changes",
         "src/architecture_toolkit/domain",
         "src/architecture_toolkit/validation"
       ],

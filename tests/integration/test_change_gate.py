@@ -155,6 +155,7 @@ def test_an_alias_edit_changes_no_digest_and_is_still_reported(base: Model) -> N
 
 
 @pytest.mark.integration
+@pytest.mark.qualification
 @pytest.mark.requirement("DATA-26")
 def test_the_four_qualification_cases_produce_four_distinct_classifications(base: Model) -> None:
     """§10C. Pairwise distinctness *and* the expected value for each.

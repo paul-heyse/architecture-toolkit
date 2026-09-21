@@ -6,6 +6,7 @@ tests that make the field a claim rather than a reservation.
 """
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -281,3 +282,53 @@ def test_the_netted_feed_reports_additions_and_removals_not_only_changes(
     assert netted["removed"] == (example_model.relationships[0].relationship_id,)
     assert netted["changed"] == ()
     assert storage_disagreements(store, base, candidate) == ()
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("DATA-25", "DATA-26")
+def test_a_milestone_archive_carries_the_change_report(
+    store: ReleaseStore,
+    ops: ArchitectureOperations,
+    example_model: Model,
+    publish_release: Publisher,
+    tmp_path: Path,
+) -> None:
+    """`archive.py` says an archive holds "the semantic change and validation reports".
+
+    It copied only the validation one, so an archive of a release published with a change record
+    lost it — and the digest the manifest pins would have had nothing in the archive to check
+    against, which is the one thing a self-contained archive is for.
+    """
+    from architecture_toolkit.releases.archive import verify_archive, write_archive
+
+    publish_release("rel-0001", example_model, expected_parent=None)
+    baseline = ops.baseline()
+    candidate = ops.change(baseline, rename(baseline, "Renamed"))
+    published = ops.publish(
+        PublicationRequest(
+            store=store,
+            candidate=ReleaseCandidate(
+                release_id="rel-0002",
+                model=candidate,
+                source_bundle=source_bundle(source_id="s", text=EXAMPLE.read_text()),
+            ),
+            expected_parent="rel-0001",
+            now=lambda: MOMENT,
+            generator_commit="abc1234",
+        ),
+        change_set=ops.change_set(
+            change_set_id="cs-0001",
+            changes=ops.diff(baseline, candidate),
+            authored_by=AGENT,
+            validation=ops.validate(candidate),
+        ),
+    )
+    assert published.change_report_digest is not None
+
+    archived = write_archive(store, published, tmp_path / "milestone")
+
+    copied = archived.root / "reports" / "change-report.json"
+    assert copied.is_file()
+    assert digest_bytes(copied.read_bytes()) == published.change_report_digest
+    assert (archived.root / "reports" / "validation-report.json").is_file()
+    assert verify_archive(archived.root) == ()

@@ -146,6 +146,7 @@ def test_an_alternative_whose_parent_is_its_baseline_is_refused(
 
 
 @pytest.mark.integration
+@pytest.mark.qualification
 @pytest.mark.requirement("DATA-28")
 def test_diffing_a_baseline_against_an_alternative_is_refused_and_says_what_to_do(
     store: ReleaseStore,

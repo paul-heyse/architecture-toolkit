@@ -89,6 +89,7 @@ def observe(examined: int) -> None:
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @pytest.mark.requirement("CORE-29")
 @given(model=coherent_models())
 def test_no_traversal_ever_exceeds_the_caps_its_policy_declares(model: Model) -> None:
@@ -110,6 +111,7 @@ def test_no_traversal_ever_exceeds_the_caps_its_policy_declares(model: Model) ->
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @pytest.mark.requirement("CORE-28", "CORE-30")
 @given(model=coherent_models())
 def test_every_id_in_a_result_is_one_the_model_declares(model: Model) -> None:
@@ -131,6 +133,7 @@ def test_every_id_in_a_result_is_one_the_model_declares(model: Model) -> None:
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @pytest.mark.requirement("CORE-28")
 @given(model=coherent_models())
 def test_a_reported_path_is_a_walk_somebody_could_follow(model: Model) -> None:
@@ -148,6 +151,7 @@ def test_a_reported_path_is_a_walk_somebody_could_follow(model: Model) -> None:
 
 
 @pytest.mark.property
+@pytest.mark.slow
 @pytest.mark.requirement("CORE-27")
 @given(model=coherent_models())
 def test_a_traversal_only_ever_follows_the_types_its_policy_allows(model: Model) -> None:

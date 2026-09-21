@@ -57,14 +57,23 @@ Consumer-specific models/evidence live outside this public repository.
 
 ## Current state
 
-Implemented today: one locked Python 3.14 environment, minimal strict domain model and CLI,
-version-pinned Delta -> PyArrow -> DataFusion fallback adapter, synthetic examples, basic
-qualification tests, local vendor bootstrap and handwritten vendor smoke fixtures.
+Implemented today: one locked Python 3.14 environment; the strict Pydantic domain model with typed
+detail records, change commands and generated JSON Schema contracts; ruamel round-trip authoring
+with source-located diagnostics; the eleven-table Arrow fabric and its `SnapshotProvider` ladder;
+coherent Delta-backed releases with an immutable manifest, the eight-step publication protocol,
+retention and milestone archives; release-scoped DataFusion query recipes and the private NetworkX
+graph facade with versioned policies; semantic change records with a total classification table,
+design-alternative identity and the DATA-38 lifecycle; a Typer CLI whose reference is generated
+into [docs/cli.md](docs/cli.md); requirement-evidence output; and the Pyrefly migration, enforced
+at 100% strict coverage over `src/`.
 
-Not implemented today: the full metamodel/compiler, coherent multi-table releases, advanced
-snapshot providers, semantic diff, graph policies, generated standards projections, interactive
-portal, requirement-evidence plugin, or the Pyrefly migration. D-032 selects Pyrefly as the
-**target** checker; the current repository still executes ty.
+Not implemented today: generated ArchiMate/C4/BPMN/UML/ERD projections, the rendering pipeline and
+the interactive portal. `architecture build` and `architecture output` are reserved for those waves
+and say so when run; [docs/plans/index.md](docs/plans/index.md) says which wave fills each.
+
+Everything above waves 0 and 1 is evidenced on macOS ARM64 only. Those two waves passed the Linux
+runner through pull requests; the branches for waves 2 through 6 are pushed and have had no CI run,
+so no claim here is yet a cross-platform claim.
 
 Passing tests establish only their stated scope and never prove real-world architecture accuracy.
 

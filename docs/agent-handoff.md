@@ -51,8 +51,11 @@ Implemented:
   in `change_report_digest` (W6);
 - design alternatives with their own scenario identity and an explicit baseline reference, refused
   as revisions of the line they were derived from (W6);
-- the DATA-38 lifecycle through one API and six new verbs — `baseline`, `change`, `diff`, `review`,
-  `persist`, `output` — beside the `validate` and `publish` that already shipped (W6);
+- the DATA-38 lifecycle through one API and seven new verbs — `baseline`, `change`, `diff`,
+  `compare`, `review`, `persist`, `output` — beside the `validate` and `publish` that already
+  shipped (W6), with the whole chain reachable from the command line (W6.1);
+- a Typer command surface with typed arguments, one `--format` vocabulary, refusals that declare
+  their own exit code and stream, and a generated reference at `docs/cli.md` (W6.1);
 - two cross-checks on the narrative, neither of which is the narrative: a declared DataFusion
   comparison recipe over the stamped digests, and the netted Delta change feed (W6);
 - explicit-version Delta -> PyArrow -> DataFusion materialized adapter;
@@ -208,6 +211,12 @@ uv run python scripts/qualify_tools.py
 ```
 
 `ast-grep` is a system tool, not a locked dependency; see [contract enforcement](contract-enforcement.md).
+
+The inner loop while editing is `uv run pytest -m "not slow"` — 1069 of 1094 tests in 56s, against
+the full suite's 167s. `slow` marks the 25 Hypothesis properties that draw a whole model, which are
+most of the clock; `tests/unit/test_suite_conventions.py` guards the marker in both directions, so
+the fast loop stays a subset rather than drifting into a different suite. Run the full list above
+before committing.
 
 Dependency/tool upgrades regenerate locks/pins and pass relevant macOS ARM64 + Linux x86-64
 qualification. Never enable native Delta/DataFusion FFI merely because import/registration exists.
