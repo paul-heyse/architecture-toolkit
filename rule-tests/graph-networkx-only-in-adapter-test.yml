@@ -1,0 +1,11 @@
+id: graph-networkx-only-in-adapter
+valid:
+  - "import pyarrow as pa"
+  - "from datafusion import SessionContext"
+  # The adapter re-exported, which is how every other module reaches the graph.
+  - "from architecture_toolkit.queries import _nx"
+invalid:
+  - "import networkx as nx"
+  - "import networkx"
+  - "from networkx import MultiDiGraph"
+  - "from networkx.algorithms.dag import transitive_reduction"

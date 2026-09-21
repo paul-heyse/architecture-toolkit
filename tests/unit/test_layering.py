@@ -212,6 +212,30 @@ def test_deltalake_is_reached_only_through_the_storage_delta_module() -> None:
 
 
 @pytest.mark.unit
+@pytest.mark.requirement("CORE-22", "CORE-24", "DATA-16")
+def test_networkx_is_reached_only_through_the_queries_graph_adapter() -> None:
+    """The half `graph-networkx-only-in-adapter.yml` cannot state: `ast-grep` cannot test `ignores`.
+
+    The rule excludes `queries/_nx.py` with a glob, and `ast-grep test` exercises rules against
+    source snippets rather than paths, so nothing in the rule suite proves the exclusion is the
+    only one. This does, over the whole package — which is also the statement that matters: the
+    `types-networkx` suppressions are confined to one module, and a graph library change is one
+    module rather than a search.
+    """
+    allowed = SRC / "queries" / "_nx.py"
+    leaked = {
+        path.relative_to(SRC).as_posix()
+        for path in SRC.rglob("*.py")
+        if path != allowed
+        and any(module.split(".")[0] == "networkx" for module in runtime_imports(path))
+    }
+    assert not leaked, f"networkx imported outside queries/_nx.py: {leaked}"
+    assert any(module.split(".")[0] == "networkx" for module in runtime_imports(allowed)), (
+        "queries/_nx.py no longer imports networkx; the guard above has become vacuous"
+    )
+
+
+@pytest.mark.unit
 @pytest.mark.requirement("DATA-21", "DATA-51")
 def test_only_one_call_in_the_toolkit_asks_delta_for_the_latest_version() -> None:
     """Invariant 5 forbids a *published release* resolving an implicit latest version.

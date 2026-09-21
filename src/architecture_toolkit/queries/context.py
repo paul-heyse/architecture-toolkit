@@ -42,7 +42,12 @@ import pyarrow as pa
 from datafusion import DataFrame, SessionConfig, SessionContext, SQLOptions
 from datafusion.catalog import Schema
 
-from architecture_toolkit.domain.identifiers import ModelId, ReleaseId, TableId
+from architecture_toolkit.domain.identifiers import (
+    ModelId,
+    ReleaseId,
+    SemanticDigest,
+    TableId,
+)
 from architecture_toolkit.domain.providers import SnapshotProviderDescription
 from architecture_toolkit.queries.errors import QueryError
 from architecture_toolkit.queries.sides import SIDES, Side
@@ -111,6 +116,7 @@ class ReleaseScope:
 
     release_id: ReleaseId
     model_id: ModelId
+    model_digest: SemanticDigest
     qualifier: str
     pins: tuple[tuple[TableId, int], ...]
 
@@ -244,6 +250,7 @@ def _scope(manifest: ArchitectureRelease, *, qualifier: str) -> ReleaseScope:
     return ReleaseScope(
         release_id=manifest.release_id,
         model_id=manifest.model_id,
+        model_digest=manifest.model_digest,
         qualifier=qualifier,
         pins=manifest.pinned_versions,
     )

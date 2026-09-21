@@ -1,0 +1,42 @@
+id: graph-networkx-only-in-adapter
+snapshots:
+  from networkx import MultiDiGraph:
+    labels:
+    - source: networkx
+      style: primary
+      start: 5
+      end: 13
+    - source: from networkx import MultiDiGraph
+      style: secondary
+      start: 0
+      end: 33
+  from networkx.algorithms.dag import transitive_reduction:
+    labels:
+    - source: networkx.algorithms.dag
+      style: primary
+      start: 5
+      end: 28
+    - source: from networkx.algorithms.dag import transitive_reduction
+      style: secondary
+      start: 0
+      end: 56
+  import networkx:
+    labels:
+    - source: networkx
+      style: primary
+      start: 7
+      end: 15
+    - source: import networkx
+      style: secondary
+      start: 0
+      end: 15
+  import networkx as nx:
+    labels:
+    - source: networkx
+      style: primary
+      start: 7
+      end: 15
+    - source: import networkx as nx
+      style: secondary
+      start: 0
+      end: 21

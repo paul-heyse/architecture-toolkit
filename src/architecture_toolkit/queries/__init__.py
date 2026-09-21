@@ -26,6 +26,7 @@ from architecture_toolkit.queries.errors import (
     UnknownRecipeError,
 )
 from architecture_toolkit.queries.execution import QueryResult, execute
+from architecture_toolkit.queries.graph import ArchitectureGraph, build_graph
 from architecture_toolkit.queries.plans import PlanEvidence, capture, write_evidence
 from architecture_toolkit.queries.recipes import (
     RECIPES,
@@ -38,6 +39,7 @@ from architecture_toolkit.queries.recipes import (
 
 __all__ = [
     "RECIPES",
+    "ArchitectureGraph",
     "ColumnSpec",
     "ComparisonContext",
     "GraphError",
@@ -56,6 +58,7 @@ __all__ = [
     "TableInput",
     "UnknownPolicyError",
     "UnknownRecipeError",
+    "build_graph",
     "capture",
     "execute",
     "recipe_for",
