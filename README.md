@@ -63,13 +63,17 @@ with source-located diagnostics; the twelve-table Arrow fabric and its `Snapshot
 coherent Delta-backed releases with an immutable manifest, the eight-step publication protocol,
 retention and milestone archives; release-scoped DataFusion query recipes and the private NetworkX
 graph facade with versioned policies; semantic change records with a total classification table,
-design-alternative identity and the DATA-38 lifecycle; a Typer CLI whose reference is generated
-into [docs/cli.md](docs/cli.md); requirement-evidence output; and the Pyrefly migration, enforced
-at 100% strict coverage over `src/`.
+design-alternative identity and the DATA-38 lifecycle; canonical view definitions with membership
+rules; the generator foundations — a deterministic Jinja environment with template-bundle digests
+and a template/DTO contract check, and a secure lxml layer with a checksummed schema resolver and
+C14N digests; a Typer CLI whose reference is generated into [docs/cli.md](docs/cli.md);
+requirement-evidence output; and the Pyrefly migration, enforced at 100% strict coverage over
+`src/`.
 
 Not implemented today: generated ArchiMate/C4/BPMN/UML/ERD projections, the rendering pipeline and
-the interactive portal. `architecture build` and `architecture output` are reserved for those waves
-and say so when run; [docs/plans/index.md](docs/plans/index.md) says which wave fills each.
+the interactive portal. `architecture build` generates one notation-neutral Markdown artifact —
+enough to prove the pipeline, not a notation; `architecture output` is reserved for W8 and says so
+when run. [docs/plans/index.md](docs/plans/index.md) says which wave fills each.
 
 Everything above waves 0 and 1 is evidenced on macOS ARM64 only. Those two waves passed the Linux
 runner through pull requests; the branches for waves 2 through 6 are pushed and have had no CI run,

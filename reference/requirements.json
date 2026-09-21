@@ -907,8 +907,11 @@
       "statement": "ViewDefinition explicitly owns view type, purpose/audience, membership, perspective/filter and layout profile.",
       "contract_ref": "projections.common",
       "implementation_areas": [
+        "src/architecture_toolkit/changes",
+        "src/architecture_toolkit/domain",
         "src/architecture_toolkit/projections",
-        "src/architecture_toolkit/rendering"
+        "src/architecture_toolkit/storage",
+        "src/architecture_toolkit/validation"
       ],
       "verification": [
         "unit",
@@ -922,8 +925,9 @@
       "statement": "LayoutProfile/LayoutArtifact are versioned separately from semantic view content.",
       "contract_ref": "projections.common",
       "implementation_areas": [
-        "src/architecture_toolkit/projections",
-        "src/architecture_toolkit/rendering"
+        "src/architecture_toolkit/changes",
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/projections"
       ],
       "verification": [
         "unit",
@@ -2050,8 +2054,8 @@
       "statement": "Standards schema imports/includes resolve only through a reviewed checksummed local resolver.",
       "contract_ref": "core.xml",
       "implementation_areas": [
-        "src/architecture_toolkit/projections",
-        "src/architecture_toolkit/validation"
+        "scripts",
+        "src/architecture_toolkit/projections"
       ],
       "verification": [
         "unit",
@@ -2301,9 +2305,9 @@
       "statement": "Replaceable subsystem boundaries use typed Protocols where structural typing is appropriate.",
       "contract_ref": "core.pyrefly",
       "implementation_areas": [
-        "tests",
-        "pyproject.toml",
-        ".github/workflows"
+        "src/architecture_toolkit/domain",
+        "src/architecture_toolkit/projections",
+        "tests/static"
       ],
       "verification": [
         "pytest",

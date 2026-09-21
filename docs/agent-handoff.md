@@ -58,6 +58,15 @@ Implemented:
   their own exit code and stream, and a generated reference at `docs/cli.md` (W6.1);
 - two cross-checks on the narrative, neither of which is the narrative: a declared DataFusion
   comparison recipe over the stamped digests, and the netted Delta change feed (W6);
+- a deterministic Jinja environment with a transitive template-bundle digest and a
+  template/DTO contract check, plus the secure lxml layer — namespace registry, one parser
+  baseline, a checksummed schema resolver proven against BPMN and ArchiMate offline, and
+  C14N digests that do not move when a document is pretty-printed (W7a);
+- canonical `ViewDefinition` on `Model` as a twelfth table, with the first real storage
+  migration, four membership rules, and the five projection provenance records pinned by
+  digest from the manifest (W7a);
+- `architecture build`, which generates a notation-neutral Markdown summary and records the
+  model digest, generator version and template bundle it came from (W7a);
 - explicit-version Delta -> PyArrow -> DataFusion materialized adapter;
 - synthetic examples and basic qualification tests;
 - checksummed local Java/vendor bootstrap;

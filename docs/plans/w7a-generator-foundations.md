@@ -7,8 +7,8 @@
 Build the machinery every notation generator uses, and the provenance model that keeps generated
 files from becoming a second source of truth. Nothing notation-specific is generated here: this
 wave delivers the deterministic Jinja environment, the secure lxml layer with its checksummed local
-schema resolver, the C14N digest scheme, and the six artifact concepts — `NotationBinding`,
-`ViewDefinition`, `LayoutProfile`, `LayoutArtifact`, `ProjectionArtifact`, `RenderArtifact`,
+schema resolver, the C14N digest scheme, and the seven artifact concepts — `NotationBinding`,
+`ViewDefinition`, `LayoutProfile`, `LayoutArtifact`, `ProjectionArtifact`, `RenderArtifact` and
 `ValidationArtifact`.
 
 Splitting this from W7b is deliberate. CORE-38 forbids generating standards XML with Jinja;
@@ -24,9 +24,9 @@ not the change narrative.
 - [core.md § Jinja2 text generation](../contracts/core.md) — CORE-32..CORE-38.
 - [core.md § lxml standards XML](../contracts/core.md) — CORE-39..CORE-44.
 - [projections.md § Common projection model](../contracts/projections.md) — PROJ-01..PROJ-07 and
-  the seven artifact field lists.
-- [data.md § Projection metadata bridge](../contracts/data.md) — the relational shapes these
-  artifacts compile into.
+  the seven artifact field lists. Earlier drafts of this plan also cited a `data.md § Projection
+  metadata bridge` and a "data.md §12": `data.md` has neither that section nor numbered sections,
+  and the field lists have always lived here.
 - Records `ARCH-TOOL-CORE-001` §10–11, `ARCH-TOOL-PROJ-001` §2.
 
 ## Work items
@@ -64,8 +64,8 @@ not the change narrative.
    unsafe keyword forms.
 10. **Checksummed local resolver** (CORE-41). Standards schema imports and includes resolve only
     from reviewed local paths recorded in `tools.lock.json`. Unexpected external URI resolution
-    fails. The BPMN 2.0.2 XSD set is already pinned; ArchiMate Exchange XSDs are not yet and are a
-    W7b prerequisite.
+    fails. The BPMN 2.0.2 XSD set is already pinned; the ArchiMate Exchange set is pinned in this
+    wave, because a resolver proven against one standard is a special case.
 11. **Schema diagnostics** (CORE-42). A `SchemaValidator` adapter loads the pinned schema set,
     parses securely, validates, captures the lxml error log and normalizes findings into the W1
     `Diagnostic` and a `ValidationArtifact`.
@@ -96,8 +96,9 @@ not the change narrative.
     version, ruleset version, result, counts and findings, distinguishing canonical structure,
     cross-model semantics, notation semantics, schema and syntax, renderer import and render, and
     human real-world correctness.
-20. **Arrow and manifest integration** (PROJ-01). Compile the artifact families into the typed
-    tables data.md §12 specifies, so projection provenance participates in releases and queries.
+20. **Arrow and manifest integration** (PROJ-01). `ViewDefinition` is canonical and compiles
+    into the `views` table; the five provenance records are `ManifestRecord`s pinned by digest and
+    do not, because `projections.md § Release integration` pins them rather than tabling them.
     The W4 manifest already reserved the digest fields.
 
 ## What W6 left for this wave
@@ -123,7 +124,7 @@ consumer sees), the note in `validation/rules/profile.py`, and `ProjectionGenera
 `domain/protocols.py` — whose signature CORE-58 asks this wave to fill.
 
 **`build` is this wave's verb.** It is the only CLI command left with an untyped stub;
-`changes/operations.py::PendingOutput` is the typed shape W6 settled on and W8 expects.
+`changes/operations.py::OutputNotImplemented` is the typed shape W6 settled on and W8 expects.
 
 ## Hard gate
 

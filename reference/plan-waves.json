@@ -591,6 +591,34 @@
         "W8"
       ],
       "note": "ChangeNature declares seven natures; STYLE_THEME_ONLY and PUBLICATION_NAVIGATION_ONLY are asserted used by nothing, in both directions, by tests/unit/test_change_classification.py. W7a delivers LayoutProfile/LayoutArtifact (PROJ-04) and W8 the portal bundle (PROJ-35), but projections.md pins those by digest rather than making them reachable from Model, so neither wave removes the reservation by default. Whether a style/theme or navigation field enters CHANGE_CLASSIFICATION is a decision each wave has to take, and the assertion is what will ask."
+    },
+    {
+      "id": "CORE-58",
+      "owned_by": "W0",
+      "extended_by": [
+        "W3",
+        "W4",
+        "W5",
+        "W7a",
+        "W7b"
+      ],
+      "note": "W0 declares the Protocol registry; each later wave fills the signature of the boundary it builds. W7a typed ProjectionGenerator against ProjectionArtifact, replacing the `-> object` that contradicted CORE-58's own 'Protocols exchange typed DTOs rather than arbitrary dictionaries'. Renderer and ValidatorAdapter remain `object`-typed until W7b builds them."
+    },
+    {
+      "id": "DATA-56",
+      "owned_by": "W4",
+      "extended_by": [
+        "W7a"
+      ],
+      "note": "W4 built the migration machinery and declared no migration, which was the honest state while STORAGE_SCHEMA_VERSION had only ever been 1.0.0. W7a declares the first: 1.0.0 -> 1.1.0, adding the `views` table. It also extended `Migration` with `added_tables`, because `apply_migration` reads the old version through `manifest.table(id)` and a table being added has none \u2014 the machinery could rewrite a table but not create one."
+    },
+    {
+      "id": "PROJ-03",
+      "owned_by": "W7a",
+      "extended_by": [
+        "W7b"
+      ],
+      "note": "W7a makes ViewDefinition canonical and checks that its members resolve, that a relationship on a view has both endpoints on it, and that an induced view is complete. It does not re-derive a DERIVED view's membership from its filter: a rule's signature is (Candidate, ValidationContext) with no store and no query session, and membership resolution uses the W5 query context. W7b owns that, with the generator that materializes it."
     }
   ],
   "deferred_acceptance": [
