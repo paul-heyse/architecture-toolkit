@@ -36,7 +36,7 @@ parallelism is not worth the nondeterminism.
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Final, Literal, get_args
+from typing import Final
 
 import pyarrow as pa
 from datafusion import DataFrame, SessionConfig, SessionContext, SQLOptions
@@ -44,6 +44,7 @@ from datafusion.catalog import Schema
 
 from architecture_toolkit.domain.identifiers import ModelId, ReleaseId, TableId
 from architecture_toolkit.queries.errors import QueryError
+from architecture_toolkit.queries.sides import SIDES, Side
 from architecture_toolkit.releases.manifest import ArchitectureRelease
 from architecture_toolkit.releases.reader import table_locations
 from architecture_toolkit.releases.store import ReleaseStore
@@ -63,10 +64,6 @@ __all__ = [
     "read_only_options",
     "session_config",
 ]
-
-Side = Literal["base", "candidate"]
-SIDES: Final[tuple[Side, ...]] = get_args(Side)
-"""The two comparison namespaces DATA-47 names. Derived from the type so the two cannot drift."""
 
 TARGET_PARTITIONS: Final[int] = 1
 """Pinned so a physical plan is a property of the query rather than of the host's CPU count."""

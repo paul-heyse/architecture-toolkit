@@ -39,8 +39,10 @@ __all__ = [
     "LinkId",
     "ModelId",
     "NotationObjectId",
+    "PolicyId",
     "ProfileVersion",
     "QualifiedKind",
+    "QueryRecipeId",
     "ReferenceId",
     "RelationshipId",
     "RelationshipTypeId",
@@ -100,6 +102,8 @@ ChangeSetId = Annotated[str, _Identifier]
 ViewId = Annotated[str, _Identifier]
 ArtifactId = Annotated[str, _Identifier]
 RuleId = Annotated[str, _Identifier]
+QueryRecipeId = Annotated[str, _Identifier]
+PolicyId = Annotated[str, _Identifier]
 
 QualifiedKind = Annotated[str, StringConstraints(pattern=QUALIFIED_KIND_PATTERN, strict=True)]
 

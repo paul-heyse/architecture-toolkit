@@ -25,18 +25,35 @@ from architecture_toolkit.queries.errors import (
     UnknownPolicyError,
     UnknownRecipeError,
 )
+from architecture_toolkit.queries.execution import QueryResult, execute
+from architecture_toolkit.queries.recipes import (
+    RECIPES,
+    ColumnSpec,
+    ParameterSpec,
+    QueryRecipe,
+    TableInput,
+    recipe_for,
+)
 
 __all__ = [
+    "RECIPES",
+    "ColumnSpec",
     "ComparisonContext",
     "GraphError",
     "ParameterError",
+    "ParameterSpec",
     "PolicyError",
     "QueryError",
+    "QueryRecipe",
+    "QueryResult",
     "RecipeError",
     "ReleaseContext",
     "ReleaseScope",
     "ResultContractError",
     "Side",
+    "TableInput",
     "UnknownPolicyError",
     "UnknownRecipeError",
+    "execute",
+    "recipe_for",
 ]

@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:architecture-toolkit:query-contract:v1",
+  "title": "Query parameters and results",
+  "description": "A versioned query recipe: what it asks, which tables and release context it needs, the parameters it binds and the result schema it promises (DATA-48).",
+  "x-toolkit": {
+    "family": "query-contract",
+    "version": 1,
+    "requirements": [
+      "CORE-12",
+      "DATA-48"
+    ]
+  },
+  "$ref": "#/$defs/QueryRecipe",
+  "$defs": {
+    "ColumnSpec": {
+      "additionalProperties": false,
+      "description": "One column of a recipe's declared result.",
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "data_type": {
+          "enum": [
+            "string",
+            "integer",
+            "boolean",
+            "instant",
+            "day"
+          ],
+          "title": "Data Type",
+          "type": "string"
+        },
+        "nullable": {
+          "default": true,
+          "title": "Nullable",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name",
+        "data_type"
+      ],
+      "title": "ColumnSpec",
+      "type": "object"
+    },
+    "ParameterSpec": {
+      "additionalProperties": false,
+      "description": "One runtime scalar, bound as `$name` (DATA-18).",
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "data_type": {
+          "enum": [
+            "string",
+            "integer",
+            "boolean",
+            "instant",
+            "day"
+          ],
+          "title": "Data Type",
+          "type": "string"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "data_type",
+        "purpose"
+      ],
+      "title": "ParameterSpec",
+      "type": "object"
+    },
+    "QueryRecipe": {
+      "additionalProperties": false,
+      "description": "A versioned architecture question with a declared parameter and result contract.",
+      "properties": {
+        "query_recipe_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Query Recipe Id",
+          "type": "string"
+        },
+        "query_recipe_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Query Recipe Version",
+          "type": "string"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "release_context": {
+          "enum": [
+            "single",
+            "comparison"
+          ],
+          "title": "Release Context",
+          "type": "string"
+        },
+        "inputs": {
+          "items": {
+            "$ref": "#/$defs/TableInput"
+          },
+          "minItems": 1,
+          "title": "Inputs",
+          "type": "array"
+        },
+        "parameters": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ParameterSpec"
+          },
+          "title": "Parameters",
+          "type": "array"
+        },
+        "output_schema": {
+          "items": {
+            "$ref": "#/$defs/ColumnSpec"
+          },
+          "minItems": 1,
+          "title": "Output Schema",
+          "type": "array"
+        },
+        "sql": {
+          "minLength": 1,
+          "title": "Sql",
+          "type": "string"
+        },
+        "traversal_policy_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Traversal Policy Id"
+        },
+        "qualification_cases": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Qualification Cases",
+          "type": "array"
+        }
+      },
+      "required": [
+        "query_recipe_id",
+        "query_recipe_version",
+        "purpose",
+        "release_context",
+        "inputs",
+        "output_schema",
+        "sql",
+        "qualification_cases"
+      ],
+      "title": "QueryRecipe",
+      "type": "object"
+    },
+    "TableInput": {
+      "additionalProperties": false,
+      "description": "A table this recipe reads, and which side it reads it from (DATA-47).\n\n`side` is `None` for a single-release recipe. A comparison recipe names its sides explicitly\nso the declaration says which release each input comes from, rather than leaving a reader to\ninfer it from the SQL.",
+      "properties": {
+        "table_id": {
+          "pattern": "^[a-z][a-z0-9_]{2,63}$",
+          "title": "Table Id",
+          "type": "string"
+        },
+        "side": {
+          "anyOf": [
+            {
+              "enum": [
+                "base",
+                "candidate"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Side"
+        }
+      },
+      "required": [
+        "table_id"
+      ],
+      "title": "TableInput",
+      "type": "object"
+    }
+  }
+}

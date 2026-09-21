@@ -44,6 +44,7 @@ from architecture_toolkit.domain.model import Element, Interaction, Model, Relat
 from architecture_toolkit.domain.notation import NotationBinding
 from architecture_toolkit.domain.references import Reference, ReferenceLink
 from architecture_toolkit.domain.registry import Profile
+from architecture_toolkit.queries.recipes import QueryRecipe
 from architecture_toolkit.releases.manifest import ArchitectureRelease
 from architecture_toolkit.validation.claims import ValidationClaimReport
 from architecture_toolkit.validation.diagnostics import Diagnostic
@@ -157,12 +158,13 @@ SCHEMA_FAMILIES: tuple[SchemaFamily, ...] = (
         family_id="query-contract",
         version=1,
         title="Query parameters and results",
-        description="Declared now; release-scoped query recipes arrive with the query layer.",
+        description=(
+            "A versioned query recipe: what it asks, which tables and release context it needs, "
+            "the parameters it binds and the result schema it promises (DATA-48)."
+        ),
         path="schemas/query-contract.schema.json",
-        requirements=frozenset({"CORE-12"}),
-        roots=(),
-        deferred_to="W5",
-        blocked_on="DATA-15, DATA-16",
+        requirements=frozenset({"CORE-12", "DATA-48"}),
+        roots=(QueryRecipe,),
     ),
 )
 
