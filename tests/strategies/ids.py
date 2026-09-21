@@ -48,6 +48,7 @@ STRATEGY_BY_ALIAS: dict[str, st.SearchStrategy[Any]] = {
     "ElementId": identifiers_,
     "ExtensionNamespace": extension_namespaces,
     "InteractionId": identifiers_,
+    "LayoutProfileId": identifiers_,
     "LayoutDigest": digests,
     "LinkId": identifiers_,
     "ModelId": identifiers_,

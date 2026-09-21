@@ -36,6 +36,7 @@ __all__ = [
     "ExtensionNamespace",
     "InteractionId",
     "LayoutDigest",
+    "LayoutProfileId",
     "LinkId",
     "ModelId",
     "NotationObjectId",
@@ -107,6 +108,7 @@ ChangeSetId = Annotated[str, _Identifier]
 # no comparable objects.
 ScenarioId = Annotated[str, _Identifier]
 ViewId = Annotated[str, _Identifier]
+LayoutProfileId = Annotated[str, _Identifier]
 ArtifactId = Annotated[str, _Identifier]
 RuleId = Annotated[str, _Identifier]
 QueryRecipeId = Annotated[str, _Identifier]
