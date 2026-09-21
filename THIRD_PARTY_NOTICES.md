@@ -10,6 +10,11 @@ notice files when packaging an export or a future installer.
 - Structurizr: consult the selected distribution and component licenses. The free
   validate/export functionality is used; commercial server features are outside setup.
 - OMG BPMN schemas: consult OMG's specification and schema terms before redistribution.
+- Open Group ArchiMate Model Exchange File Format schemas: Copyright The Open Group;
+  ArchiMate is a registered trademark of The Open Group. Downloaded from opengroup.org,
+  never vendored into this repository. Consult The Open Group's terms before redistribution.
+- W3C xml.xsd: required by the ArchiMate schemas, which import it by absolute URL.
+  Under the W3C Document/Software notices; downloaded, not redistributed.
 - Graphviz and optional bpmn-js/Kroki: separately installed, with their respective licenses.
 
 Public reference links are citations, not license grants. No license is yet selected for
