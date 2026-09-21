@@ -87,6 +87,17 @@ class SourceBundle(ManifestRecord):
     digest: Digest
     revision: str | None = None
     snapshot_path: str | None = None
+    """Where the preserved copy lives, **relative to the store root**, or `None` if none was
+    kept. Relative for the same reason `TableRef.uri` is: a milestone archive that is supposed to
+    be self-contained would otherwise be quietly bound to the machine that wrote it."""
+
+    @field_validator("snapshot_path")
+    @classmethod
+    def snapshot_path_is_relative(cls, value: str | None) -> str | None:
+        if value is not None and (value.startswith("/") or ":" in value.split("/")[0]):
+            message = f"snapshot_path {value!r} must be relative to the store root"
+            raise ValueError(message)
+        return value
 
 
 class GeneratorProvenance(ManifestRecord):

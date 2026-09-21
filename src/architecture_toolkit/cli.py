@@ -15,7 +15,7 @@ from architecture_toolkit.releases.errors import (
     UnknownReleaseError,
 )
 from architecture_toolkit.releases.manifest import ArchitectureRelease
-from architecture_toolkit.releases.provenance import source_bundle
+from architecture_toolkit.releases.provenance import source_bundle, source_revision
 from architecture_toolkit.releases.publication import PublicationRequest, publish
 from architecture_toolkit.releases.retention import probe_readability, vacuum_table
 from architecture_toolkit.releases.store import DEFAULT_STORE_ROOT, ReleaseStore
@@ -59,6 +59,11 @@ def main() -> int:
         help="The release the candidate was built against; omit only for the first release.",
     )
     release.add_argument("--release-id", help="Defaults to the next rel-NNNN in the store.")
+    release.add_argument(
+        "--no-source-snapshot",
+        action="store_true",
+        help="Do not copy the source into the release; pin only its revision and digest.",
+    )
 
     listing = sub.add_parser("releases", help="List published releases and whether they resolve")
     listing.add_argument("--store", type=Path, default=DEFAULT_STORE_ROOT)
@@ -114,6 +119,7 @@ def main() -> int:
             store_root=args.store,
             expected_parent=args.expect_parent,
             release_id=args.release_id,
+            preserve_source=not args.no_source_snapshot,
         )
 
     if args.command == "releases":
@@ -200,6 +206,7 @@ def _publish(
     store_root: Path,
     expected_parent: object,
     release_id: str | None,
+    preserve_source: bool = True,
 ) -> int:
     """Validate a source, then publish it as the next release of its model."""
     try:
@@ -232,7 +239,9 @@ def _publish(
     candidate = ReleaseCandidate(
         release_id=release_id or next_release_id(store.release_ids()),
         model=result.model,
-        source_bundle=source_bundle(source_id=str(source), text=text),
+        source_bundle=source_bundle(
+            source_id=str(source), text=text, revision=source_revision(source)
+        ),
     )
     try:
         manifest = publish(
@@ -240,6 +249,8 @@ def _publish(
                 store=store,
                 candidate=candidate,
                 expected_parent=parent,
+                source_text=text,
+                preserve_source=preserve_source,
                 attempt=len(store.release_ids()) + 1,
             )
         )

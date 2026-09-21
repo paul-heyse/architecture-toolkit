@@ -35,6 +35,7 @@ __all__ = [
     "digest_bytes",
     "generator_provenance",
     "source_bundle",
+    "source_revision",
     "toolkit_commit",
 ]
 
@@ -82,6 +83,33 @@ def toolkit_commit(root: Path | None = None) -> str:
         return _UNKNOWN_COMMIT
     revision = completed.stdout.strip()
     return revision if completed.returncode == 0 and revision else _UNKNOWN_COMMIT
+
+
+def source_revision(path: Path) -> str | None:
+    """The commit that last changed this file, or `None` when there is not one.
+
+    `None` is the honest answer in three different situations and the caller treats them alike:
+    the file is untracked, the directory is not a checkout, or git is absent. DATA-37 is about
+    what a revision *means* — where one exists it identifies a version, and where one does not a
+    mutable path does not become one by being written down.
+
+    Same argv discipline as `toolkit_commit`: an array, never a shell string, with a timeout and
+    a fallback rather than an exception.
+    """
+    command = ["git", "log", "-1", "--format=%H", "--", path.name]
+    try:
+        completed = subprocess.run(  # noqa: S603
+            command,
+            cwd=path.parent if path.parent.exists() else None,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+    except OSError, subprocess.SubprocessError:
+        return None
+    revision = completed.stdout.strip()
+    return revision if completed.returncode == 0 and revision else None
 
 
 def generator_provenance(*, commit: str | None = None) -> GeneratorProvenance:

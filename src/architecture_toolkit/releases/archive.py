@@ -101,10 +101,23 @@ def write_archive(
         )
 
     snapshot = manifest.source_bundle.snapshot_path
-    if snapshot is not None and Path(snapshot).is_file():
-        target = root / _SOURCES / Path(snapshot).name
-        shutil.copyfile(snapshot, target)
-        contents[f"{_SOURCES}/{target.name}"] = digest_bytes(target.read_bytes())
+    if snapshot is not None:
+        # Resolved through the store, because the manifest records where the copy lives relative
+        # to the store root rather than where it happened to be on the machine that wrote it.
+        preserved = store.resolve(snapshot)
+        if not preserved.is_file():
+            message = f"{manifest.release_id} pins a source snapshot that is not there: {snapshot}"
+            raise ArchiveError(message)
+        target = root / _SOURCES / preserved.name
+        shutil.copyfile(preserved, target)
+        digest = digest_bytes(target.read_bytes())
+        if digest != manifest.source_bundle.digest:
+            message = (
+                f"the preserved source for {manifest.release_id} does not match the digest the "
+                "manifest pins; the archive would claim provenance it cannot support"
+            )
+            raise ArchiveError(message)
+        contents[f"{_SOURCES}/{target.name}"] = digest
 
     index = {
         "archive_version": 1,

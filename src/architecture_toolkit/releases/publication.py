@@ -26,6 +26,7 @@ layer, which is what DATA-20 insists this is.
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Final
 
 from architecture_toolkit.domain.commands import ChangeSet, build_candidate
@@ -40,7 +41,7 @@ from architecture_toolkit.releases.errors import (
     StaleParentError,
 )
 from architecture_toolkit.releases.lock import publication_lock
-from architecture_toolkit.releases.manifest import ArchitectureRelease
+from architecture_toolkit.releases.manifest import ArchitectureRelease, SourceBundle
 from architecture_toolkit.releases.provenance import digest_bytes, generator_provenance
 from architecture_toolkit.releases.reader import read_model, read_table_set
 from architecture_toolkit.releases.staging import StagedTable, stage_tables
@@ -84,11 +85,23 @@ class PublicationRequest:
     store: ReleaseStore
     candidate: ReleaseCandidate
     expected_parent: ReleaseId | None
+    source_text: str | None = None
+    """The exact text the candidate was parsed from, so step seven can preserve it without
+    re-reading a file that may have changed since. `None` means there is nothing to preserve —
+    a model built in process rather than authored."""
+
     change_set: ChangeSet | None = None
     profile: Profile = BASELINE_PROFILE
     attempt: int | None = None
     now: Clock = _now
     generator_commit: str | None = None
+    preserve_source: bool = True
+    """Copy the authored source into the release's artifacts (DATA-37, DATA-25).
+
+    On by default because a milestone archive is supposed to be readable without the repository
+    it came from, and a git revision does not help there. Off is the "authorized snapshot" case:
+    DATA-37's wording implies some sources must not be copied, and a caller that knows that has
+    to be able to say so."""
 
     @property
     def publication_attempt_id(self) -> str:
@@ -293,17 +306,41 @@ def publish_immutable_manifest(state: PublicationState) -> PublicationState:
     """
     store = state.store
     manifest = state.require_manifest()
+    artifact = store.artifact_dir(manifest.release_id)
+
     report = state.report
     if report is not None:
-        artifact = store.artifact_dir(manifest.release_id)
         artifact.mkdir(parents=True, exist_ok=True)
         payload = report.model_dump_json(indent=2) + "\n"
         (artifact / "validation-report.json").write_text(payload, encoding="utf-8")
         manifest = manifest.model_validate(
             dict(manifest) | {"validation_report_digest": digest_bytes(payload.encode("utf-8"))}
         )
+
+    if state.request.preserve_source and state.request.source_text is not None:
+        manifest = manifest.model_validate(
+            dict(manifest)
+            | {"source_bundle": _preserve_source(store, manifest, state.request.source_text)}
+        )
+
     store.write_manifest(manifest)
     return replace(state, manifest=manifest)
+
+
+def _preserve_source(store: ReleaseStore, manifest: ArchitectureRelease, text: str) -> SourceBundle:
+    """Write the authored source beside the release and pin where it went.
+
+    The caller supplies the revision, because it knows where the source came from; publication
+    writes the copy, because only it knows the store layout. The path recorded is relative to the
+    store root, so the manifest keeps meaning something after the store is copied.
+    """
+    bundle = manifest.source_bundle
+    name = Path(bundle.source_id).name or "source"
+    relative = f"artifacts/{manifest.release_id}/source/{name}"
+    target = store.resolve(relative)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(text, encoding="utf-8")
+    return bundle.model_validate(dict(bundle) | {"snapshot_path": relative})
 
 
 def move_current_pointer(state: PublicationState) -> PublicationState:
