@@ -1,9 +1,13 @@
-"""Every field a query record declares is read somewhere (CORE-26, DATA-48).
+"""Every field a query or change record declares is read somewhere (CORE-26, DATA-48, DATA-26).
 
 `Relationship.context_id` has been declared, mapped to Arrow, round-tripped and written by nothing
 since W1 — a field that looks like it does something and does not. W5 shipped a second one:
 `GraphPolicy.cycle_handling`, set to `REPORT` on a policy and branched on by no code at all. The
 first was inherited; the second was introduced by the wave that noticed the first.
+
+W6's records are held to the same standard, which is what makes this the guard for the class
+rather than for the instance: an `ArchitectureChangeSet` field that nothing reads would be the
+third instance of exactly this, in the third wave running.
 
 So this is the guard for the class rather than for the instance. It scans the package's syntax tree
 for attribute reads and asserts every declared field name appears among them, with an explicit
@@ -16,10 +20,15 @@ that actually happens.
 """
 
 import ast
+from dataclasses import fields
 from pathlib import Path
 
 import pytest
+from pydantic import BaseModel
 
+from architecture_toolkit.changes.kinds import ChangeRule
+from architecture_toolkit.changes.record import ArchitectureChangeSet, Authorship, Review
+from architecture_toolkit.changes.records import FieldChange, ModelChanges, RecordChange
 from architecture_toolkit.queries.policy import GraphPolicy
 from architecture_toolkit.queries.recipes import ParameterSpec, QueryRecipe
 from architecture_toolkit.queries.results import GraphPathResult, TraversalResult
@@ -47,10 +56,22 @@ def attribute_reads(root: Path) -> set[str]:
 @pytest.mark.requirement("CORE-26", "DATA-48")
 @pytest.mark.parametrize(
     "record",
-    [GraphPolicy, QueryRecipe, ParameterSpec, GraphPathResult, TraversalResult],
+    [
+        GraphPolicy,
+        QueryRecipe,
+        ParameterSpec,
+        GraphPathResult,
+        TraversalResult,
+        ArchitectureChangeSet,
+        Authorship,
+        Review,
+        ModelChanges,
+        RecordChange,
+        FieldChange,
+    ],
     ids=lambda record: record.__name__,
 )
-def test_every_declared_field_is_read_somewhere(record: type) -> None:
+def test_every_declared_field_is_read_somewhere(record: type[BaseModel]) -> None:
     read = attribute_reads(PACKAGE)
     declared = set(record.model_fields)
 
@@ -78,3 +99,18 @@ def test_the_scan_would_catch_a_field_nothing_reads() -> None:
     read = attribute_reads(PACKAGE)
 
     assert "sanctimonious_field_nobody_reads" not in read
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("CORE-26", "DATA-26")
+def test_the_change_rule_dataclass_is_held_to_the_same_standard() -> None:
+    """`ChangeRule` is a dataclass rather than a Pydantic record, so the scan above skips it.
+
+    It is the table's value type, and a declared-and-unread field there would be the same defect
+    wearing a different base class — `GraphPolicy.cycle_handling` was exactly that.
+    """
+    read = attribute_reads(PACKAGE)
+    declared = {field.name for field in fields(ChangeRule)}
+
+    unread = sorted(declared - read)
+    assert not unread, f"ChangeRule declares {unread}, which nothing in the package reads"

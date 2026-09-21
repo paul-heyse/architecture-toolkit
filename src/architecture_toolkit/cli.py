@@ -7,6 +7,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from architecture_toolkit.changes.alternatives import compare_alternative
 from architecture_toolkit.changes.audit import compared_tables, storage_disagreements
 from architecture_toolkit.changes.errors import ChangeError
 from architecture_toolkit.changes.operations import ArchitectureOperations
@@ -238,6 +239,24 @@ def main() -> int:
     )
     difference.add_argument("--format", choices=("human", "json"), default="human")
 
+    comparison = sub.add_parser(
+        "compare", help="Compare a design alternative with the baseline it declares"
+    )
+    comparison.add_argument("--baseline", required=True, help="A release on the baseline line")
+    comparison.add_argument("--alternative", required=True, help="A release on a scenario line")
+    comparison.add_argument(
+        "--store", type=Path, default=DEFAULT_STORE_ROOT, help="Where the alternative lives"
+    )
+    comparison.add_argument(
+        "--baseline-store",
+        type=Path,
+        help=(
+            "Where the baseline lives. Defaults to --store; an alternative is usually published "
+            "into its own store root, because one store has one current pointer."
+        ),
+    )
+    comparison.add_argument("--format", choices=("human", "json"), default="human")
+
     reviewing = sub.add_parser("review", help="Record a decision on a change report")
     reviewing.add_argument("change_report", type=Path, help="A change report written by `diff`")
     reviewing.add_argument(
@@ -390,6 +409,16 @@ def main() -> int:
             candidate=args.candidate,
             include_presentation=args.include_presentation,
             cross_check=args.cross_check,
+            output=args.format,
+        )
+
+    if args.command == "compare":
+        return _compare(
+            parser,
+            baseline_id=args.baseline,
+            alternative_id=args.alternative,
+            store_root=args.store,
+            baseline_store_root=args.baseline_store or args.store,
             output=args.format,
         )
 
@@ -1169,22 +1198,59 @@ def _change(
 
     report = operations.validate(candidate)
     changes = operations.diff(baseline, candidate)
+    record = operations.change_set(
+        change_set_id=change_set.change_set_id,
+        changes=changes,
+        authored_by=_CLI_AUTHOR,
+        base_release_id=operations.manifest(release_id).release_id,
+        command_change_set_id=change_set.change_set_id,
+        validation=report,
+        impact=operations.impact(changes),
+    )
     if output == "json":
-        print(
-            operations.change_set(
-                change_set_id=change_set.change_set_id,
-                changes=changes,
-                authored_by=_CLI_AUTHOR,
-                base_release_id=operations.manifest(release_id).release_id,
-                command_change_set_id=change_set.change_set_id,
-                validation=report,
-                impact=operations.impact(changes),
-            ).model_dump_json(indent=2)
-        )
+        print(record.model_dump_json(indent=2))
     else:
+        _print_provenance(record)
         _print_changes(changes, include_presentation=True)
+        _print_impact(record)
         print(render_report(report, source=str(change_set_path)))
     return EXIT_DIAGNOSTICS if report.hard_errors else EXIT_OK
+
+
+def _print_provenance(record: ArchitectureChangeSet) -> None:
+    """Who, why and against what — the half of DATA-26 that is not the diff.
+
+    Printed rather than only serialized, because a field an operator never sees is a field nobody
+    can act on, and "recorded" is not the same as "recorded and read".
+    """
+    who = record.authored_by
+    origin = f" via {who.tool}" if who.tool else ""
+    print(f"{record.change_set_id}  by {who.author_id} ({who.author_kind.value}{origin})")
+    if record.command_change_set_id is not None:
+        print(f"  applying change set {record.command_change_set_id}")
+    against = record.base_release_id or "no baseline"
+    print(f"  against {against} -> {record.new_release_id or 'not yet published'}")
+    if record.rationale:
+        print(f"  rationale: {record.rationale}")
+    if record.decision_references:
+        print(f"  decisions: {', '.join(record.decision_references)}")
+    if record.review is not None:
+        review = record.review
+        print(
+            f"  review: {review.decision.value} by {review.reviewer.author_id} "
+            f"at {review.reviewed_at.isoformat()}"
+        )
+
+
+def _print_impact(record: ArchitectureChangeSet) -> None:
+    """What each changed object reaches, under the policy the change layer declares (CORE-30)."""
+    if not record.impact:
+        return
+    print(f"  -- impact, under {record.impact[0].policy_id} --")
+    for result in record.impact:
+        reached = result.reached
+        suffix = " (truncated)" if result.truncated else ""
+        print(f"      {result.start} reaches {len(reached)} object(s){suffix}")
 
 
 def _diff(
@@ -1265,6 +1331,53 @@ def _print_changes(changes: ModelChanges, *, include_presentation: bool) -> None
                 )
 
 
+def _compare(
+    parser: argparse.ArgumentParser,
+    *,
+    baseline_id: str,
+    alternative_id: str,
+    store_root: Path,
+    baseline_store_root: Path,
+    output: str,
+) -> int:
+    """Compare an alternative with its baseline, which is not a diff (DATA-28).
+
+    A separate verb rather than a flag on `diff`, because the two return different types on
+    purpose: an `AlternativeComparison` is not a `ModelChanges` and cannot be published as a change
+    set. Folding them into one command would put that distinction back into a caller's memory,
+    which is where it was before this wave.
+    """
+    baseline_store = _store_at(baseline_store_root)
+    alternative_store = _store_at(store_root)
+    try:
+        comparison = compare_alternative(
+            baseline_store.read_manifest(baseline_id),
+            alternative_store.read_manifest(alternative_id),
+            baseline_store=baseline_store,
+            alternative_store=alternative_store,
+        )
+    except (ChangeError, ReleaseError, UnknownReleaseError) as refused:
+        parser.exit(EXIT_USAGE, f"{refused.args[0]}\n")
+        return EXIT_USAGE
+    if output == "json":
+        print(comparison.model_dump_json(indent=2))
+        return EXIT_OK
+    print(
+        f"{comparison.baseline_release_id} (baseline) vs "
+        f"{comparison.alternative_release_id} (alternative {comparison.scenario_id})"
+    )
+    print("  an alternative is a candidate design, not a revision; neither supersedes the other")
+    if comparison.is_identical:
+        print("  the alternative differs from its baseline in nothing")
+        return EXIT_OK
+    for record in comparison.differences:
+        kinds = ", ".join(kind.value for kind in record.kinds)
+        print(f"  {record.collection}.{record.identity}  {kinds}")
+        for field_change in record.fields:
+            print(f"      {field_change.field_path}: {field_change.before} -> {field_change.after}")
+    return EXIT_OK
+
+
 def _review(
     parser: argparse.ArgumentParser,
     report_path: Path,
@@ -1288,7 +1401,8 @@ def _review(
     )
     destination = into or report_path
     destination.write_text(reviewed.model_dump_json(indent=2))
-    print(f"{reviewed.change_set_id}: {decision} by {reviewer} -> {destination}")
+    _print_provenance(reviewed)
+    print(f"  written to {destination}")
     return EXIT_OK
 
 

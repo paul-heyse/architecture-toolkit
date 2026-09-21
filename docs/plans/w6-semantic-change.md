@@ -181,6 +181,24 @@ rather than quietly worked around:
   the four classifications are pairwise distinct **and** pins the expected value of each, because
   distinctness alone is satisfiable by four residuals with different paths.
 
+### Found by the wave's own guards, after it was otherwise complete
+
+Three defects, all of the class the last two hardening passes were spent on, all caught by guards
+rather than by reading:
+
+- **Eight fields of the change record were written and read by nothing.** `authored_by`,
+  `rationale`, `decision_references`, `command_change_set_id` and the whole of `Authorship` were
+  serialized and never shown, which is "recorded" without "recorded and read" — an operator could
+  not act on any of them. `tests/unit/test_declared_fields_are_read.py` was extended to the change
+  records and failed immediately. They are printed now, and asserted.
+- **`compare_alternative` had no operator path.** DATA-28's central operation was a library
+  function reachable only from tests — `apply_constraints` and `find_unverified_dependencies`
+  again, in the third wave running. `architecture compare` is the fix, a separate verb rather than
+  a flag on `diff` because the two return different types on purpose.
+- **A property test had a branch that asserted nothing.** The alias case guarded its assertions
+  behind `if victim.aliases != drawn`, so roughly half the generated runs proved nothing. Both
+  branches assert now; `event()` reports the split at 44/44.
+
 ## Known state carried forward
 
 - **Four of the seven natures have little or no data behind them.** `LAYOUT_ONLY` has two fields

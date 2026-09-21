@@ -124,10 +124,16 @@ def test_an_alias_edit_moves_no_digest_and_is_still_reported(data: st.DataObject
     assert model_digest(baseline) == model_digest(candidate)
     assert record_digest(victim) == record_digest(relabelled)
     assert field_changes("elements", victim.element_id, victim, relabelled) == ()
-    if victim.aliases != (renamed_label,):
-        reported = presentation_changes("elements", victim.element_id, victim, relabelled)
+    # Both branches assert. Hypothesis can draw the alias the element already had, and a guarded
+    # body that simply skips in that case is a branch where the property proves nothing — which is
+    # the shape two earlier hardening passes were spent removing.
+    reported = presentation_changes("elements", victim.element_id, victim, relabelled)
+    assert changes.narrative == ()
+    if victim.aliases == (renamed_label,):
+        assert reported == ()
+        assert changes.is_empty
+    else:
         assert [change.field_path for change in reported] == ["aliases"]
-        assert changes.narrative == ()
         assert len(changes.presentation) == 1
 
 

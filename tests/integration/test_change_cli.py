@@ -114,6 +114,13 @@ def test_change_previews_without_writing_anything(
     assert store.release_ids() == before
     assert store.current_id() == "rel-0001"
 
+    # DATA-26's other half: who, why and against what. A field an operator never sees is a field
+    # nobody can act on, so the provenance is printed and asserted rather than only serialized.
+    assert "by architecture-cli (agent via architecture-toolkit)" in printed
+    assert "applying change set cs-0001" in printed
+    assert "against rel-0001 -> not yet published" in printed
+    assert "impact, under impact.structural" in printed
+
 
 @pytest.mark.integration
 @pytest.mark.requirement("DATA-38", "DATA-26", "CORE-12")
@@ -339,7 +346,9 @@ def test_review_records_a_decision_on_a_change_report(
         == EXIT_OK
     )
 
-    assert "approved by paul" in capsys.readouterr().out
+    printed = capsys.readouterr().out
+    assert "review: approved by paul at " in printed
+    assert "rationale" not in printed, "this change set carries none, so none is claimed"
     reviewed = json.loads(report.read_text())
     assert reviewed["review"]["decision"] == "approved"
     assert reviewed["review"]["reviewer"]["author_id"] == "paul"
@@ -476,3 +485,145 @@ def test_verify_reports_an_alternative_positioned_as_a_revision(
 
     printed = capsys.readouterr().out
     assert "CORE.RELEASE.ALTERNATIVE_LINE_BROKEN" in printed
+
+
+# -- compare (DATA-28) --------------------------------------------------------------------------
+
+
+def publish_alternative(root: Path, scenario: str = "alt-thinner-api") -> ReleaseStore:
+    """An alternative in its own store root, which is the separation `--store` already provides."""
+    from architecture_toolkit.domain.authoring import parse_model, parse_source
+    from architecture_toolkit.releases.candidate import ReleaseCandidate
+    from architecture_toolkit.releases.provenance import source_bundle
+    from architecture_toolkit.releases.publication import PublicationRequest, publish
+    from tests.integration.conftest import MOMENT
+
+    store = ReleaseStore.at(root).initialize()
+    text = (ROOT / "examples" / "minimal" / "model.yaml").read_text()
+    thinner = text.replace("timeout_ms: 30000", "timeout_ms: 5000")
+    publish(
+        PublicationRequest(
+            store=store,
+            candidate=ReleaseCandidate(
+                release_id="rel-0001",
+                model=parse_model(parse_source(thinner, source_id="alt")),
+                source_bundle=source_bundle(source_id="alt", text=thinner),
+                scenario_id=scenario,
+                baseline_release_id="rel-0001",
+            ),
+            expected_parent=None,
+            now=lambda: MOMENT,
+            generator_commit="abc1234",
+        )
+    )
+    return store
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("DATA-28")
+def test_compare_explains_an_alternative_without_calling_it_a_change(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    published: Path,
+    tmp_path: Path,
+) -> None:
+    """DATA-28's comparison needs an operator path, or it is a library function nobody can reach."""
+    alternative = publish_alternative(tmp_path / "alternative")
+
+    assert (
+        run(
+            monkeypatch,
+            "compare",
+            "--baseline",
+            "rel-0001",
+            "--alternative",
+            "rel-0001",
+            "--store",
+            str(alternative.root),
+            "--baseline-store",
+            str(published),
+        )
+        == EXIT_OK
+    )
+
+    printed = capsys.readouterr().out
+    assert "alternative alt-thinner-api" in printed
+    assert "not a revision; neither supersedes the other" in printed
+    assert "elements.interface-1  interface_contract_changed" in printed
+    assert "detail.timeout_ms: 30000 -> 5000" in printed
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("DATA-28", "CORE-12")
+def test_compare_json_is_an_alternative_comparison_and_not_a_change_set(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    published: Path,
+    tmp_path: Path,
+) -> None:
+    """The type-level separation, at the surface where somebody might try to publish the output."""
+    import jsonschema
+
+    alternative = publish_alternative(tmp_path / "alternative")
+    assert (
+        run(
+            monkeypatch,
+            "compare",
+            "--baseline",
+            "rel-0001",
+            "--alternative",
+            "rel-0001",
+            "--store",
+            str(alternative.root),
+            "--baseline-store",
+            str(published),
+            "--format",
+            "json",
+        )
+        == EXIT_OK
+    )
+    payload = json.loads(capsys.readouterr().out)
+
+    contract = json.loads(CONTRACT.read_text(encoding="utf-8"))
+    jsonschema.validate(
+        payload,
+        {
+            "$schema": contract["$schema"],
+            "$defs": contract["$defs"],
+            "$ref": "#/$defs/AlternativeComparison",
+        },
+    )
+    assert payload["scenario_id"] == "alt-thinner-api"
+    assert "narrative" not in payload
+    assert "change_set_id" not in payload
+
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(
+            payload,
+            {
+                "$schema": contract["$schema"],
+                "$defs": contract["$defs"],
+                "$ref": "#/$defs/ArchitectureChangeSet",
+            },
+        )
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("DATA-28")
+def test_compare_refuses_two_releases_on_the_baseline_line(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], two_releases: Path
+) -> None:
+    """The inverse of `diff` refusing a cross-line pair; both directions or neither."""
+    with pytest.raises(SystemExit):
+        run(
+            monkeypatch,
+            "compare",
+            "--baseline",
+            "rel-0001",
+            "--alternative",
+            "rel-0002",
+            "--store",
+            str(two_releases),
+        )
+
+    assert "is not an alternative" in capsys.readouterr().err
