@@ -22,6 +22,12 @@ from architecture_toolkit.changes.classification import (
     presence_rule_for,
     rule_for,
 )
+from architecture_toolkit.changes.diff import (
+    PRESENTATION_FIELDS,
+    field_changes,
+    model_changes,
+    presentation_changes,
+)
 from architecture_toolkit.changes.errors import (
     ChangeError,
     ClassificationError,
@@ -36,13 +42,16 @@ from architecture_toolkit.changes.kinds import (
     ChangeKind,
     ChangeNature,
     ChangeRule,
+    Traversal,
 )
+from architecture_toolkit.changes.records import FieldChange, ModelChanges, RecordChange
 
 __all__ = [
     "CHANGE_CLASSIFICATION",
     "NARRATIVE_NATURES",
     "NEVER_EMITTED",
     "PRESENCE_RULES",
+    "PRESENTATION_FIELDS",
     "UNREACHABLE_NATURES",
     "ChangeError",
     "ChangeKind",
@@ -50,8 +59,15 @@ __all__ = [
     "ChangeRule",
     "ClassificationError",
     "DiffError",
+    "FieldChange",
     "LineageError",
+    "ModelChanges",
+    "RecordChange",
     "ReviewError",
+    "Traversal",
+    "field_changes",
+    "model_changes",
     "presence_rule_for",
+    "presentation_changes",
     "rule_for",
 ]

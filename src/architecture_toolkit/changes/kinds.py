@@ -39,6 +39,7 @@ __all__ = [
     "ChangeKind",
     "ChangeNature",
     "ChangeRule",
+    "Traversal",
 ]
 
 
@@ -184,6 +185,10 @@ class ChangeKind(StrEnum):
     REPORTED_AS_A_WHOLE = "reported_as_a_whole"
     # Stamped by `stamp_digests`, stripped by `normalize_record` at every depth.
     DIGEST_RESTAMPED = "digest_restamped"
+    # A field whose children carry the change: `Element.status`, `InterfaceDetail.transport`, an
+    # identity-keyed collection of records. Reporting "status changed" instead of
+    # "status.technical_qualification changed" would re-collapse the axis DATA-29 separates.
+    CONTAINER = "container"
 
     # -- the residual -------------------------------------------------------------------------
     # `Reference.authority`, `InterfaceDetail.idempotency_description` and their kind have no
@@ -192,6 +197,24 @@ class ChangeKind(StrEnum):
     # rather than silently invisible, and that `tests/unit/test_change_classification.py` pins
     # both a ceiling on its size and a list of fields that must never reach it.
     FIELD_MODIFIED = "field_modified"
+
+
+class Traversal(StrEnum):
+    """Whether the differ reports a field here, descends through it, or can never see it.
+
+    Declared beside the classification rather than inferred, because inference is where a walk
+    quietly stops descending and the table quietly agrees with it. `COLLECTION_ORDER` cannot
+    answer this — it knows nothing about `Element.status` or `InterfaceDetail.transport`, neither
+    of which is a tuple — so a second table would have been the alternative, and a second table
+    drifts from the first.
+    """
+
+    LEAF = "leaf"
+    DESCEND = "descend"
+    # Structurally cannot differ between two versions of the same record — an identity or match
+    # key — or is never reached because its parent is a leaf. The differ raises rather than
+    # emitting, so "never emitted" is enforced instead of asserted.
+    NEVER = "never"
 
 
 @dataclass(frozen=True, slots=True)
@@ -209,6 +232,7 @@ class ChangeRule:
 
     kind: ChangeKind
     nature: ChangeNature
+    traversal: Traversal = Traversal.LEAF
     refine: tuple[tuple[str, ChangeKind], ...] = ()
 
     def resolve(self, after: object) -> ChangeKind:
@@ -229,6 +253,7 @@ NEVER_EMITTED: Final[frozenset[ChangeKind]] = frozenset(
         ChangeKind.RECORD_IDENTITY,
         ChangeKind.REPORTED_AS_A_WHOLE,
         ChangeKind.DIGEST_RESTAMPED,
+        ChangeKind.CONTAINER,
     }
 )
 """Kinds that exist so their fields are classified, and that no field change may carry.

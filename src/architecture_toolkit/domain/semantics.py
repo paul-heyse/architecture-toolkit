@@ -57,6 +57,7 @@ __all__ = [
     "CollectionPolicy",
     "SemanticDelta",
     "canonical_json",
+    "canonical_value",
     "collection_digest",
     "model_digest",
     "normalize_record",
@@ -141,7 +142,13 @@ _MODEL_COLLECTIONS: Final[tuple[tuple[str, str], ...]] = tuple(
 # -- normalization -------------------------------------------------------------------------------
 
 
-def _canonical(value: object) -> str:
+def canonical_value(value: object) -> str:
+    """The canonical JSON spelling of one normalized value.
+
+    Public because W6's field diff renders the before and after of a change, and rendering them
+    any other way would be a second canonicalization — two spellings of the same value that agree
+    today and would eventually disagree about something the digest cares about.
+    """
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
@@ -150,8 +157,8 @@ def _sort_key(order: CollectionOrder) -> Callable[[object], tuple[str, ...]]:
         parts: list[str] = []
         if isinstance(item, dict):
             for name in order.key:
-                parts.append(_canonical(item.get(name)))
-        parts.append(_canonical(item))
+                parts.append(canonical_value(item.get(name)))
+        parts.append(canonical_value(item))
         return tuple(parts)
 
     return key
@@ -162,7 +169,7 @@ def _normalize_value(value: object, dumped: object, order: CollectionOrder | Non
         return _normalize_fields(value, dumped)
     if isinstance(value, frozenset) and isinstance(dumped, list):
         # A frozenset is unordered by type; its dump order is whatever iteration produced.
-        return sorted(dumped, key=_canonical)
+        return sorted(dumped, key=canonical_value)
     if isinstance(value, tuple) and isinstance(dumped, list):
         items = [
             _normalize_value(inner, inner_dump, None)
@@ -195,7 +202,7 @@ def normalize_record(record: BaseModel) -> dict[str, object]:
 
 def canonical_json(record: BaseModel) -> bytes:
     """Deterministic UTF-8 bytes of the canonical form. Keys sorted, no whitespace."""
-    return _canonical(normalize_record(record)).encode("utf-8")
+    return canonical_value(normalize_record(record)).encode("utf-8")
 
 
 # -- digests -------------------------------------------------------------------------------------

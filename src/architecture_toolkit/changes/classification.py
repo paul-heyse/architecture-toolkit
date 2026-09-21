@@ -35,7 +35,7 @@ from typing import Final
 from pydantic import BaseModel
 
 from architecture_toolkit.changes.errors import ClassificationError
-from architecture_toolkit.changes.kinds import ChangeKind, ChangeNature, ChangeRule
+from architecture_toolkit.changes.kinds import ChangeKind, ChangeNature, ChangeRule, Traversal
 from architecture_toolkit.domain.details import (
     BehaviorDetail,
     BehaviorNode,
@@ -86,21 +86,31 @@ def _rule(kind: ChangeKind, nature: ChangeNature = _SEMANTIC) -> ChangeRule:
     return ChangeRule(kind=kind, nature=nature)
 
 
+def _never(kind: ChangeKind) -> ChangeRule:
+    """A field the differ can never report: an identity, a digest, or a leaf's component."""
+    return ChangeRule(kind=kind, nature=_SEMANTIC, traversal=Traversal.NEVER)
+
+
+def _container() -> ChangeRule:
+    """A field whose children carry the change."""
+    return ChangeRule(kind=ChangeKind.CONTAINER, nature=_SEMANTIC, traversal=Traversal.DESCEND)
+
+
 # Shared *values*, never shared keys. `validation/codes.py` does the same with its `_RECORD` /
 # `_CROSS` helpers: one row per field keeps the totality assertion meaningful, while a named
 # constant keeps the table readable. A wildcard rule — "anything ending `_element_id` is an
 # endpoint change" — would make totality trivially satisfiable and silently classify the next
 # field somebody adds, so there are none.
-_IDENTITY = _rule(ChangeKind.RECORD_IDENTITY)
-_DIGEST = _rule(ChangeKind.DIGEST_RESTAMPED)
-_WHOLE = _rule(ChangeKind.REPORTED_AS_A_WHOLE)
-_MEMBERS = _rule(ChangeKind.COLLECTION_MEMBERSHIP)
+_IDENTITY = _never(ChangeKind.RECORD_IDENTITY)
+_DIGEST = _never(ChangeKind.DIGEST_RESTAMPED)
+_WHOLE = _never(ChangeKind.REPORTED_AS_A_WHOLE)
+_MEMBERS = _never(ChangeKind.COLLECTION_MEMBERSHIP)
+_CONTAINER = _container()
 _RESIDUAL = _rule(ChangeKind.FIELD_MODIFIED)
 _INTERFACE = _rule(ChangeKind.INTERFACE_CONTRACT_CHANGED)
 _SCHEMA = _rule(ChangeKind.DATA_SCHEMA_CHANGED)
 _BEHAVIOR = _rule(ChangeKind.BEHAVIOR_CHANGED)
 _DEPLOYMENT = _rule(ChangeKind.DEPLOYMENT_CHANGED)
-_FAMILY = _rule(ChangeKind.DETAIL_FAMILY_CHANGED)
 _INTERACTION = _rule(ChangeKind.INTERACTION_CHANGED)
 _EVIDENCE = _rule(ChangeKind.EVIDENCE_CHANGED)
 
@@ -142,8 +152,14 @@ CHANGE_CLASSIFICATION: Final[Mapping[tuple[type[BaseModel], str], ChangeRule]] =
         # DATA-04: excluded from semantic identity, so `semantic_delta` cannot see it at all. The
         # presentation pass reports it, and it is the purest layout-only case in the schema.
         (Element, "aliases"): _rule(ChangeKind.DISPLAY_NAME_CHANGED, _LAYOUT),
-        (Element, "status"): _WHOLE,
-        (Element, "detail"): _FAMILY,
+        (Element, "status"): _CONTAINER,
+        # Optional *and* a discriminated union, so three outcomes: a detail arriving or leaving is
+        # `OPTIONAL_RECORD_RULES`; a family switch stops at `detail.detail_family` with the kind
+        # below, because descending a retype would narrate it as "lost eight fields, gained six";
+        # same family descends.
+        (Element, "detail"): ChangeRule(
+            kind=ChangeKind.DETAIL_FAMILY_CHANGED, nature=_SEMANTIC, traversal=Traversal.DESCEND
+        ),
         (Element, "extensions"): _rule(ChangeKind.ANNOTATION_CHANGED),
         (Element, "content_hash"): _DIGEST,
         # -- StatusDimensions -----------------------------------------------------------------
@@ -156,9 +172,9 @@ CHANGE_CLASSIFICATION: Final[Mapping[tuple[type[BaseModel], str], ChangeRule]] =
         (StatusDimensions, "client_acceptance"): _rule(ChangeKind.ACCEPTANCE_CHANGED),
         (StatusDimensions, "evidence_review"): _rule(ChangeKind.EVIDENCE_REVIEW_CHANGED),
         # -- InterfaceDetail ------------------------------------------------------------------
-        (InterfaceDetail, "detail_family"): _FAMILY,
+        (InterfaceDetail, "detail_family"): _IDENTITY,
         (InterfaceDetail, "element_id"): _IDENTITY,
-        (InterfaceDetail, "transport"): _INTERFACE,
+        (InterfaceDetail, "transport"): _CONTAINER,
         (InterfaceDetail, "authentication_description"): _INTERFACE,
         (InterfaceDetail, "request_schema_id"): _INTERFACE,
         (InterfaceDetail, "response_schema_id"): _INTERFACE,
@@ -170,9 +186,11 @@ CHANGE_CLASSIFICATION: Final[Mapping[tuple[type[BaseModel], str], ChangeRule]] =
         (InterfaceTransport, "interaction_mode"): _INTERFACE,
         (InterfaceTransport, "serialization"): _INTERFACE,
         # -- DataSchemaDetail -----------------------------------------------------------------
-        (DataSchemaDetail, "detail_family"): _FAMILY,
+        (DataSchemaDetail, "detail_family"): _IDENTITY,
         (DataSchemaDetail, "element_id"): _IDENTITY,
-        (DataSchemaDetail, "fields"): _SCHEMA,
+        (DataSchemaDetail, "fields"): ChangeRule(
+            kind=ChangeKind.DATA_SCHEMA_CHANGED, nature=_SEMANTIC, traversal=Traversal.DESCEND
+        ),
         (DataSchemaDetail, "content_hash"): _DIGEST,
         (SchemaField, "field_id"): _IDENTITY,
         (SchemaField, "field_name"): _SCHEMA,
@@ -186,10 +204,14 @@ CHANGE_CLASSIFICATION: Final[Mapping[tuple[type[BaseModel], str], ChangeRule]] =
         # makes "an order-sensitive change is detected" true without a synthetic reordered kind.
         (SchemaField, "ordinal"): _SCHEMA,
         # -- BehaviorDetail -------------------------------------------------------------------
-        (BehaviorDetail, "detail_family"): _FAMILY,
+        (BehaviorDetail, "detail_family"): _IDENTITY,
         (BehaviorDetail, "element_id"): _IDENTITY,
-        (BehaviorDetail, "nodes"): _BEHAVIOR,
-        (BehaviorDetail, "transitions"): _BEHAVIOR,
+        (BehaviorDetail, "nodes"): ChangeRule(
+            kind=ChangeKind.BEHAVIOR_CHANGED, nature=_SEMANTIC, traversal=Traversal.DESCEND
+        ),
+        (BehaviorDetail, "transitions"): ChangeRule(
+            kind=ChangeKind.BEHAVIOR_CHANGED, nature=_SEMANTIC, traversal=Traversal.DESCEND
+        ),
         (BehaviorDetail, "content_hash"): _DIGEST,
         (BehaviorNode, "node_id"): _IDENTITY,
         (BehaviorNode, "node_type"): _BEHAVIOR,
@@ -202,7 +224,7 @@ CHANGE_CLASSIFICATION: Final[Mapping[tuple[type[BaseModel], str], ChangeRule]] =
         (BehaviorTransition, "guard"): _BEHAVIOR,
         (BehaviorTransition, "ordinal"): _BEHAVIOR,
         # -- DeploymentDetail -----------------------------------------------------------------
-        (DeploymentDetail, "detail_family"): _FAMILY,
+        (DeploymentDetail, "detail_family"): _IDENTITY,
         (DeploymentDetail, "element_id"): _IDENTITY,
         (DeploymentDetail, "environment"): _DEPLOYMENT,
         (DeploymentDetail, "deployment_node_id"): _DEPLOYMENT,
@@ -210,7 +232,7 @@ CHANGE_CLASSIFICATION: Final[Mapping[tuple[type[BaseModel], str], ChangeRule]] =
         (DeploymentDetail, "configuration_artifact_id"): _DEPLOYMENT,
         (DeploymentDetail, "content_hash"): _DIGEST,
         # -- RequirementDetail ----------------------------------------------------------------
-        (RequirementDetail, "detail_family"): _FAMILY,
+        (RequirementDetail, "detail_family"): _IDENTITY,
         (RequirementDetail, "element_id"): _IDENTITY,
         (RequirementDetail, "category"): _rule(ChangeKind.REQUIREMENT_VERIFICATION_CHANGED),
         (RequirementDetail, "applicability"): _rule(ChangeKind.REQUIREMENT_APPLICABILITY_CHANGED),
