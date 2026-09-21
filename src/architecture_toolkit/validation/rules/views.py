@@ -18,6 +18,12 @@ materializes it.
 
 from collections.abc import Iterable
 
+from architecture_toolkit.domain.references import (
+    ElementReference,
+    FieldReference,
+    ReferenceTarget,
+    RelationshipReference,
+)
 from architecture_toolkit.domain.views import MembershipPolicy
 from architecture_toolkit.validation.candidate import Candidate
 from architecture_toolkit.validation.context import ValidationContext
@@ -168,6 +174,83 @@ def view_induced_membership_complete(
                 canonical_object_id=view.view_id,
                 field_path="included_relationship_ids",
             )
+
+
+@rule(
+    rule_id="binding-sits-in-the-view-it-names",
+    family=RuleFamily.VIEWS,
+    emits={"CORE.VIEW.BINDING_NOTATION_MISMATCH", "CORE.VIEW.BINDING_SUBJECT_NOT_A_MEMBER"},
+    requirements=VIEW_REQUIREMENTS | {"PROJ-02"},
+    summary="A binding that names a view is in that view's notation and in its membership.",
+)
+def binding_sits_in_the_view_it_names(
+    candidate: Candidate, context: ValidationContext
+) -> Iterable[Diagnostic]:
+    """`NotationBinding.view_id` is a claim about two records, so only this layer can check it.
+
+    `binding-view-resolves` asks whether the view exists. That is the weakest thing worth asking,
+    and it was all W7a asked — which is how the shipped example came to carry a `bpmn` binding
+    naming a `c4` view, with a subject the view's own membership excludes, and validate clean.
+
+    Both halves matter to a generator and for the same reason: it has to place the object
+    somewhere. A BPMN task in a C4 diagram has no shape to be drawn as, and an object the view
+    does not contain has no place to be drawn in — so the generator would have to omit it silently
+    or invent something, and `projections.md` forbids the second outright.
+    """
+    del context
+    model = candidate.model
+    views = {view.view_id: view for view in model.views}
+
+    for binding in model.notation_bindings:
+        view = views.get(binding.view_id) if binding.view_id is not None else None
+        if view is None:
+            continue  # `binding-view-resolves` reports an id that names nothing.
+
+        if binding.notation is not view.notation:
+            yield build_diagnostic(
+                "CORE.VIEW.BINDING_NOTATION_MISMATCH",
+                message=(
+                    f"notation binding {binding.binding_id!r} is {binding.notation.value} and "
+                    f"names view {view.view_id!r}, which is {view.notation.value}."
+                ),
+                rule_id="binding-sits-in-the-view-it-names",
+                canonical_object_id=binding.binding_id,
+                notation_object_id=binding.notation_object_id,
+                field_path="view_id",
+            )
+
+        subject = _subject_identity(binding.subject)
+        if subject is None:
+            continue  # A release subject is not something a view can contain.
+        members = set(view.included_element_ids) | set(view.included_relationship_ids)
+        if subject not in members:
+            yield build_diagnostic(
+                "CORE.VIEW.BINDING_SUBJECT_NOT_A_MEMBER",
+                message=(
+                    f"notation binding {binding.binding_id!r} places {subject!r} in view "
+                    f"{view.view_id!r}, whose membership does not include it."
+                ),
+                rule_id="binding-sits-in-the-view-it-names",
+                canonical_object_id=binding.binding_id,
+                notation_object_id=binding.notation_object_id,
+                field_path="view_id",
+                context=(("subject", subject),),
+            )
+
+
+def _subject_identity(subject: ReferenceTarget) -> str | None:
+    """The canonical id a view could contain, or `None` for a subject no view holds.
+
+    A field reference is answered by its element: a view contains the element, and the field is a
+    place inside it. A release reference is not something a diagram draws.
+    """
+    match subject:
+        case ElementReference() | FieldReference():
+            return subject.element_id
+        case RelationshipReference():
+            return subject.relationship_id
+        case _:
+            return None
 
 
 @rule(

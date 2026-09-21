@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 
 from architecture_toolkit.domain.model import Model
+from architecture_toolkit.domain.references import ElementReference
 from architecture_toolkit.domain.registry import BASELINE_PROFILE
 from architecture_toolkit.validation.candidate import Candidate
 from architecture_toolkit.validation.codes import CODES
@@ -122,6 +123,25 @@ TRIGGERS: dict[str, dict[str, Any]] = {
         # Both elements are members and the relationship between them is not, which is exactly
         # what `induced` says cannot happen.
         "views": [_view(membership_policy="induced", included_element_ids=["a-1", "b-1"])],
+    },
+    "binding-sits-in-the-view-it-names": {
+        "model_id": "m-1",
+        "elements": [_element("a-1"), _element("b-1")],
+        # A BPMN binding naming a C4 view, whose membership also excludes its subject. Both halves
+        # of the rule fire on one payload because both were true of the shipped example.
+        "views": [_view(included_element_ids=["b-1"])],
+        "notation_bindings": [
+            {
+                "binding_id": "binding-1",
+                "model_id": "m-1",
+                "subject": {"subject_kind": "element", "element_id": "a-1"},
+                "notation": "bpmn",
+                "notation_type": "bpmn:Task",
+                "notation_object_id": "Task_1",
+                "mapping_profile_version": "1.0.0",
+                "view_id": "view-1",
+            }
+        ],
     },
     "binding-view-resolves": {
         "model_id": "m-1",
@@ -314,6 +334,77 @@ def _binding(binding_id: str) -> dict[str, Any]:
         "notation_object_id": f"Task_{binding_id}",
         "mapping_profile_version": "1.0.0",
     }
+
+
+@pytest.mark.unit
+@pytest.mark.qualification
+@pytest.mark.requirement("PROJ-02")
+def test_one_canonical_object_maps_into_three_notations_without_duplicating_it() -> None:
+    """W7a's second hard gate, which the wave declared and never tested.
+
+    PROJ-02: *"one canonical object appears in several notations without duplication of
+    semantics"*. The claim has three parts and each is asserted here. Every binding resolves to
+    the same canonical subject, so the object is one object. Each carries its own
+    `notation_object_id`, so the notations do not have to agree on a spelling — `projections.md`
+    forbids using a display label or an SVG-generated id as canonical identity, and this is what
+    makes that possible. And nothing is duplicated: there is one element, three bindings.
+
+    The absence of this test is why the shipped example carried a BPMN binding pointing at a C4
+    view for two commits. A gate nobody wrote is a gate nothing holds.
+    """
+    subject = {"subject_kind": "element", "element_id": "a-1"}
+    source = {
+        "model_id": "m-1",
+        "elements": [_element("a-1", "software.system")],
+        "views": [
+            _view(
+                view_id="view-c4",
+                notation="c4",
+                view_type="system_context",
+                included_element_ids=["a-1"],
+            ),
+            _view(
+                view_id="view-archimate",
+                notation="archimate",
+                view_type="archimate_layered",
+                included_element_ids=["a-1"],
+            ),
+            _view(
+                view_id="view-bpmn",
+                notation="bpmn",
+                view_type="bpmn_process",
+                included_element_ids=["a-1"],
+            ),
+        ],
+        "notation_bindings": [
+            {
+                "binding_id": f"binding-{notation}",
+                "model_id": "m-1",
+                "subject": subject,
+                "notation": notation,
+                "notation_type": notation_type,
+                "notation_object_id": object_id,
+                "mapping_profile_version": "1.0.0",
+                "view_id": f"view-{notation}",
+            }
+            for notation, notation_type, object_id in (
+                ("c4", "c4:SoftwareSystem", "SoftwareSystem_Billing"),
+                ("archimate", "ArchiMate:ApplicationComponent", "id-billing"),
+                ("bpmn", "bpmn:Participant", "Participant_Billing"),
+            )
+        ],
+    }
+
+    assert _check(source) == (), "the three-notation model is not clean"
+
+    model = Model.model_validate_json(json.dumps(source))
+    assert {binding.subject for binding in model.notation_bindings} == {
+        ElementReference(element_id="a-1")
+    }, "three notations, one canonical subject"
+    assert len({b.notation_object_id for b in model.notation_bindings}) == 3, (
+        "each notation names the object in its own namespace"
+    )
+    assert len(model.elements) == 1, "the object is mapped three times, not copied three times"
 
 
 @pytest.mark.unit

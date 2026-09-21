@@ -195,8 +195,9 @@ notation_bindings:
     notation_object_id: Process_ReviewRequest
     mapping_profile_version: "1.0.0"
     # Which view this object appears in is semantic governed content; where it sits in that view
-    # is not. The binding names the view; the view names its members.
-    view_id: view-1
+    # is not. The binding names the view; the view names its members — and `views.py`'s
+    # `binding-sits-in-the-view-it-names` checks that both statements agree.
+    view_id: view-2
 
 views:
   # One C4 system-context view. Explicit membership, because the point of a canonical view is
@@ -214,3 +215,16 @@ views:
     included_element_ids: [system-1, component-1, interface-1, role-1]
     included_relationship_ids: [rel-1, rel-2]
     publication_state: published
+
+  # The view `binding-1` names. A BPMN binding in a C4 view is not a coherent claim — a BPMN
+  # Process has no shape in a system-context diagram — and the process has to be a member, or the
+  # binding says it appears somewhere the view says it does not.
+  - view_id: view-2
+    model_id: sample-service
+    view_type: bpmn_process
+    notation: bpmn
+    title: Request handling process
+    description: The review-request workflow, for a process audience.
+    membership_policy: explicit
+    included_element_ids: [process-1]
+    publication_state: draft

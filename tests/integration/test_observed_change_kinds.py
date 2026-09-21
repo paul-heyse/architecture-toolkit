@@ -58,15 +58,19 @@ from architecture_toolkit.domain.views import (
 EXAMPLE = Path(__file__).resolve().parents[2] / "examples" / "minimal" / "model.yaml"
 
 
-def _view() -> ViewDefinition:
-    """A *second* view, added beside the one the example already declares.
+def _view(base: Model) -> ViewDefinition:
+    """A view the example does not already declare, built beside the ones it does.
 
-    `view-2`, not `view-1`: the example carries `view-1`, so building one with that id would
-    replace it rather than add it, and `VIEW_ADDED`/`VIEW_REMOVED` would go undemonstrated while
-    every case still appeared in the corpus. Explicit membership, so a filter case can differ.
+    The id is derived rather than written, and that is a fix rather than a flourish. Twice now a
+    literal id here has silently become one the example also carries — and an edit that sets a
+    field to the value it already has is a no-op, so the kind it was meant to demonstrate goes
+    unproduced while the case stays in the corpus looking like coverage. Deriving it means the
+    next view added to the example cannot cause that a third time.
     """
+    taken = {view.view_id for view in base.views}
+    identifier = next(f"view-{n}" for n in range(1, 99) if f"view-{n}" not in taken)
     return ViewDefinition(
-        view_id="view-2",
+        view_id=identifier,
         model_id="sample-service",
         view_type=ViewType.SYSTEM_CONTEXT,
         notation=Notation.C4,
@@ -378,13 +382,14 @@ def corpus(base: Model) -> Iterator[tuple[str, Model]]:
             }
         ),
     )
-    # A *different* view, not `view-1`: the example's binding already names that one, so setting
-    # it would be a no-op edit and `VIEW_MEMBERSHIP_CHANGED` would go undemonstrated while this
-    # case still appeared in the corpus.
+    # Clearing the view rather than naming another one. Naming one is what this case used to do,
+    # and it broke twice as the example gained views: an edit that sets a field to the value it
+    # already holds is a no-op, so `VIEW_MEMBERSHIP_CHANGED` went unproduced while the case still
+    # sat in the corpus looking like coverage. `None` is a change whatever the example says.
     yield (
         "binding view membership",
         base.model_validate(
-            dict(base) | {"notation_bindings": (with_field(binding, view_id="view-2"),)}
+            dict(base) | {"notation_bindings": (with_field(binding, view_id=None),)}
         ),
     )
     yield (
@@ -436,7 +441,7 @@ def view_corpus(base: Model) -> Iterator[tuple[str, Model, Model]]:
     the example alone would make every edit read as a view *added*, and adding a `view-1` would
     make the add read as a *change*. Both ends — added and removed — fall out of the same pair.
     """
-    with_view = base.model_validate(dict(base) | {"views": (*base.views, _view())})
+    with_view = base.model_validate(dict(base) | {"views": (*base.views, _view(base))})
     yield "view added", base, with_view
     yield "view removed", with_view, base
 
@@ -468,7 +473,7 @@ def view_corpus(base: Model) -> Iterator[tuple[str, Model, Model]]:
         ("view publication", {"publication_state": PublicationState.PUBLISHED}),
     ):
         edited = with_view.model_validate(
-            dict(with_view) | {"views": (*base.views, with_field(_view(), **changes))}
+            dict(with_view) | {"views": (*base.views, with_field(_view(base), **changes))}
         )
         yield label, with_view, edited
 

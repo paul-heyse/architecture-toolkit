@@ -383,6 +383,29 @@ _ALL: tuple[DiagnosticCodeSpec, ...] = (
         ),
     ),
     _spec(
+        "CORE.VIEW.BINDING_NOTATION_MISMATCH",
+        CodeArea.VIEW,
+        claim=_SEMANTIC,
+        summary="A notation binding names a view drawn in a different notation.",
+        remediation=(
+            "Point the binding at a view in its own notation, or drop `view_id` — a binding "
+            "without one is a model-level mapping rather than a view-local representation. A BPMN "
+            "task cannot appear in a C4 diagram, so a generator would have to omit it or invent a "
+            "shape for it."
+        ),
+    ),
+    _spec(
+        "CORE.VIEW.BINDING_SUBJECT_NOT_A_MEMBER",
+        CodeArea.VIEW,
+        claim=_SEMANTIC,
+        summary="A notation binding places an object in a view whose membership excludes it.",
+        remediation=(
+            "Add the object to the view's membership, or drop `view_id` from the binding. The "
+            "binding says the object appears in that view and the view says it does not; nothing "
+            "downstream can act on both."
+        ),
+    ),
+    _spec(
         "CORE.VIEW.UNRESOLVED_BINDING",
         CodeArea.VIEW,
         claim=_SEMANTIC,
