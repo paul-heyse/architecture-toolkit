@@ -507,6 +507,7 @@ $ architecture build [OPTIONS]
 
 * `--store <path>`: Release store root.  [default: .runtime/releases]
 * `--release <str>`: Defaults to the current release.
+* `--notation <str>`: Which projection to generate.  [default: model-summary]
 * `--view <str>`: Reserved for W7b&#x27;s per-view generators.
 * `--into <path>`: Write the generated source under this root.
 * `--format <human|json>`: How to render the answer.  [default: human]

@@ -53,6 +53,7 @@ __all__ = [
     "bundle_for",
     "check_template",
     "environment",
+    "prepare",
     "render",
 ]
 
@@ -72,6 +73,15 @@ FILTER_VERSION: Final[str] = "1"
 Part of the generator identity a `ProjectionArtifact` records (CORE-36), because a filter is as
 capable of changing generated output as a macro is, and a bundle digest over template *source*
 cannot see it.
+"""
+
+_GLOBAL_NAMES: Final[frozenset[str]] = frozenset({"cycler", "dict", "joiner", "namespace", "range"})
+"""Jinja's own globals, minus the one `environment()` removes.
+
+Written out rather than read from `env.globals`, because a template may legitimately use any of
+these and the contract check has to allow them — but reading the live mapping would also allow
+anything a future factory happened to add, which is the opposite of a contract. `lipsum` is absent
+for the reason `environment()` deletes it.
 """
 
 BUNDLE_PREIMAGE: Final[str] = "architecture-toolkit/template-bundle/v1\n"
@@ -225,6 +235,10 @@ def bundle_for(env: Environment, top: str) -> TemplateBundle:
     which is refused rather than skipped.
     """
     sources, _undeclared, _tests = _walk(env, top)
+    return _bundle(top, sources)
+
+
+def _bundle(top: str, sources: Mapping[str, str]) -> TemplateBundle:
     payload = "".join(f"{name}\n{sources[name]}\n" for name in sorted(sources))
     digest = sha256((BUNDLE_PREIMAGE + payload).encode("utf-8")).hexdigest()
     return TemplateBundle(
@@ -239,19 +253,27 @@ def check_template(env: Environment, top: str, context: type[BaseModel]) -> froz
     """Refuse a template that needs a name its DTO does not carry (CORE-34).
 
     Returns the names the bundle actually uses, so a caller can assert a template *reads* the
-    fields it was given rather than only that it asks for nothing extra.
+    fields it was given rather than only that it asks for nothing extra. `prepare` is what a
+    generator calls; this is the same check when the bundle digest is not wanted.
     """
     _sources, undeclared, tests = _walk(env, top)
+    _refuse_unknown_tests(env, top, tests)
+    _refuse_unmet_context(top, undeclared, context)
+    return frozenset(undeclared)
 
-    unknown_tests = sorted(tests - set(env.tests))
-    if unknown_tests:
+
+def _refuse_unknown_tests(env: Environment, top: str, tests: set[str]) -> None:
+    unknown = sorted(tests - set(env.tests))
+    if unknown:
         message = (
-            f"{top} uses test(s) {unknown_tests} that the environment does not register. "
+            f"{top} uses test(s) {unknown} that the environment does not register. "
             f"Unlike an unknown filter, Jinja does not refuse this on its own."
         )
         raise TemplateContractError(message)
 
-    allowed = set(context.model_fields) | set(env.globals)
+
+def _refuse_unmet_context(top: str, undeclared: set[str], context: type[BaseModel]) -> None:
+    allowed = set(context.model_fields) | set(_GLOBAL_NAMES)
     missing = sorted(undeclared - allowed)
     if missing:
         message = (
@@ -260,16 +282,34 @@ def check_template(env: Environment, top: str, context: type[BaseModel]) -> froz
             f"uses it: a top-level import is not visible to a block's frame during this analysis."
         )
         raise TemplateContractError(message)
-    return frozenset(undeclared)
+
+
+def prepare(env: Environment, top: str, context: type[BaseModel]) -> TemplateBundle:
+    """Check the contract and compute the bundle digest in one walk (CORE-34, CORE-36).
+
+    What a generator actually needs, and the reason it is one call. `bundle_for` and
+    `check_template` each walked the reference graph independently, so producing one artifact
+    parsed every template in the bundle twice and read it three times. That is a constant for one
+    Markdown summary and O(views x bundle) for W7b, which renders per view.
+
+    It is also what lets `render` stop checking. `StrictUndefined` is the runtime defence — this
+    module's own header says so — and the contract check is a build-time question about a
+    (template, DTO) pair, not a per-render one. A caller that renders without preparing gets the
+    runtime defence and no build-time one; `tests/unit/test_templates.py` asserts every shipped
+    template is prepared against its DTO, which is what keeps that from being a loophole.
+    """
+    sources, undeclared, tests = _walk(env, top)
+    _refuse_unknown_tests(env, top, tests)
+    _refuse_unmet_context(top, undeclared, context)
+    return _bundle(top, sources)
 
 
 def render(env: Environment, top: str, context: BaseModel) -> str:
     """Render one prepared DTO through one template (CORE-32).
 
     The context is a Pydantic model, never a `dict`: a mapping would let a caller pass whatever it
-    happened to have, and `check_template` would have nothing to check against.
+    happened to have, and there would be nothing for `prepare` to check against.
     """
-    check_template(env, top, type(context))
     try:
         template = env.get_template(top)
     except TemplateNotFound as missing:

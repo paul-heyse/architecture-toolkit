@@ -16,7 +16,7 @@ from architecture_toolkit.cli import main
 from architecture_toolkit.cli_errors import EXIT_OK, EXIT_USAGE
 from architecture_toolkit.domain.model import Model
 from architecture_toolkit.domain.semantics import model_digest
-from architecture_toolkit.projections.pipeline import SUMMARY_TEMPLATE
+from architecture_toolkit.projections.generators import GENERATORS, ModelSummaryGenerator
 from architecture_toolkit.projections.text import bundle_for, environment
 from architecture_toolkit.releases.store import ReleaseStore
 from tests.integration.conftest import Publisher, rename_first_element
@@ -62,7 +62,10 @@ def test_build_writes_the_source_and_reports_where_it_came_from(
     artifact = json.loads(capsys.readouterr().out)
     assert artifact["release_id"] == "rel-0001"
     assert artifact["semantic_input_digest"] == model_digest(example_model)
-    assert artifact["template_bundle_digest"] == bundle_for(environment(), SUMMARY_TEMPLATE).digest
+    assert (
+        artifact["template_bundle_digest"]
+        == bundle_for(environment(), ModelSummaryGenerator().template).digest
+    )
     assert "notation" not in artifact, "Markdown is a format, not a modelling language"
 
     written = out / artifact["generated_source_locator"]
@@ -122,6 +125,23 @@ def test_a_changed_model_moves_both_the_input_and_the_output_digest(
     assert built[0]["template_bundle_digest"] == built[1]["template_bundle_digest"], (
         "the templates did not change, so the bundle digest must not"
     )
+
+
+@pytest.mark.integration
+@pytest.mark.requirement("PROJ-05", "CORE-58")
+def test_an_unknown_projection_is_refused_and_the_real_ones_are_listed(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], published: Path
+) -> None:
+    """The registry's refusal, the same shape `provider_named` uses.
+
+    A name is how a caller selects a generator, so an unknown one has to say what the choices are
+    — otherwise the only way to discover them is to read the source.
+    """
+    assert run(monkeypatch, "build", "--store", str(published), "--notation", "nope") != EXIT_OK
+    printed = capsys.readouterr()
+    assert "unknown projection" in printed.out + printed.err
+    for name in GENERATORS:
+        assert name in printed.out + printed.err
 
 
 @pytest.mark.integration

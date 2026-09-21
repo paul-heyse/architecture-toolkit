@@ -42,7 +42,8 @@ from architecture_toolkit.domain.commands import CHANGE_SET_ADAPTER, CommandErro
 from architecture_toolkit.domain.model import Model
 from architecture_toolkit.domain.semantics import MODEL_COLLECTIONS
 from architecture_toolkit.projections.errors import ProjectionError
-from architecture_toolkit.projections.pipeline import build_summary
+from architecture_toolkit.projections.generators import DEFAULT_GENERATOR
+from architecture_toolkit.projections.pipeline import build_projection
 from architecture_toolkit.queries.algorithms import (
     components,
     condensation,
@@ -624,6 +625,9 @@ def output(
 def build(
     store: StoreOption = DEFAULT_STORE_ROOT,
     release: ReleaseOption = None,
+    notation: Annotated[
+        str, typer.Option("--notation", help="Which projection to generate.")
+    ] = DEFAULT_GENERATOR,
     view: Annotated[
         str | None, typer.Option("--view", help="Reserved for W7b's per-view generators.")
     ] = None,
@@ -635,7 +639,12 @@ def build(
     """Generate a release's projections and record where each came from."""
     raise typer.Exit(
         code=_build(
-            store_root=store, release_id=release, view_id=view, into=into, output=format.value
+            store_root=store,
+            release_id=release,
+            projection=notation,
+            view_id=view,
+            into=into,
+            output=format.value,
         )
     )
 
@@ -1671,6 +1680,7 @@ def _build(
     *,
     store_root: Path,
     release_id: str | None,
+    projection: str,
     view_id: str | None,
     into: Path | None,
     output: str,
@@ -1684,7 +1694,7 @@ def _build(
     store = _store_at(store_root)
     try:
         manifest = _operations(store_root).manifest(release_id)
-        built = build_summary(store, manifest, into=into, view_id=view_id)
+        built = build_projection(store, manifest, projection=projection, view_id=view_id, into=into)
     except (ChangeError, UnknownReleaseError) as refused:
         raise UsageRefusal(refused.args[0]) from refused
     except ProjectionError as refused:
@@ -1707,6 +1717,7 @@ def _build(
                 ("source digest", artifact.generated_source_digest),
                 ("template bundle", artifact.template_bundle_digest or "-"),
                 ("generator", artifact.generator_version),
+                ("projection", projection),
             )
         ],
     )

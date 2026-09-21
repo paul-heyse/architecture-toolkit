@@ -18,15 +18,21 @@ from architecture_toolkit.domain.capsules import (
     ArrowSchemaExportable,
     ArrowStreamExportable,
 )
-from architecture_toolkit.domain.identifiers import ReleaseId
+from architecture_toolkit.domain.identifiers import ReleaseId, ViewId
 from architecture_toolkit.domain.model import Model
 from architecture_toolkit.domain.protocols import (
+    ProjectionGenerator,
     Publisher,
     SnapshotProvider,
     SourceLoader,
     ValidatorAdapter,
 )
 from architecture_toolkit.domain.providers import Materialization, SnapshotProviderDescription
+from architecture_toolkit.projections.artifacts import ProjectionArtifact
+from architecture_toolkit.projections.generators import (
+    BuiltProjection,
+    ModelSummaryGenerator,
+)
 from architecture_toolkit.releases.candidate import ReleaseCandidate
 from architecture_toolkit.releases.manifest import (
     ArchitectureRelease,
@@ -131,3 +137,43 @@ class RecordingPublisher:
 
 
 _publisher: Publisher = RecordingPublisher()
+
+
+_SYNTHETIC_DIGEST = "sha256:" + "0" * 64
+
+
+class CountingGenerator:
+    """A minimal `ProjectionGenerator` (W7a, PROJ-05, CORE-58).
+
+    The shipped `ModelSummaryGenerator` is asserted against the same Protocol below; this one
+    exists so the boundary is described by something that is not it — which matters more here
+    than elsewhere, because for two commits `ProjectionGenerator` described *nothing*. It was
+    typed in one commit and the generator written in the next with a different signature and a
+    different return type, and nothing compared them.
+
+    `view_id` keeps its default here for the same reason the Protocol gives it one: a model-level
+    generator is asked for no view, and requiring every caller to pass `None` would make the
+    common case the noisy one.
+    """
+
+    def generate(
+        self, model: Model, *, release_id: ReleaseId, view_id: ViewId | None = None
+    ) -> BuiltProjection:
+        del model, view_id
+        return BuiltProjection(
+            artifact=ProjectionArtifact(
+                projection_artifact_id="proj-1",
+                release_id=release_id,
+                notation_version="1",
+                generator_version="0",
+                mapping_profile_version="1.0.0",
+                semantic_input_digest=_SYNTHETIC_DIGEST,
+                generated_source_locator="projections/x.md",
+                generated_source_digest=_SYNTHETIC_DIGEST,
+            ),
+            source="",
+        )
+
+
+_generator: ProjectionGenerator = CountingGenerator()
+_shipped_generator: ProjectionGenerator = ModelSummaryGenerator()
