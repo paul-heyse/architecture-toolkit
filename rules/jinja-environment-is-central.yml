@@ -1,0 +1,22 @@
+id: jinja-environment-is-central
+language: python
+severity: error
+message: Build the Jinja environment through projections.text.environment(), not inline.
+note: |
+  CORE-33 requires one centrally constructed Environment. Every setting that affects generated
+  bytes — StrictUndefined, trim_blocks, lstrip_blocks, keep_trailing_newline, newline_sequence,
+  autoescape — is explicit there, and the two nondeterministic builtins (`lipsum`, `random`) are
+  removed there. A second constructor call would inherit jinja2's defaults for whichever of those
+  it did not restate, so the same DTO could render different bytes depending on which environment
+  reached it, and every projection digest would depend on that choice.
+
+  `tests/unit/test_layering.py` asserts the positive half — that `projections/text.py` really does
+  construct one — so this rule cannot pass by the factory disappearing.
+files:
+  - "src/**/*.py"
+ignores:
+  - "src/architecture_toolkit/projections/text.py"
+rule:
+  any:
+    - pattern: Environment($$$ARGS)
+    - pattern: jinja2.Environment($$$ARGS)

@@ -1,0 +1,9 @@
+id: jinja-environment-is-central
+valid:
+  - "env = environment()"
+  - "env = text.environment()"
+  - "loader = PackageLoader('architecture_toolkit.projections', 'templates')"
+invalid:
+  - "env = Environment(loader=loader)"
+  - "env = Environment()"
+  - "env = jinja2.Environment(undefined=StrictUndefined)"

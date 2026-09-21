@@ -1,0 +1,7 @@
+{# Presentation macros. A separate file on purpose: CORE-36's bundle digest has to cover a macro
+   edit, and a macro in its own file is the case that proves it does. #}
+{% macro row(cells) %}| {{ cells | join(" | ") }} |
+{% endmacro %}
+{% macro header(names) %}| {{ names | join(" | ") }} |
+|{{ (" --- |") * names | length }}
+{% endmacro %}

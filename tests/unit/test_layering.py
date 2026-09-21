@@ -312,3 +312,52 @@ def test_the_change_layer_really_does_reach_both_packages_it_was_created_for() -
 
     assert any(module.startswith("architecture_toolkit.queries") for module in reached)
     assert any(module.startswith("architecture_toolkit.releases") for module in reached)
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("CORE-32", "CORE-33")
+def test_the_renderer_and_its_builder_cannot_reach_the_query_or_storage_layers() -> None:
+    """The W7a hard gate, stated where it is enforceable.
+
+    The contract says *templates* do not traverse NetworkX or DataFusion, infer relationships,
+    select semantic view membership or fetch evidence. A template is not Python, so the
+    enforceable form is about the two modules that decide what a template can see: the renderer,
+    and the builder that prepares its DTO. If neither can import the query or storage layers,
+    then no template can be handed a live session, a graph, or a Delta table to walk — whatever
+    anybody later writes inside one.
+
+    The projection *pipeline* is deliberately not covered: it reads a release, which is exactly
+    its job, and it hands the builder data that has already been resolved.
+    """
+    banned = {"networkx", "pyarrow", "deltalake", "datafusion"}
+    for name in ("text.py", "summary.py"):
+        path = SRC / "projections" / name
+        imported = runtime_imports(path)
+        leaked = {
+            module
+            for module in imported
+            if module.split(".")[0] in banned
+            or module.startswith(("architecture_toolkit.queries", "architecture_toolkit.storage"))
+        }
+        assert not leaked, f"projections/{name} reaches the analysis layers: {sorted(leaked)}"
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("CORE-33")
+def test_the_jinja_environment_is_constructed_in_exactly_one_module() -> None:
+    """The positive half of `rules/jinja-environment-is-central.yml`.
+
+    That rule forbids `Environment(...)` everywhere but `projections/text.py`. On its own it would
+    keep passing if the factory were deleted and nothing constructed an environment at all, which
+    is the vacuity every `ignores:` glob in this repo is paired against.
+    """
+    factory = (SRC / "projections" / "text.py").read_text()
+    assert "Environment(" in factory
+    assert "StrictUndefined" in factory
+
+    constructors = {
+        path.relative_to(SRC).as_posix()
+        for path in SRC.rglob("*.py")
+        if "Environment(" in path.read_text()
+    }
+    assert constructors == {"projections/text.py"}

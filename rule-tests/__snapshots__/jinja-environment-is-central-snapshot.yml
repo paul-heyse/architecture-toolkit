@@ -1,0 +1,20 @@
+id: jinja-environment-is-central
+snapshots:
+  env = Environment():
+    labels:
+    - source: Environment()
+      style: primary
+      start: 6
+      end: 19
+  env = Environment(loader=loader):
+    labels:
+    - source: Environment(loader=loader)
+      style: primary
+      start: 6
+      end: 32
+  env = jinja2.Environment(undefined=StrictUndefined):
+    labels:
+    - source: jinja2.Environment(undefined=StrictUndefined)
+      style: primary
+      start: 6
+      end: 51

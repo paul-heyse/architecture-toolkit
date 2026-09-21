@@ -1,0 +1,30 @@
+{% import "_macros.md.j2" as m %}
+# {{ model_id | md_escape }}
+
+{{ generated_note }}
+
+- Schema version: `{{ schema_version }}`
+- Profile version: `{{ profile_version }}`
+- Model digest: `{{ model_digest }}`
+
+## Elements
+
+{{ m.header(["ID", "Name", "Kind", "Lifecycle"]) }}
+{%- for element in elements %}
+{{ m.row([element.element_id, element.name | md_escape, element.kind_id, element.lifecycle_state]) }}
+{%- endfor %}
+
+## Relationships
+
+{{ m.header(["ID", "Type", "Source", "Target"]) }}
+{%- for relationship in relationships %}
+{{ m.row([relationship.relationship_id, relationship.relationship_type_id, relationship.source_element_id, relationship.target_element_id]) }}
+{%- endfor %}
+{% if unverified_requirement_ids %}
+
+## Requirements with no established verification
+
+{% for element_id in unverified_requirement_ids %}
+- `{{ element_id }}`
+{%- endfor %}
+{% endif %}
