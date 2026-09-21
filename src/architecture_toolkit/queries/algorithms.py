@@ -30,9 +30,9 @@ from itertools import islice, product
 
 from architecture_toolkit.domain.identifiers import ElementId, RelationshipId
 from architecture_toolkit.queries import _nx
-from architecture_toolkit.queries.errors import GraphError
+from architecture_toolkit.queries.errors import GraphError, PolicyError
 from architecture_toolkit.queries.graph import ArchitectureGraph
-from architecture_toolkit.queries.policy import GraphPolicy, policy_for
+from architecture_toolkit.queries.policy import CycleHandling, GraphPolicy, policy_for
 from architecture_toolkit.queries.results import (
     ComponentResult,
     CondensationResult,
@@ -91,9 +91,21 @@ def generations(graph: ArchitectureGraph, policy: GraphPolicy) -> tuple[tuple[El
 def cycles(graph: ArchitectureGraph, policy: GraphPolicy) -> tuple[CycleResult, ...]:
     """Every cycle in the policy's view, with the relationships that realize each one (CORE-30).
 
+    Refuses a policy whose `cycle_handling` is not `REPORT`. CORE-30 says these analyses are used
+    "only under explicit graph semantics", and a policy that never declared cycle semantics has not
+    said what a cycle in its view would mean — `impact.structural` reaching itself through a
+    containment loop is a different fact from `containment.descendants` doing so. The friction is
+    the requirement, not a side effect of it.
+
     Bounded by `policy.max_results`, because a dense graph has a great many simple cycles and
     CORE-29's prohibition on unbounded enumeration is not limited to paths.
     """
+    if policy.cycle_handling is not CycleHandling.REPORT:
+        message = (
+            f"{policy.policy_id} declares cycle_handling={policy.cycle_handling.value}; "
+            "cycles are reported only under a policy that asks for them"
+        )
+        raise PolicyError(message)
     view = graph._view_for(policy)
     found: list[CycleResult] = []
     for nodes in islice(_nx.node_cycles(view, length_bound=policy.max_depth), policy.max_results):

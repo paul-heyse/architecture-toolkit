@@ -1,0 +1,80 @@
+"""Every field a query record declares is read somewhere (CORE-26, DATA-48).
+
+`Relationship.context_id` has been declared, mapped to Arrow, round-tripped and written by nothing
+since W1 — a field that looks like it does something and does not. W5 shipped a second one:
+`GraphPolicy.cycle_handling`, set to `REPORT` on a policy and branched on by no code at all. The
+first was inherited; the second was introduced by the wave that noticed the first.
+
+So this is the guard for the class rather than for the instance. It scans the package's syntax tree
+for attribute reads and asserts every declared field name appears among them, with an explicit
+allow-list — empty today — for a field that is genuinely declaration-only.
+
+**It is a coarse check and says so.** Attribute reads are matched by name, so `recipe.purpose`
+satisfies `policy.purpose`. Making it precise would need type inference the syntax tree does not
+carry. Coarse is enough for what it catches: a field nothing anywhere reads, which is the failure
+that actually happens.
+"""
+
+import ast
+from pathlib import Path
+
+import pytest
+
+from architecture_toolkit.queries.policy import GraphPolicy
+from architecture_toolkit.queries.recipes import ParameterSpec, QueryRecipe
+from architecture_toolkit.queries.results import GraphPathResult, TraversalResult
+
+PACKAGE = Path(__file__).resolve().parents[2] / "src" / "architecture_toolkit"
+
+DECLARATION_ONLY: dict[str, str] = {}
+"""Fields that are declared and deliberately never read, each with the reason.
+
+Empty, and the point of the file is to keep it that way: a field added here is a decision somebody
+made on purpose, and a field that lands here by accident fails the test instead."""
+
+
+def attribute_reads(root: Path) -> set[str]:
+    """Every name read as an attribute anywhere in the package."""
+    found: set[str] = set()
+    for path in root.rglob("*.py"):
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, ast.Attribute):
+                found.add(node.attr)
+    return found
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("CORE-26", "DATA-48")
+@pytest.mark.parametrize(
+    "record",
+    [GraphPolicy, QueryRecipe, ParameterSpec, GraphPathResult, TraversalResult],
+    ids=lambda record: record.__name__,
+)
+def test_every_declared_field_is_read_somewhere(record: type) -> None:
+    read = attribute_reads(PACKAGE)
+    declared = set(record.model_fields)
+
+    unread = sorted(declared - read - set(DECLARATION_ONLY))
+    assert not unread, (
+        f"{record.__name__} declares {unread}, which nothing in the package reads. Give the "
+        "field force, remove it, or add it to DECLARATION_ONLY with the reason."
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("CORE-26")
+def test_the_scan_finds_attribute_reads_at_all() -> None:
+    """A guard that read nothing would pass forever."""
+    read = attribute_reads(PACKAGE)
+
+    assert {"policy_id", "max_depth", "relationship_ids", "sql"} <= read
+    assert len(read) > 100
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("CORE-26")
+def test_the_scan_would_catch_a_field_nothing_reads() -> None:
+    """The negative control, with the name W5 actually shipped dead."""
+    read = attribute_reads(PACKAGE)
+
+    assert "sanctimonious_field_nobody_reads" not in read

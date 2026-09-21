@@ -544,6 +544,8 @@ def _recipes(parser: argparse.ArgumentParser, recipe_id: str | None) -> int:
     for column in recipe.output_schema:
         nullability = "null" if column.nullable else "not null"
         print(f"  returns         {column.name} : {column.data_type} {nullability}")
+    if recipe.traversal_policy_id is not None:
+        print(f"  same answer as {recipe.traversal_policy_id} (graph policy)")
     for case in recipe.qualification_cases:
         print(f"  qualified by    {case}")
     print(f"  sql             {recipe.sql}")

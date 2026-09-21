@@ -207,7 +207,7 @@ class ArchitectureGraph:
             relationship_ids = tuple(key for _, _, key in steps)
             if relationship_ids in seen:
                 continue
-            node_ids = (start, *(self._step_target(policy, step) for step in steps))
+            node_ids = (start, *(_step_target(step) for step in steps))
             seen[relationship_ids] = GraphPathResult(
                 release_id=self.release_id,
                 policy_id=policy.policy_id,
@@ -230,14 +230,9 @@ class ArchitectureGraph:
         kept: list[_nx.Edge] = []
         for step in walk:
             kept.append(step)
-            if self.kind_of(self._step_target(policy, step)) in policy.stop_kinds:
+            if self.kind_of(_step_target(step)) in policy.stop_kinds:
                 break
         return tuple(kept)
-
-    def _step_target(self, policy: GraphPolicy, step: _nx.Edge) -> ElementId:
-        """Where this step arrives, in traversal order rather than in stored orientation."""
-        del policy
-        return step[1]
 
     def _as_stored(self, policy: GraphPolicy, step: _nx.Edge) -> _nx.Edge:
         """The edge as the graph holds it, so its attributes can be read.
@@ -336,6 +331,15 @@ def graph_from_rows(
         model_digest=model_digest,
         _graph=_nx.freeze(graph),
     )
+
+
+def _step_target(step: _nx.Edge) -> ElementId:
+    """Where a step arrives, in traversal order rather than in stored orientation.
+
+    A free function rather than a method that took a policy and deleted it: the answer does not
+    depend on the policy, and a signature that says it does is a signature that lies.
+    """
+    return step[1]
 
 
 def _optional(value: object) -> str | None:

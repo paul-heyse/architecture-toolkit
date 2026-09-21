@@ -44,6 +44,7 @@ from architecture_toolkit.domain.identifiers import (
     TableId,
 )
 from architecture_toolkit.queries.errors import ParameterError, UnknownRecipeError
+from architecture_toolkit.queries.policy import POLICIES
 from architecture_toolkit.queries.sides import Side
 from architecture_toolkit.storage.schemas import TABLE_IDS
 
@@ -132,10 +133,13 @@ class QueryRecipe(CompiledRecord):
     output_schema: tuple[ColumnSpec, ...] = Field(min_length=1)
     sql: str = Field(min_length=1)
     traversal_policy_id: PolicyId | None = None
-    """The graph policy whose semantics this recipe's answer corresponds to, where one exists.
+    """The graph policy that answers the same question, where one does.
 
-    Only the traversal recipes in `queries/policy.py` set this. A relational recipe has no
-    traversal semantics and says so by leaving it unset, rather than by omitting the field."""
+    `data.md`'s recipe fence calls this "applicable traversal semantics", and it is not decoration:
+    a recipe that names a policy is claiming the two engines agree, and
+    `tests/integration/test_two_engines_agree.py` holds it to that on a real release. A relational
+    recipe with no graph counterpart says so by leaving it unset rather than by omitting the
+    field, and `_check_registry` refuses a recipe that names a policy the registry does not hold."""
     qualification_cases: tuple[str, ...] = Field(min_length=1)
 
     @property
@@ -375,6 +379,7 @@ _CONTAINMENT_HIERARCHY = QueryRecipe(
         "FROM descent d JOIN elements e ON e.element_id = d.element_id "
         "ORDER BY d.depth, d.element_id"
     ),
+    traversal_policy_id="containment.descendants",
     qualification_cases=(
         "a one-level containment returns the child at depth one",
         "max_depth truncates a deeper hierarchy",
@@ -399,11 +404,21 @@ qualified rather than assumed."""
 
 
 def _check_registry() -> None:
-    """Every input names a real table. Run at import, like `validation/codes.py`'s own guard."""
+    """Every input names a real table and every traversal claim names a real policy.
+
+    Run at import, like `validation/codes.py`'s own guard: a recipe the registries cannot support
+    is not reachable at all rather than failing the first time somebody runs it.
+    """
     for recipe in RECIPES.values():
         unknown = sorted({item.table_id for item in recipe.inputs} - set(TABLE_IDS))
         if unknown:
             message = f"{recipe.query_recipe_id} names unknown table(s) {unknown}"
+            raise ValueError(message)
+        if recipe.traversal_policy_id is not None and recipe.traversal_policy_id not in POLICIES:
+            message = (
+                f"{recipe.query_recipe_id} claims traversal semantics "
+                f"{recipe.traversal_policy_id!r}, which is not a declared policy"
+            )
             raise ValueError(message)
 
 
