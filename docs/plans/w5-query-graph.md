@@ -107,6 +107,65 @@ compares that against a bare `SessionContext` — so a UDF registered by any pat
 the rule can see. The baseline is not empty, and the test asserts that too, because a guard
 comparing two empty sets would pass whatever was registered.
 
+### Corrected after the wave landed (W5.1)
+
+Reviewing the wave against the code rather than the test report found the same three classes W4.1
+found, this time in work written the same day. They are recorded here rather than quietly fixed,
+because the reason each got through is more useful than the fix.
+
+**The hedged assertion came back.** One wave after `assert x is None or x == "rel-0001"` was named
+as the lesson, the graph property test shipped `assert set(endpoints) == step or step <= set(...)`.
+The `or` admits exactly one case — a path whose consecutive nodes are the same while the
+relationship joins two different elements — which is the defect the assertion exists to catch. A
+guard written once in a plan document is not a guard. The fix is not deleting the `or`: the check
+moved into `walk_is_followable`, which a deterministic test exercises with one positive and four
+negative controls, because a helper the properties call and nothing else proves is a helper that
+can rot into always returning `True`.
+
+**Half the property runs examined nothing.** Every graph property iterated `for path in ...paths`
+with no observation that a path was ever seen, so each was vacuous on every generated model that
+reached nowhere. `event()` — which `ARCH-TOOL-CORE-001` §7G names for exactly this — now reports
+the split, and it is about half. The properties are still worth running; the point is that this was
+assumed rather than known.
+
+**Two `all(...)` assertions passed on an empty collection**, including the projection-pushdown
+guard, which parses the plan with a regex: a DataFusion release that reformatted `TableScan:` would
+have made every assertion in it true forever. Both were sabotaged by hand to confirm they now fail.
+
+**`cycle_handling` was declared and read by nothing** — the same smell as `context_id`, shipped by
+the wave that noticed `context_id`. `cycles` refuses a policy that does not declare it, which is
+CORE-30's "only under explicit graph semantics" as a refusal rather than a convention. The guard
+for the class is `tests/unit/test_declared_fields_are_read.py`, which scans the package's syntax
+tree for attribute reads and asserts every field of every query record appears among them. It found
+a third dead field immediately: `QueryRecipe.traversal_policy_id`, declared, documented, unset and
+unread.
+
+**That third one became the wave's best test.** Rather than an allow-list entry it got force:
+`containment_hierarchy` now claims `containment.descendants`, the registry refuses a claim naming a
+policy that does not exist, and `tests/integration/test_two_engines_agree.py` holds the claim to a
+real release — the recursive SQL and the graph traversal must return the same elements *and* the
+same relationship IDs. That is the hard gate turned around: the gate says the two surfaces read the
+same release, this says that where they are asked the same question they answer it the same way,
+which is what would drift first.
+
+**`QueryExecutor` was a seam nothing filled.** Marked "W5", satisfied by nothing, declaring
+`-> object` against a contract that asks Protocols to exchange typed DTOs. It is typed against
+`domain/capsules.py` now and implemented, which turned out not to be ceremony: `cli.py` had written
+resolve-release-then-look-up-recipe-then-run three times, and `impact` built one session to query
+and another to traverse.
+
+**Everything the wave built was reachable only from Python.** Every DATA-17 named traversal and
+every CORE-30/31 analysis was called from tests and nowhere else, and one of the four recipes
+`data.md` names had no operator path at all. `query --base/--candidate`, `graph <analysis>`,
+`impact --unverified` and `impact --format json` close that. The JSON is emitted against
+`schemas/query-contract.schema.json`, which gained the result records it was missing — a family
+titled "parameters and results" that schematised only the parameters.
+
+**Two things stay unfixed, on purpose.** `Relationship.context_id` is still written by nothing, so
+`GraphPolicy.context_filters` filters on a field with no live data; there is no `Context` record
+type and inventing one is not this wave's scope. And `EXPLAIN` output is still not captured:
+DATA-49 says qualification *may* capture it, and the three plans are captured and asserted.
+
 ## Work items
 
 1. **Release-scoped session** (DATA-46). One fresh DataFusion `SessionContext` per selected

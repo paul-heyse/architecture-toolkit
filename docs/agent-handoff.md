@@ -41,6 +41,9 @@ Implemented:
 - the private NetworkX projection built from that same session: the `ArchitectureGraph` facade,
   versioned `GraphPolicy` traversals checked against the profile, explainable bounded paths and
   the cycle, component, condensation, closure and reduction analyses (W5);
+- an operator surface for both: `recipes`, `query` (one release or two named sides), `plan`,
+  `impact` (bounded paths, `--unverified`, JSON against the generated contract) and `graph`
+  (the six structural analyses) (W5.1);
 - explicit-version Delta -> PyArrow -> DataFusion materialized adapter;
 - synthetic examples and basic qualification tests;
 - checksummed local Java/vendor bootstrap;
