@@ -1,0 +1,330 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:architecture-toolkit:release-manifest:v1",
+  "title": "Architecture release manifest",
+  "description": "The immutable coherent multi-table revision (DATA-20, DATA-21). A Delta table version is not an architecture release; this is what one is.",
+  "x-toolkit": {
+    "family": "release-manifest",
+    "version": 1,
+    "requirements": [
+      "CORE-12",
+      "DATA-20",
+      "DATA-21"
+    ]
+  },
+  "$ref": "#/$defs/ArchitectureRelease",
+  "$defs": {
+    "ArchitectureRelease": {
+      "additionalProperties": false,
+      "description": "One coherent, immutable multi-table architecture revision.\n\nPublication order matters and is visible here: this record is written to the store *before*\nthe current pointer moves, so a manifest existing is not the same as a release being current.\nThat is what makes the pointer move the commit point and a crash between the two harmless.",
+      "properties": {
+        "release_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Release Id",
+          "type": "string"
+        },
+        "model_id": {
+          "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+          "title": "Model Id",
+          "type": "string"
+        },
+        "parent_release_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Release Id"
+        },
+        "change_set_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Change Set Id"
+        },
+        "schema_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "profile_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Profile Version",
+          "type": "string"
+        },
+        "model_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Model Digest",
+          "type": "string"
+        },
+        "published_at": {
+          "format": "date-time",
+          "title": "Published At",
+          "type": "string"
+        },
+        "tables": {
+          "items": {
+            "$ref": "#/$defs/TableRef"
+          },
+          "title": "Tables",
+          "type": "array"
+        },
+        "source_bundle": {
+          "$ref": "#/$defs/SourceBundle"
+        },
+        "generator": {
+          "$ref": "#/$defs/GeneratorProvenance"
+        },
+        "validation_report_digest": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Validation Report Digest"
+        },
+        "change_report_digest": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Change Report Digest"
+        },
+        "projection_artifact_digests": {
+          "default": [],
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+                "type": "string"
+              },
+              {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Projection Artifact Digests",
+          "type": "array"
+        },
+        "render_artifact_digests": {
+          "default": [],
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "pattern": "^[a-z][a-z0-9_.-]{2,63}$",
+                "type": "string"
+              },
+              {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Render Artifact Digests",
+          "type": "array"
+        },
+        "validation_reports": {
+          "default": [],
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "string"
+              },
+              {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Validation Reports",
+          "type": "array"
+        },
+        "outputs": {
+          "default": [],
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "string"
+              },
+              {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Outputs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "release_id",
+        "model_id",
+        "schema_version",
+        "profile_version",
+        "model_digest",
+        "published_at",
+        "tables",
+        "source_bundle",
+        "generator"
+      ],
+      "title": "ArchitectureRelease",
+      "type": "object"
+    },
+    "GeneratorProvenance": {
+      "additionalProperties": false,
+      "description": "Which toolkit produced this release, and under which durable conventions.\n\nThe two version fields are not decoration. `storage_schema_version` says which physical schema\nthe pinned tables were written against, and is the anchor a DATA-56 migration moves;\n`hash_algorithm_version` says which preimage produced every `semantic_digest` in the manifest.\nA release that recorded digests without saying how they were computed would be unverifiable\nthe first time either changed.",
+      "properties": {
+        "toolkit_version": {
+          "minLength": 1,
+          "title": "Toolkit Version",
+          "type": "string"
+        },
+        "toolkit_commit": {
+          "minLength": 1,
+          "title": "Toolkit Commit",
+          "type": "string"
+        },
+        "storage_schema_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Storage Schema Version",
+          "type": "string"
+        },
+        "hash_algorithm_version": {
+          "minLength": 1,
+          "title": "Hash Algorithm Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "toolkit_version",
+        "toolkit_commit",
+        "storage_schema_version",
+        "hash_algorithm_version"
+      ],
+      "title": "GeneratorProvenance",
+      "type": "object"
+    },
+    "SourceBundle": {
+      "additionalProperties": false,
+      "description": "What the model was authored from (DATA-37).\n\nDATA-37's point is that a mutable URL does not identify a version. Where a source has an\nimmutable revision \u2014 a git commit \u2014 `revision` carries it. Where it does not, `digest` pins the\nbytes that were actually read and `snapshot_path` names the preserved copy, because \"we read\nsomething at this URL once\" is not a provenance claim anybody can check later.",
+      "properties": {
+        "source_id": {
+          "minLength": 1,
+          "title": "Source Id",
+          "type": "string"
+        },
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        },
+        "revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revision"
+        },
+        "snapshot_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Snapshot Path"
+        }
+      },
+      "required": [
+        "source_id",
+        "digest"
+      ],
+      "title": "SourceBundle",
+      "type": "object"
+    },
+    "TableRef": {
+      "additionalProperties": false,
+      "description": "One table pinned at one exact version.\n\n`uri` is stored **relative to the store root**, never absolute. An absolute path would make a\nmanifest meaningless the moment the store is copied, archived or read on another machine, and\na milestone archive that is supposed to be self-contained would be quietly host-bound.\n\n`row_count` is not required by DATA-21 and is carried anyway: it is the cheapest possible\nread-back assertion, and a table that reads back with the right digest and the wrong row count\nwould otherwise be a silent impossibility nobody checks for.",
+      "properties": {
+        "table_id": {
+          "pattern": "^[a-z][a-z0-9_]{2,63}$",
+          "title": "Table Id",
+          "type": "string"
+        },
+        "uri": {
+          "minLength": 1,
+          "title": "Uri",
+          "type": "string"
+        },
+        "delta_version": {
+          "minimum": 0,
+          "title": "Delta Version",
+          "type": "integer"
+        },
+        "semantic_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Semantic Digest",
+          "type": "string"
+        },
+        "row_count": {
+          "minimum": 0,
+          "title": "Row Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "table_id",
+        "uri",
+        "delta_version",
+        "semantic_digest",
+        "row_count"
+      ],
+      "title": "TableRef",
+      "type": "object"
+    }
+  }
+}

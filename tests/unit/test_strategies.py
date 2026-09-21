@@ -94,14 +94,16 @@ def test_every_generated_model_is_hashable(model: Model) -> None:
 
 @pytest.mark.unit
 @pytest.mark.requirement("CORE-45")
-def test_the_four_unbuilt_strategy_groups_are_recorded_not_omitted() -> None:
-    """core.md names eight groups; four have no models until W4, W5 and W7a.
+def test_the_unbuilt_strategy_groups_are_recorded_not_omitted() -> None:
+    """core.md names eight groups; the ones with no models yet are recorded rather than absent.
 
-    Recorded rather than silently absent, so a reader can tell a deferral from an oversight.
+    `releases` left this set at W4 when the manifest arrived, which is the point of writing the
+    reason down: a reader can tell a deferral from an oversight, and can tell when it ended.
     """
-    assert set(DEFERRED_GROUPS) == {"workflows", "views", "releases", "artifacts"}
+    assert set(DEFERRED_GROUPS) == {"workflows", "views", "artifacts"}
     for reason in DEFERRED_GROUPS.values():
         assert reason.startswith("W")
+    assert "releases" not in DEFERRED_GROUPS, "the release strategies landed at W4"
 
 
 @pytest.mark.unit

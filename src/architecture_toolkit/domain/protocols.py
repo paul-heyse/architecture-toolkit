@@ -33,11 +33,13 @@ if TYPE_CHECKING:
     # by `tests/unit/test_layering.py`.
     from architecture_toolkit.domain.authoring.loader import LoadedSource
     from architecture_toolkit.domain.model import Model
+    from architecture_toolkit.releases.candidate import ReleaseCandidate
+    from architecture_toolkit.releases.manifest import ArchitectureRelease
     from architecture_toolkit.validation.context import ValidationContext
     from architecture_toolkit.validation.diagnostics import Diagnostic
 
 from architecture_toolkit.domain.capsules import ArrowSchemaExportable, ArrowStreamExportable
-from architecture_toolkit.domain.identifiers import TableId
+from architecture_toolkit.domain.identifiers import ReleaseId, TableId
 from architecture_toolkit.domain.providers import SnapshotProviderDescription
 
 __all__ = [
@@ -111,9 +113,21 @@ class QueryExecutor(Protocol):
 
 @runtime_checkable
 class Publisher(Protocol):
-    """Publishes a coherent release manifest (W4, DATA-21..DATA-24)."""
+    """Publishes a coherent release manifest (W4, DATA-21..DATA-24).
 
-    def publish(self, candidate: object, *, expected_parent: str | None) -> object: ...
+    Typed at W4 against `ReleaseCandidate` and `ArchitectureRelease`, the typed DTOs CORE-58 asks
+    a Protocol to exchange. `expected_parent` is required and may be `None`, which says "this is
+    the first release" rather than "whatever is current" — a default would let a caller publish
+    against a parent they never looked at, which is the stale-parent failure DATA-23 exists to
+    prevent.
+
+    Returning the published manifest rather than `None` is what lets a caller pin what it just
+    made without re-reading the store and racing itself.
+    """
+
+    def publish(
+        self, candidate: ReleaseCandidate, *, expected_parent: ReleaseId | None
+    ) -> ArchitectureRelease: ...
 
 
 @runtime_checkable

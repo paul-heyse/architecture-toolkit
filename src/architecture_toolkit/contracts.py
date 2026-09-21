@@ -44,6 +44,7 @@ from architecture_toolkit.domain.model import Element, Interaction, Model, Relat
 from architecture_toolkit.domain.notation import NotationBinding
 from architecture_toolkit.domain.references import Reference, ReferenceLink
 from architecture_toolkit.domain.registry import Profile
+from architecture_toolkit.releases.manifest import ArchitectureRelease
 from architecture_toolkit.validation.claims import ValidationClaimReport
 from architecture_toolkit.validation.diagnostics import Diagnostic
 
@@ -144,12 +145,13 @@ SCHEMA_FAMILIES: tuple[SchemaFamily, ...] = (
         family_id="release-manifest",
         version=1,
         title="Architecture release manifest",
-        description="Declared now so W4 adds content rather than inventing a convention.",
+        description=(
+            "The immutable coherent multi-table revision (DATA-20, DATA-21). A Delta table "
+            "version is not an architecture release; this is what one is."
+        ),
         path="schemas/release-manifest.schema.json",
-        requirements=frozenset({"CORE-12", "DATA-21"}),
-        roots=(),
-        deferred_to="W4",
-        blocked_on="DATA-20, DATA-21",
+        requirements=frozenset({"CORE-12", "DATA-20", "DATA-21"}),
+        roots=(ArchitectureRelease,),
     ),
     SchemaFamily(
         family_id="query-contract",
