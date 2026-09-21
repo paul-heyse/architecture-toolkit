@@ -240,6 +240,65 @@ def test_each_rule_catches_its_known_bad_input(rule_id: str) -> None:
     assert rule_id in fired, f"{rule_id} did not fire on its own fixture"
 
 
+def _link(link_id: str) -> dict[str, Any]:
+    return {
+        "link_id": link_id,
+        "model_id": "m-1",
+        "reference_id": "ref-1",
+        "subject": {"subject_kind": "element", "element_id": "a-1"},
+        "link_role": "supports",
+    }
+
+
+def _binding(binding_id: str) -> dict[str, Any]:
+    return {
+        "binding_id": binding_id,
+        "model_id": "m-1",
+        "subject": {"subject_kind": "element", "element_id": "a-1"},
+        "notation": "bpmn",
+        "notation_type": "bpmn:Task",
+        "notation_object_id": f"Task_{binding_id}",
+        "mapping_profile_version": "1.0.0",
+    }
+
+
+@pytest.mark.unit
+@pytest.mark.requirement("CORE-07", "DATA-03")
+@pytest.mark.parametrize(
+    ("collection", "records"),
+    [
+        ("reference_links", [_link("dup-1"), _link("dup-1")]),
+        ("notation_bindings", [_binding("dup-1"), _binding("dup-1")]),
+    ],
+)
+def test_duplicate_identities_are_caught_in_every_collection(
+    collection: str, records: list[dict[str, Any]]
+) -> None:
+    """The two collections `unique-identities` named nothing about until now.
+
+    `TRIGGERS` holds one payload per rule, so it can only ever demonstrate one collection's
+    duplicate. These are the other two, and they are the reason the rule was rewritten to derive
+    its loop: a rule that does not look at a collection reports nothing about it, and reports
+    nothing about reporting nothing.
+    """
+    source = {
+        "model_id": "m-1",
+        "elements": [_element("a-1")],
+        "references": [
+            {
+                "reference_id": "ref-1",
+                "model_id": "m-1",
+                "title": "A reference",
+                "reference_kind": "document",
+            }
+        ],
+        collection: records,
+    }
+    fired = [d for d in _check(source) if d.rule_id == "unique-identities"]
+    assert [d.canonical_object_id for d in fired] == ["dup-1"]
+    assert collection in fired[0].message
+
+
 @pytest.mark.unit
 @pytest.mark.requirement("CORE-07")
 def test_no_rule_fires_on_a_clean_model(minimal_model_source: dict[str, Any]) -> None:

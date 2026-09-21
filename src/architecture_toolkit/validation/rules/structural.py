@@ -17,6 +17,7 @@ from collections.abc import Iterable
 from graphlib import CycleError, TopologicalSorter
 
 from architecture_toolkit.domain.registry import CanonicalDirection
+from architecture_toolkit.domain.semantics import MODEL_COLLECTIONS
 from architecture_toolkit.validation.candidate import Candidate
 from architecture_toolkit.validation.context import ValidationContext
 from architecture_toolkit.validation.diagnostics import Diagnostic, build_diagnostic
@@ -34,20 +35,26 @@ SINGLE_PARENT_RULE = "single-parent"
     summary="No two records in one model claim the same identity.",
 )
 def unique_identities(candidate: Candidate, context: ValidationContext) -> Iterable[Diagnostic]:
+    """Every top-level collection, derived from `MODEL_COLLECTIONS` rather than listed.
+
+    It used to name four of the six by hand, so duplicate `link_id` and duplicate `binding_id`
+    went unchecked from W1 until now — silently, because a rule that does not look at a
+    collection reports nothing about it and reports nothing about reporting nothing. Deriving
+    the loop makes a new collection covered the day it is declared rather than the day somebody
+    remembers this function.
+
+    `MODEL_COLLECTIONS` is the same pair list `stamp_digests` and the identity-delta recipe use,
+    so "which collections have identities" is answered once.
+    """
     del context
     model = candidate.model
-    groups = (
-        ("element", [element.element_id for element in model.elements]),
-        ("relationship", [relation.relationship_id for relation in model.relationships]),
-        ("interaction", [interaction.interaction_id for interaction in model.interactions]),
-        ("reference", [reference.reference_id for reference in model.references]),
-    )
-    for label, identities in groups:
+    for collection, key in MODEL_COLLECTIONS:
+        identities = [str(getattr(record, key)) for record in getattr(model, collection)]
         for identity, count in sorted(Counter(identities).items()):
             if count > 1:
                 yield build_diagnostic(
                     "CORE.DOMAIN.DUPLICATE_ID",
-                    message=f"{count} {label} records share the identity {identity!r}.",
+                    message=f"{count} {collection} records share the identity {identity!r}.",
                     rule_id="unique-identities",
                     canonical_object_id=identity,
                 )
