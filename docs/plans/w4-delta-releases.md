@@ -22,6 +22,77 @@ release.
 - [toolchain.md § DataFusion / Delta compatibility](../toolchain.md) — the current FFI limitation.
 - Record `ARCH-TOOL-DATA-001` §5 and §11B, §11F–11I.
 
+## Decisions taken during execution
+
+**Retention is a computation over manifests, not a policy number.** Nothing is vacuumed by
+default and no release is ever dropped. The protected set is every Delta version every manifest in
+the store pins, handed straight to deltalake's `vacuum(keep_versions=...)`. A retention count
+would be a number to get wrong, and the volume here does not justify one; milestone archives are
+the answer to disk growth, because they are self-contained and do not depend on the live Delta
+directory surviving. `probe_readability` is the other half: a release made unreadable by anything
+outside `retention.py` is reported rather than discovered at read time.
+
+**All four provider rungs are qualified and the materialized one stays the default.** DATA-52 says
+to qualify the Dataset and stream providers *before* replacing the materialized one, and
+qualifying is not replacing. Changing a qualified default is a measured decision, not a side
+effect of the wave that first tested the alternatives.
+
+**The native FFI provider is a class that always refuses.** deltalake 1.6.4 exports a DataFusion
+55.x table provider against a DataFusion 54 lock and the library rejects the mismatch itself, so
+the refusal is upstream. It is written as code rather than prose because `docs/agent-handoff.md`
+says never to enable it merely because import and registration exist, and a rule expressed as a
+class is one somebody has to delete deliberately. Its test fails when the majors align, which is
+the moment to enable the rung on purpose.
+
+**deltalake records an application transaction marker and does not act on it.** Replaying the same
+`Transaction(app_id, version)` is accepted and produces a second commit. So DATA-54 idempotency is
+a read-then-skip that this toolkit implements: `transaction_version` is consulted before every
+write. The marker is the library's, the skip is ours, and `releases/staging.py` says so rather
+than leaving a reader to assume the library did more than it does.
+
+**An identical overwrite still creates a Delta version**, so DATA-22's "reuse unchanged versions"
+means *not writing at all* when the digest matches, and carrying the parent's version into the new
+manifest. A one-element rename moves one pin and leaves ten where they were, which makes the reuse
+gate a diff of two manifests rather than a claim.
+
+**Every `deltalake` call lives in `storage/delta.py`.** `implementation-contract.md` already gave
+`storage` "Delta persistence" and `releases` "manifest, lock/staging/publication";
+`rules/releases-no-direct-delta.yml` and a layering test make that structural, so a change of
+storage engine is one module rather than a search.
+
+**`schema_mode` is typed `Literal["overwrite"] | None`**, which turns DATA-56's "do not rely on
+automatic schema merge" into a type. deltalake also accepts `"merge"`; a caller reaching for it
+fails `pyrefly check`.
+
+**`tip()` is the one deliberate `version=None` in the toolkit** — a writer reading back the number
+it just committed, under the lock, so the manifest can pin it explicitly. Invariant 5 forbids a
+published *release* resolving an implicit latest version, which this is not, and an AST guard
+keeps the exception to one call. The guard scans the syntax tree rather than the text, because a
+text count matched the three mentions in that function's own docstring.
+
+**The eight steps are individually addressable, and the fault-injection gate is parametrized over
+them.** Writing that gate sharpened what "no partial state" claims: a failure at step eight happens
+after step seven has written the manifest, so an orphan manifest exists — and that is the
+permitted state, because a manifest nothing points at is a file rather than a release. The
+invariant is about the pointer, not about what is lying on disk.
+
+**The migration registry is empty, and that is the honest state.** `STORAGE_SCHEMA_VERSION` has
+only ever been `1.0.0` and nothing has been published against an earlier one. The machinery is
+production code and a synthetic `1.0.0 -> 1.1.0` step exercises it end to end, including the
+property that makes retention worth anything: a migration writes new versions and the pinned ones
+still read under their old schema.
+
+**One finding fed back into the provider layer.** Under deltalake 1.6.4, `DeltaTable.scan()`
+returns string columns as `string_view` where `to_pyarrow_table()` and `to_pyarrow_dataset()`
+return `string`. Values are identical and the cast is lossless, but §11B requires a provider to
+expose *the expected* schema, so `ArrowStreamSnapshotProvider` casts each batch lazily on the way
+out. The divergence is pinned in the matrix with a message naming what to do when upstream agrees,
+so the cast cannot outlive its reason.
+
+**Check constraints are applied as a maintenance call, not during publication.** Adding one is a
+Delta commit, so doing it inside publication would make the version a manifest pins depend on
+whether the table happened to be new. Publication's version arithmetic stays boring.
+
 ## Work items
 
 1. **Delta writing** (DATA-22). Write a complete replacement snapshot for each changed table and

@@ -6,9 +6,10 @@ Arrow to Delta to DataFusion and back to Pydantic — and asserts what survived.
 upgrade changes behaviour, a case fails and names the dimension it failed on, instead of a
 paragraph going quietly out of date.
 
-`ARCH-TOOL-DATA-001` §11I names seven dimensions. Six are exercised here; historical
-reproducibility needs several published releases and belongs to W4, which extends this file with
-its own rows rather than starting a second matrix.
+`ARCH-TOOL-DATA-001` §11I names seven dimensions. Six are exercised here. The seventh,
+historical reproducibility, needs several published releases, so it lives in
+`test_release_matrix.py` alongside the rest of the contract path — one matrix in two files
+because the second half needs a release store, not a second matrix.
 
 | Dimension | Where |
 | --- | --- |
@@ -18,7 +19,7 @@ its own rows rather than starting a second matrix.
 | Query correctness | DataFusion reads each case's distinguishing column |
 | Batch and chunk independence | every case is also written as two chunkings |
 | Memory and materialization | `describe()` is recorded with every case |
-| Historical reproducibility | W4 |
+| Historical reproducibility | `test_release_matrix.py` (W4) |
 
 Two cases are recorded as *findings* rather than as guarantees: DataFusion's extraction of a
 non-nullable child from a null struct, and Delta's loss of schema-level metadata. Both are live

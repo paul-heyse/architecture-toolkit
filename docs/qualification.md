@@ -9,12 +9,12 @@ This file describes evidence for the **current repository**, not target architec
 | CORE domain | minimal strict Pydantic model, unique IDs, endpoint checks | CORE-01..67 | partial |
 | YAML | configured 1.2 round-trip profile, forbidden constructs with stable codes, SourceMap, source-located diagnostics with a stated resolution, command-driven round-trip editing and a presentation-invariance property (W2) | authored-order semantics for W5/W6 traversal | proven for M1 |
 | Static typing | Pyrefly over src/tests/scripts, 0 errors; strict `src` coverage 100.00%; `pyarrow-stubs` qualified statically and at run time with two divergences pinned | D-032 / Pyrefly CORE-53..62 | migrated; coverage floor 98 |
-| DATA Arrow/Delta | eleven declared schemas with asserted invariants, bidirectional mappings, chunk-independent table digests, the metadata policy and a continuously tested compatibility matrix (W3) | DATA-01..60 | partial; publication and history are W4 |
-| Snapshot provider | the `SnapshotProvider` boundary filled in, with the materialized PyArrow provider behind it and arro3 normalization at one place (W3) | materialized fallback + qualified Dataset/stream candidates | fallback proven; candidates are W4 |
+| DATA Arrow/Delta | eleven declared schemas, bidirectional mappings, chunk-independent digests, the metadata policy, versioned Delta snapshots with commit provenance and per-table idempotency, manifest-driven retention and explicit migrations (W3, W4) | DATA-01..60 | partial; queries and semantic change are W5 and W6 |
+| Snapshot provider | four rungs — materialized, PyArrow Dataset, Arrow stream and a native FFI provider that refuses under this lock — all run over a published release's eleven tables; materialized remains the default (W4) | materialized fallback + qualified Dataset/stream candidates | proven; the default is unchanged by design |
 | DataFusion | scalar SQL binding over pinned snapshot | release-scoped catalogs/query recipes/plan evidence | partial |
 | NetworkX | parallel MultiDiGraph edges preserved | private GraphPolicy facade/explainable analyses | partial |
-| Release publication | none | coherent manifest/lock/staging/failure protocol | pending |
-| Semantic diff/migration | versioned canonical hash and record-level delta over added, removed and changed identities (W2) | typed change classification, scenarios, historical migrations | partial |
+| Release publication | immutable manifest, one-writer lock, expected-parent check, staging with version reuse, read-back verification and an atomic current pointer; fault injection at all eight stages (W4) | coherent manifest/lock/staging/failure protocol | proven for M2 |
+| Semantic diff/migration | versioned canonical hash and record-level delta (W2); explicit versioned storage migrations with historical replay, and Delta CDF as a cross-check rather than the narrative (W4) | typed change classification, scenarios, historical migrations | partial; classification is W6 |
 | PlantUML | handwritten ArchiMate fixture renders SVG | generated ArchiMate/UML/ERD with provenance/security | scaffold only |
 | Structurizr | handwritten DSL validates/exports | generated explicit-ID C4 + rich static export | scaffold only |
 | BPMN | handwritten XML validates against local OMG XSD | generated semantic/DI/moddle/lint/layout/bpmn-js pipeline | scaffold only |
@@ -59,8 +59,6 @@ Do not hand-edit a requirement to “passed” because one partial test exists.
 - DATA-01..60 coherent release/query/history architecture;
 - PROJ-01..42 generated standards projections and portal;
 - full synthetic vertical slice;
-- publication fault injection and stale-parent behavior;
-- historical replay and schema migration;
 - both-platform qualification for all affected dependency/tool families;
 - real-world architecture/evidence correctness and consumer acceptance.
 

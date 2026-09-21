@@ -30,6 +30,11 @@ Implemented:
 - the Arrow fabric: eleven declared table schemas, bidirectional Pydantic mappings, the metadata
   policy, arro3 and C-stream normalization, chunk-independent table digests and the
   `SnapshotProvider` boundary with its materialized provider (W3);
+- versioned Delta persistence and coherent releases: the immutable manifest, the one-writer
+  publication protocol with staging, read-back and an atomic pointer, commit provenance,
+  per-table idempotency, manifest-driven retention, explicit migrations and milestone
+  archives (W4);
+- the full SnapshotProvider ladder, with the materialized provider still the default (W4);
 - explicit-version Delta -> PyArrow -> DataFusion materialized adapter;
 - synthetic examples and basic qualification tests;
 - checksummed local Java/vendor bootstrap;
@@ -37,8 +42,6 @@ Implemented:
 - MkDocs documentation scaffold and two-platform CI.
 
 Not implemented:
-- coherent multi-table release manager;
-- Dataset/stream SnapshotProviders;
 - semantic diff/scenarios/GraphPolicy facade;
 - generated ArchiMate/C4/BPMN/UML/ERD projections;
 - interactive/offline portal integration.

@@ -86,6 +86,7 @@ behaviour changed.
 | `no-shell-invocation` | projections.md rendering security |
 | `secure-xml-parser` | CORE-40, CORE-41 |
 | `ruamel-only-in-authoring` | CORE-17 — `ruamel` imports are confined to `domain/authoring/`; the exclusion glob is proven by `tests/unit/test_layering.py` |
+| `releases-no-direct-delta` | DATA-20, DATA-51 — the release layer reaches Delta only through `storage/delta.py`, so the application protocol and the storage engine stay in different places |
 
 Each wave adds the rules for the boundaries it introduces; see `docs/plans/`.
 
@@ -120,6 +121,12 @@ ones most likely to be quietly skipped, so each is paired with an executable gua
 | DATA-34, DATA-51 | No published release resolves an implicit latest table version | `no-implicit-latest-delta-version` for the call shape, a keyword-only `version` with no default on the Protocol and the provider, and `require_version` rejecting `True` — which `isinstance(x, int)` would accept as `1` |
 | DATA-43 | One place unwraps a foreign Arrow object | an AST scan for `arro3` in any `src` module and a text scan pinning the capsule dunders to exactly `domain/capsules.py` and `storage/interchange.py` |
 | CORE-53 | A type stub is qualified, not trusted | `tests/static/pyarrow_surface.py` asserts the type of every pyarrow call `storage/` makes, and `tests/qualification/test_pyarrow_stub.py` asserts the runtime truth and that every name the stub declares still exists. Three divergences are pinned *as declared*, so a corrected stub fails the build |
+| DATA-20 | A Delta table version is never an architecture release | `releases-no-direct-delta` for the import boundary, plus a layering test that `deltalake` is spoken to in exactly one module. The manifest is the only thing that names a version, and a reader opens what it names |
+| DATA-22 | Unchanged tables are reused rather than rewritten | an identical overwrite still creates a Delta version, so reuse is asserted as a diff of two manifests: a one-element rename moves one pin and leaves ten unchanged |
+| DATA-24 | No failure exposes partial state | the fault-injection suite is parametrized over `STEP_ORDER`, so it covers every publication stage by construction and a ninth stage added without handling its failure fails the suite |
+| DATA-52 | Native FFI is never enabled merely because it exists | a provider class that always raises, naming the version mismatch. Its test fails when the majors align, which is when somebody enables the rung deliberately |
+| DATA-56 | Automatic schema merge is never publication behaviour | `storage.delta.write_snapshot` declares `schema_mode: Literal["overwrite"] \| None`; the `"merge"` deltalake also accepts fails `pyrefly check` rather than a review |
+| DATA-58 | Vacuum cannot invalidate a retained release | the keep-list is computed from every manifest in the store and passed to `vacuum(keep_versions=...)`, so the policy and the operation cannot disagree; a negative control vacuums with an empty keep-list and asserts the damage is detected |
 
 Type stubs (`types-networkx`, `types-jsonschema`, `types-lxml`) are dev-only typing aids with no
 runtime surface, so they do not constitute an overlapping stack under DATA-32/33. `types-lxml`
