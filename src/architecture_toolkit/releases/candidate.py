@@ -16,7 +16,7 @@ the obvious sequence and is deliberately not called automatically.
 
 from dataclasses import dataclass
 
-from architecture_toolkit.domain.identifiers import ChangeSetId, ReleaseId
+from architecture_toolkit.domain.identifiers import ChangeSetId, ReleaseId, ScenarioId
 from architecture_toolkit.domain.model import Model
 from architecture_toolkit.releases.manifest import SourceBundle
 
@@ -34,6 +34,16 @@ class ReleaseCandidate:
     model: Model
     source_bundle: SourceBundle
     change_set_id: ChangeSetId | None = None
+
+    # DATA-28. Set together or not at all; `ArchitectureRelease` refuses one without the other.
+    # A candidate declares these rather than the store inferring them, because whether a release
+    # is an alternative is a statement about intent that no amount of looking at the data reveals.
+    scenario_id: ScenarioId | None = None
+    baseline_release_id: ReleaseId | None = None
+
+    @property
+    def is_alternative(self) -> bool:
+        return self.scenario_id is not None
 
     @property
     def model_id(self) -> str:

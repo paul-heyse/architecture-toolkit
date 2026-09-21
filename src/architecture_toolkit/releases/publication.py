@@ -244,6 +244,8 @@ def read_back_staged_versions(state: PublicationState) -> PublicationState:
         model_id=state.request.candidate.model_id,
         parent_release_id=None if state.parent is None else state.parent.release_id,
         change_set_id=_change_set_id(state.request),
+        scenario_id=state.request.candidate.scenario_id,
+        baseline_release_id=state.request.candidate.baseline_release_id,
         schema_version=state.require_table_set().schema_version,
         profile_version=state.require_table_set().profile_version,
         model_digest=model_digest(state.require_model()),

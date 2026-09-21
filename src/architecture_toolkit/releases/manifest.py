@@ -23,8 +23,9 @@ DATA-56 migration on every one of them. `reference/plan-waves.json` records this
 """
 
 from datetime import datetime, timedelta
+from typing import Self
 
-from pydantic import AwareDatetime, Field, field_validator
+from pydantic import AwareDatetime, Field, field_validator, model_validator
 
 from architecture_toolkit.domain.base import ManifestRecord
 from architecture_toolkit.domain.identifiers import (
@@ -34,6 +35,7 @@ from architecture_toolkit.domain.identifiers import (
     ModelId,
     ProfileVersion,
     ReleaseId,
+    ScenarioId,
     SchemaVersion,
     SemanticDigest,
     TableId,
@@ -129,6 +131,24 @@ class ArchitectureRelease(ManifestRecord):
     parent_release_id: ReleaseId | None = None
     change_set_id: ChangeSetId | None = None
 
+    # -- DATA-28: an alternative is not a later revision ----------------------------------------
+    scenario_id: ScenarioId | None = None
+    """Which design alternative this release belongs to. `None` is the baseline line of work.
+
+    A scenario is a separate line of releases derived from a common baseline, not a continuation
+    of it. Its existence implies nothing about having superseded or been selected over the current
+    design, which is why the two are distinguished by identity rather than by position: a
+    position in a chain *is* a claim about succession.
+    """
+
+    baseline_release_id: ReleaseId | None = None
+    """The release this alternative was derived from. Required on a scenario, refused off one.
+
+    Explicit rather than inferred from `parent_release_id`, because those are different relations
+    and DATA-28 exists to keep them apart: a parent is the revision this one supersedes, and a
+    baseline is the design this one is an alternative to.
+    """
+
     schema_version: SchemaVersion
     profile_version: ProfileVersion
     model_digest: SemanticDigest
@@ -168,6 +188,37 @@ class ArchitectureRelease(ManifestRecord):
             message = f"manifest pins these tables more than once: {duplicates}"
             raise ValueError(message)
         return value
+
+    @model_validator(mode="after")
+    def an_alternative_declares_its_baseline_and_is_not_a_revision_of_it(self) -> Self:
+        """DATA-28, in the three ways a release can get the relation wrong.
+
+        A scenario without a baseline is an orphan nobody can interpret; a baseline reference on a
+        release that is not a scenario is a claim with no subject; and a scenario whose *parent* is
+        its baseline is precisely the sequential-release semantics the requirement forbids, because
+        a parent is the revision this one supersedes.
+        """
+        if (self.scenario_id is None) is not (self.baseline_release_id is None):
+            message = (
+                f"release {self.release_id!r} sets one of scenario_id/baseline_release_id and not "
+                f"the other; an alternative needs both and a baseline release needs neither"
+            )
+            raise ValueError(message)
+        if self.baseline_release_id is not None and self.parent_release_id == (
+            self.baseline_release_id
+        ):
+            message = (
+                f"scenario release {self.release_id!r} names {self.baseline_release_id!r} as both "
+                f"its parent and its baseline; an alternative is derived from a baseline, not a "
+                f"later revision of it"
+            )
+            raise ValueError(message)
+        return self
+
+    @property
+    def is_alternative(self) -> bool:
+        """Whether this release is a design alternative rather than a revision."""
+        return self.scenario_id is not None
 
     def table(self, table_id: str) -> TableRef:
         """The pin for one table, or `KeyError`. Readers open exactly what this names."""

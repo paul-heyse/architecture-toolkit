@@ -68,6 +68,14 @@ REQUIRED_ON_A_DESCENDANT: dict[str, str] = {
     "change_set_id": "DATA-21: the typed change set that produced it",
 }
 
+# Only on a design alternative, and refused on anything else. A third conditional list rather than
+# a second entry in the one above, because the condition is different: a release is a descendant or
+# a root by position, and an alternative or a revision by intent.
+REQUIRED_ON_AN_ALTERNATIVE: dict[str, str] = {
+    "scenario_id": "DATA-28: which alternative this release belongs to",
+    "baseline_release_id": "DATA-28: the design it is an alternative to",
+}
+
 
 @pytest.mark.unit
 @pytest.mark.requirement("DATA-21")
@@ -78,7 +86,12 @@ def test_the_two_lists_together_cover_every_manifest_field() -> None:
     unchanged and every assertion below still passing.
     """
     declared = set(ArchitectureRelease.model_fields)
-    accounted = set(REQUIRED_PINS) | set(DEFERRED_PINS) | set(REQUIRED_ON_A_DESCENDANT)
+    accounted = (
+        set(REQUIRED_PINS)
+        | set(DEFERRED_PINS)
+        | set(REQUIRED_ON_A_DESCENDANT)
+        | set(REQUIRED_ON_AN_ALTERNATIVE)
+    )
     assert declared == accounted, f"unaccounted manifest fields: {sorted(declared ^ accounted)}"
 
 

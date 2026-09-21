@@ -16,6 +16,7 @@ are cross-checks on that answer, which is what `ARCH-TOOL-DATA-001` §11H alread
 "Do not use them as the architectural change narrative."
 """
 
+from architecture_toolkit.changes.alternatives import AlternativeComparison, compare_alternative
 from architecture_toolkit.changes.classification import (
     CHANGE_CLASSIFICATION,
     PRESENCE_RULES,
@@ -65,6 +66,7 @@ __all__ = [
     "PRESENCE_RULES",
     "PRESENTATION_FIELDS",
     "UNREACHABLE_NATURES",
+    "AlternativeComparison",
     "ArchitectureChangeSet",
     "AuthorKind",
     "Authorship",
@@ -80,6 +82,7 @@ __all__ = [
     "RecordChange",
     "ReviewError",
     "Traversal",
+    "compare_alternative",
     "diff_releases",
     "engine_identity_delta",
     "field_changes",

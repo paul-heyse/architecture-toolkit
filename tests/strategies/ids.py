@@ -60,6 +60,7 @@ STRATEGY_BY_ALIAS: dict[str, st.SearchStrategy[Any]] = {
     "RelationshipId": identifiers_,
     "RelationshipTypeId": identifiers_,
     "ReleaseId": identifiers_,
+    "ScenarioId": identifiers_,
     "RuleId": identifiers_,
     "SchemaVersion": versions,
     "SemanticDigest": digests,

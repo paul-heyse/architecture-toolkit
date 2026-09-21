@@ -24,6 +24,7 @@ from architecture_toolkit.domain.semantics import MODEL_COLLECTIONS, semantic_de
 from architecture_toolkit.queries.context import ComparisonContext
 from architecture_toolkit.queries.execution import execute
 from architecture_toolkit.queries.recipes import recipe_for
+from architecture_toolkit.releases.lineage import require_same_line
 from architecture_toolkit.releases.manifest import ArchitectureRelease
 from architecture_toolkit.releases.reader import read_model
 from architecture_toolkit.releases.store import ReleaseStore
@@ -47,10 +48,17 @@ def diff_releases(
 ) -> ModelChanges:
     """The change narrative between two published releases.
 
+    Refuses a pair on two different lines of work: an alternative is not a later revision of its
+    baseline, and `changes/alternatives.py::compare_alternative` is the operation for that pair.
+    Nothing checked lineage on the read side before this — publication verified the expected parent
+    and then nobody looked again — so without the refusal a baseline and a scenario would diff
+    happily and the result would read as a change somebody made.
+
     No provider argument: `read_model` resolves each release's own pinned table versions, and the
     narrative is about records rather than about how the bytes were read. The provider choice
     belongs to the engine cross-check below, which is the part that runs a query.
     """
+    require_same_line(base, candidate)
     return model_changes(read_model(store, base), read_model(store, candidate))
 
 

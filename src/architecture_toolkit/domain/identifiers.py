@@ -48,6 +48,7 @@ __all__ = [
     "RelationshipTypeId",
     "ReleaseId",
     "RuleId",
+    "ScenarioId",
     "SchemaVersion",
     "SemanticDigest",
     "TableId",
@@ -99,6 +100,12 @@ ContextId = Annotated[str, _Identifier]
 ReferenceId = Annotated[str, _Identifier]
 ReleaseId = Annotated[str, _Identifier]
 ChangeSetId = Annotated[str, _Identifier]
+# DATA-28. A design alternative is not a later revision of its baseline, and the way to make that
+# sayable is to give it an identity of its own rather than a place in the release chain. Distinct
+# from `ModelId` because an alternative *is* a variant of the same architecture — its element ids
+# are the baseline's — and collapsing the two would make every alternative a separate model with
+# no comparable objects.
+ScenarioId = Annotated[str, _Identifier]
 ViewId = Annotated[str, _Identifier]
 ArtifactId = Annotated[str, _Identifier]
 RuleId = Annotated[str, _Identifier]

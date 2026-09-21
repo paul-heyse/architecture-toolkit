@@ -325,6 +325,18 @@ _ALL: tuple[DiagnosticCodeSpec, ...] = (
         ),
     ),
     _spec(
+        "CORE.RELEASE.ALTERNATIVE_LINE_BROKEN",
+        CodeArea.RELEASE,
+        category=DiagnosticCategory.RELEASE_COHERENCE,
+        summary="A design alternative is positioned as a revision of the baseline line.",
+        remediation=(
+            "DATA-28: an alternative is derived from a baseline, not descended from it. A parent "
+            "is the revision this release supersedes; a baseline is the design it is an "
+            "alternative to. A scenario release whose parent sits on another line claims a "
+            "succession nobody asserted."
+        ),
+    ),
+    _spec(
         "CORE.RELEASE.STORAGE_SCHEMA_MISMATCH",
         CodeArea.RELEASE,
         category=DiagnosticCategory.RELEASE_COHERENCE,

@@ -22,6 +22,7 @@ from collections.abc import Iterable, Mapping
 from architecture_toolkit.validation.diagnostics import Diagnostic, build_diagnostic
 
 __all__ = [
+    "alternative_line_breaks",
     "chain_breaks",
     "digest_mismatches",
     "missing_pins",
@@ -193,3 +194,43 @@ def _reaches_itself(start: str, parents: Mapping[str, str | None]) -> bool:
         if current == start:
             return True
     return False
+
+
+def alternative_line_breaks(
+    manifests: Iterable[tuple[str, str | None, str | None]],
+) -> tuple[Diagnostic, ...]:
+    """Is every design alternative derived rather than descended (DATA-28)?
+
+    Takes `(release_id, parent_release_id, scenario_id)` triples, for the same reason
+    `chain_breaks` takes its own: this module depends on nothing outside `validation/`.
+
+    `ArchitectureRelease` already refuses the record-local mistakes — one of the two fields without
+    the other, and a parent that *is* the baseline. What it cannot see is the parent's own line,
+    and a scenario whose parent sits on a different one is sequential release semantics wearing a
+    scenario id: it says the alternative succeeds the baseline history, which is precisely the
+    claim DATA-28 says an alternative's existence does not make.
+    """
+    entries = list(manifests)
+    line_of = {release_id: scenario for release_id, _, scenario in entries}
+    findings: list[Diagnostic] = []
+
+    for release_id, parent, scenario in sorted(entries):
+        if parent is None or parent not in line_of:
+            continue
+        if line_of[parent] == scenario:
+            continue
+        findings.append(
+            build_diagnostic(
+                "CORE.RELEASE.ALTERNATIVE_LINE_BROKEN",
+                message=(
+                    f"release {release_id!r} is on line {scenario or 'baseline'!r} and names "
+                    f"parent {parent!r}, which is on line {line_of[parent] or 'baseline'!r}"
+                ),
+                canonical_object_id=release_id,
+                context=(
+                    ("parent_release_id", parent),
+                    ("scenario_id", scenario or ""),
+                ),
+            )
+        )
+    return tuple(findings)
