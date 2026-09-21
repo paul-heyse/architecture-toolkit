@@ -151,6 +151,11 @@ def test_a_relational_recipe_reads_only_the_columns_it_needs(
     evidence = evidence_for(published, RECIPES[recipe_id])
     projections = scan_projections(evidence.optimized_logical_plan)
 
+    # The plan is parsed with a regex, so a DataFusion release that reformatted `TableScan:` would
+    # make every assertion below vacuously true. Assert the parse found the scans first.
+    scanned = {table_id for table_id in map(persisted, projections) if table_id is not None}
+    assert scanned == {item.table_id for item in RECIPES[recipe_id].inputs}
+
     unpruned = sorted(
         name for name, columns in projections.items() if persisted(name) and columns is None
     )

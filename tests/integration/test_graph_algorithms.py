@@ -138,6 +138,9 @@ def test_a_single_element_is_a_component_and_is_not_cyclic(
 
     found = components(graph, CONTAINMENT)
 
+    # `all` over an empty sequence is true, so the count comes first: without it this test would
+    # pass just as happily if `components` returned nothing at all.
+    assert len(found) == len(example_model.elements)
     assert all(not component.is_cyclic for component in found)
     assert all(len(component.element_ids) == 1 for component in found)
 
