@@ -262,6 +262,49 @@ _ALL: tuple[DiagnosticCodeSpec, ...] = (
         disposition=_PROFILE,
         summary="The model declares a profile version the active profile does not provide.",
     ),
+    # W4: read-back coherence. These describe a *release*, not a model, so they are raised by
+    # `validation/release.py` rather than registered as cross-record rules — a rule takes a model
+    # candidate, and every registered rule needs a known-bad model fixture, which a manifest
+    # mismatch cannot supply.
+    _spec(
+        "CORE.RELEASE.TABLE_NOT_PINNED",
+        CodeArea.RELEASE,
+        category=DiagnosticCategory.RELEASE_COHERENCE,
+        summary="The manifest does not pin every table the storage schema declares.",
+        remediation="Publish through the release protocol, which pins all eleven tables.",
+    ),
+    _spec(
+        "CORE.RELEASE.DIGEST_MISMATCH",
+        CodeArea.RELEASE,
+        category=DiagnosticCategory.RELEASE_COHERENCE,
+        summary="A staged table read back with a different semantic digest from the one pinned.",
+        remediation=(
+            "Do not publish. The staged version is orphaned and the current release is unchanged."
+        ),
+    ),
+    _spec(
+        "CORE.RELEASE.ROW_COUNT_MISMATCH",
+        CodeArea.RELEASE,
+        category=DiagnosticCategory.RELEASE_COHERENCE,
+        summary="A staged table read back with a different row count from the one pinned.",
+    ),
+    _spec(
+        "CORE.RELEASE.VERSION_UNREADABLE",
+        CodeArea.RELEASE,
+        category=DiagnosticCategory.RELEASE_COHERENCE,
+        summary="A version a retained manifest pins can no longer be read.",
+        remediation=(
+            "Retention removed a version a release needs. Restore from a milestone archive; "
+            "`releases/retention.py` computes the protected set so this cannot happen again."
+        ),
+    ),
+    _spec(
+        "CORE.RELEASE.STORAGE_SCHEMA_MISMATCH",
+        CodeArea.RELEASE,
+        category=DiagnosticCategory.RELEASE_COHERENCE,
+        summary="The release was written against a different storage schema version.",
+        remediation="Apply the declared migration for that version rather than merging schemas.",
+    ),
     _spec(
         "CORE.VIEW.UNRESOLVED_MEMBER",
         CodeArea.VIEW,

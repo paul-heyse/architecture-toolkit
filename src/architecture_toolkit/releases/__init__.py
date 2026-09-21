@@ -24,15 +24,29 @@ from architecture_toolkit.releases.manifest import (
     SourceBundle,
     TableRef,
 )
+from architecture_toolkit.releases.publication import (
+    STEP_ORDER,
+    STEPS,
+    DeltaPublisher,
+    PublicationRequest,
+    PublicationState,
+    publish,
+)
+from architecture_toolkit.releases.reader import read_model, read_table_set
 from architecture_toolkit.releases.store import DEFAULT_STORE_ROOT, ReleaseStore
 
 __all__ = [
     "DEFAULT_STORE_ROOT",
+    "STEPS",
+    "STEP_ORDER",
     "ArchitectureRelease",
     "ArchiveError",
+    "DeltaPublisher",
     "GeneratorProvenance",
     "MigrationError",
     "PublicationLockError",
+    "PublicationRequest",
+    "PublicationState",
     "ReadBackMismatchError",
     "ReleaseCandidate",
     "ReleaseError",
@@ -44,4 +58,7 @@ __all__ = [
     "UnknownReleaseError",
     "next_release_id",
     "publication_lock",
+    "publish",
+    "read_model",
+    "read_table_set",
 ]
